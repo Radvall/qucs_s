@@ -40,6 +40,17 @@ include_directories(
       )
 
 
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Charts)
+include_directories(
+      ${Qt6Core_INCLUDE_DIRS}
+      ${Qt6Gui_INCLUDE_DIRS}
+      ${Qt6Widgets_INCLUDE_DIRS}
+      )
+
+if(Qt6_FOUND)
+    set(QT_VERSION ${Qt6Core_VERSION})
+endif()
+
 if (${QT_VERSION} VERSION_LESS "6.7.0")
     set(CMAKE_CXX_STANDARD 17)
 else()
