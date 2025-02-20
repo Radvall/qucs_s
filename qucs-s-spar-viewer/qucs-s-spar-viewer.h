@@ -136,12 +136,8 @@ protected:
   // Axis settings widgets
   QDockWidget *dockAxisSettings;
   QComboBox *QCombobox_x_axis_units;//, *QCombobox_y_axis_units, *QCombobox_y2_axis_units;
-  QDoubleSpinBox *QSpinBox_x_axis_min, *QSpinBox_x_axis_max;
-  QList<double> available_x_axis_div;
-  QComboBox *QComboBox_x_axis_div;
+  QDoubleSpinBox *QSpinBox_x_axis_min, *QSpinBox_x_axis_max, *QSpinBox_x_axis_div;
   QDoubleSpinBox *QSpinBox_y_axis_min, *QSpinBox_y_axis_max, *QSpinBox_y_axis_div;
-  QList<double> available_y_axis_div;
-  QComboBox *QComboBox_y_axis_div;
   QDoubleSpinBox *QSpinBox_y2_axis_min, *QSpinBox_y2_axis_max, *QSpinBox_y2_axis_div;
   QPushButton *Lock_axis_settings_Button;
   bool lock_axis;

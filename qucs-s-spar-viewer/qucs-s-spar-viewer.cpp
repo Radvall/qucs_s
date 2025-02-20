@@ -47,7 +47,7 @@
 
 Qucs_S_SPAR_Viewer::Qucs_S_SPAR_Viewer()
 {
-  QWidget *centralWidget = new QWidget(this);  
+  QWidget *centralWidget = new QWidget(this);
   setCentralWidget(centralWidget);
 
   setWindowIcon(QPixmap(":/bitmaps/big.qucs.xpm"));
@@ -214,17 +214,13 @@ Qucs_S_SPAR_Viewer::Qucs_S_SPAR_Viewer()
   connect(QSpinBox_x_axis_max, SIGNAL(valueChanged(double)), SLOT(updatePlot()));
   SettingsGrid->addWidget(QSpinBox_x_axis_max, 1, 2);
 
-  // Available x-axis div
-  QComboBox_x_axis_div = new QComboBox();
-  available_x_axis_div.clear();
-  available_x_axis_div << 2000 << 1000 << 500 << 400 << 200 << 100 << 50 << 25 << 20 << 10 << 5 << 1 << 0.5 << 0.2 << 0.1;
-
-  for (const double &value : qAsConst(available_x_axis_div)) {
-    QComboBox_x_axis_div->addItem(QString::number(value));
-  }
-
-  connect(QComboBox_x_axis_div, SIGNAL(currentIndexChanged(int)), SLOT(updatePlot()));
-  SettingsGrid->addWidget(QComboBox_x_axis_div, 1, 3);
+  QSpinBox_x_axis_div = new QDoubleSpinBox();
+  QSpinBox_x_axis_div->setMinimum(0.1);
+  QSpinBox_x_axis_div->setMaximum(1000000);
+  QSpinBox_x_axis_div->setValue(100); // Default value
+  QSpinBox_x_axis_div->setSingleStep(1);
+  connect(QSpinBox_x_axis_div, SIGNAL(valueChanged(double)), SLOT(updatePlot()));
+  SettingsGrid->addWidget(QSpinBox_x_axis_div, 1, 3);
 
   QCombobox_x_axis_units = new QComboBox();
   QCombobox_x_axis_units->addItems(frequency_units);
@@ -250,15 +246,13 @@ Qucs_S_SPAR_Viewer::Qucs_S_SPAR_Viewer()
   connect(QSpinBox_y_axis_max, SIGNAL(valueChanged(double)), SLOT(updatePlot()));
   SettingsGrid->addWidget(QSpinBox_y_axis_max, 2, 2);
 
-  // Available x-axis div
-  QComboBox_y_axis_div = new QComboBox();
-  available_y_axis_div.clear();
-  available_y_axis_div << 50 << 25 << 20 << 10 << 5 << 2 << 1 << 0.5 << 0.2 << 0.1;
-  for (const double &value : qAsConst(available_y_axis_div)) {
-      QComboBox_y_axis_div->addItem(QString::number(value));
-  }
-  connect(QComboBox_y_axis_div, SIGNAL(currentIndexChanged(int)), SLOT(updatePlot()));
-  SettingsGrid->addWidget(QComboBox_y_axis_div, 2, 3);
+  QSpinBox_y_axis_div = new QDoubleSpinBox();
+  QSpinBox_y_axis_div->setMinimum(0.1);
+  QSpinBox_y_axis_div->setMaximum(1000000);
+  QSpinBox_y_axis_div->setValue(10); // Default value
+  QSpinBox_y_axis_div->setSingleStep(0.1);
+  connect(QSpinBox_y_axis_div, SIGNAL(valueChanged(double)), SLOT(updatePlot()));
+  SettingsGrid->addWidget(QSpinBox_y_axis_div, 2, 3);
 
   /*QCombobox_y_axis_units = new QComboBox();
   QCombobox_y_axis_units->addItem("dB");
@@ -1469,11 +1463,10 @@ void Qucs_S_SPAR_Viewer::updatePlot()
 // This is the handler that updates the x-axis when the x-axis QSpinBoxes change their value
 void Qucs_S_SPAR_Viewer::update_X_axis()
 {
-    // Get the user limits or adjust
-    adjust_x_axis_div();
+    // Get the user limits
     double x_min = QSpinBox_x_axis_min->value();
     double x_max = QSpinBox_x_axis_max->value();
-    double x_div = QComboBox_x_axis_div->currentText().toDouble();
+    double x_div = QSpinBox_x_axis_div->value();
 
     // Update spinbox limits
     disconnect(QSpinBox_x_axis_max, SIGNAL(valueChanged(double)), this, SLOT(updatePlot())); // Needed to avoid duplicating the call to the update function
@@ -1507,7 +1500,7 @@ void Qucs_S_SPAR_Viewer::update_Y_axis()
     // y-axis
     double y_min = QSpinBox_y_axis_min->value();
     double y_max = QSpinBox_y_axis_max->value();
-    double y_div = QComboBox_y_axis_div->currentText().toDouble();
+    double y_div = QSpinBox_y_axis_div->value();
 
     // Update spinbox limits
     disconnect(QSpinBox_y_axis_max, SIGNAL(valueChanged(double)), this, SLOT(updatePlot())); // Needed to avoid duplicating the call to the update function
@@ -1824,7 +1817,7 @@ void Qucs_S_SPAR_Viewer::checkFreqSettingsLimits(QString filename, double& fmin,
                 disconnect(QCombobox_x_axis_units, SIGNAL(currentIndexChanged(int)), this, SLOT(updatePlot())); // Needed to avoid duplicating the call to the update function
                 disconnect(QSpinBox_x_axis_max, SIGNAL(valueChanged(int)), this, SLOT(updatePlot())); // Needed to avoid duplicating the call to the update function
                 disconnect(QSpinBox_x_axis_min, SIGNAL(valueChanged(int)), this, SLOT(updatePlot())); // Needed to avoid duplicating the call to the update function
-                QCombobox_x_axis_units->setCurrentIndex(index+1);               
+                QCombobox_x_axis_units->setCurrentIndex(index+1);
                 QSpinBox_x_axis_min->setValue(fmin);
                 QSpinBox_x_axis_max->setValue(fmax);
                 connect(QCombobox_x_axis_units, SIGNAL(currentIndexChanged(int)), SLOT(updatePlot()));
@@ -1891,14 +1884,14 @@ void Qucs_S_SPAR_Viewer::adjust_y_axis_to_trace(QString filename, QString tracen
     }
 
     //Adjust the y-axis div depending on the limits
-    double y_div = QComboBox_y_axis_div->currentText().toDouble();
+    double y_div = QSpinBox_y_axis_div->value();
 
     if ((y_div > y_max-y_min) || ((y_max-y_min)/y_div > 10) || ((y_max-y_min)/y_div < 5)){
         // No ticks or excesive ticks
-        int new_index = findClosestIndex(available_y_axis_div, (y_max-y_min)/10);
-        disconnect(QComboBox_y_axis_div, SIGNAL(currentIndexChanged(int)), this, SLOT(updatePlot()));
-        QComboBox_y_axis_div->setCurrentIndex(new_index);
-        connect(QComboBox_y_axis_div, SIGNAL(currentIndexChanged(int)), SLOT(updatePlot()));
+        double new_div = (y_max - y_min) / 10;
+        disconnect(QSpinBox_y_axis_div, SIGNAL(valueChanged(double)), this, SLOT(updatePlot()));
+        QSpinBox_y_axis_div->setValue(new_div);
+        connect(QSpinBox_y_axis_div, SIGNAL(valueChanged(double)), SLOT(updatePlot()));
     }
 
     disconnect(QSpinBox_y_axis_min, SIGNAL(valueChanged(double)), this, SLOT(updatePlot())); // Needed to avoid duplicating the call to the update function
@@ -2416,17 +2409,16 @@ void Qucs_S_SPAR_Viewer::adjust_x_axis_div()
 {
     double x_min = QSpinBox_x_axis_min->value();
     double x_max = QSpinBox_x_axis_max->value();
-    double x_div = QComboBox_x_axis_div->currentText().toDouble();
+    double x_div = QSpinBox_x_axis_div->value();
 
     if ((x_div > x_max-x_min) || ((x_max-x_min)/x_div > 15) || ((x_max-x_min)/x_div < 5) ){
-        // No ticks or excesive ticks
-        int new_index = findClosestIndex(available_x_axis_div, (x_max-x_min)/5);
-        disconnect(QComboBox_x_axis_div, SIGNAL(currentIndexChanged(int)), this, SLOT(updatePlot()));
-        QComboBox_x_axis_div->setCurrentIndex(new_index);
-        connect(QComboBox_x_axis_div, SIGNAL(currentIndexChanged(int)), SLOT(updatePlot()));
+        double new_div = (x_max - x_min) / 5;
+        disconnect(QSpinBox_x_axis_div, SIGNAL(valueChanged(double)), this, SLOT(updatePlot()));
+        QSpinBox_x_axis_div->setValue(new_div);
+        connect(QSpinBox_x_axis_div, SIGNAL(valueChanged(double)), SLOT(updatePlot()));
 
         //Update the step of the spinboxes
-        double step = QComboBox_x_axis_div->currentText().toDouble()/10;
+        double step = QSpinBox_x_axis_div->value()/10;
         QSpinBox_x_axis_min->setSingleStep(step);
         QSpinBox_x_axis_max->setSingleStep(step);
     }
@@ -2539,22 +2531,22 @@ void Qucs_S_SPAR_Viewer::lock_unlock_axis_settings(bool toogle)
     //Frozen axes inputs
     QSpinBox_x_axis_min->setEnabled(true);
     QSpinBox_x_axis_max->setEnabled(true);
-    QComboBox_x_axis_div->setEnabled(true);
+    QSpinBox_x_axis_div->setEnabled(true);
     QCombobox_x_axis_units->setEnabled(true);
     QSpinBox_y_axis_min->setEnabled(true);
     QSpinBox_y_axis_max->setEnabled(true);
-    QComboBox_y_axis_div->setEnabled(true);
+    QSpinBox_y_axis_div->setEnabled(true);
   }
   else{
     Lock_axis_settings_Button->setText("Unlock Axes");
     //Unfrozen axes inputs
     QSpinBox_x_axis_min->setDisabled(true);
     QSpinBox_x_axis_max->setDisabled(true);
-    QComboBox_x_axis_div->setDisabled(true);
+    QSpinBox_x_axis_div->setDisabled(true);
     QCombobox_x_axis_units->setDisabled(true);
     QSpinBox_y_axis_min->setDisabled(true);
     QSpinBox_y_axis_max->setDisabled(true);
-    QComboBox_y_axis_div->setDisabled(true);
+    QSpinBox_y_axis_div->setDisabled(true);
   }
 }
 
@@ -2602,7 +2594,7 @@ void Qucs_S_SPAR_Viewer::addLimit(double f_limit1, QString f_limit1_unit, double
   new_limit_fstart_Spinbox->setObjectName(SpinBox_fstart_name);
   new_limit_fstart_Spinbox->setMaximum(QSpinBox_x_axis_max->minimum());
   new_limit_fstart_Spinbox->setMaximum(QSpinBox_x_axis_max->maximum());
-  new_limit_fstart_Spinbox->setSingleStep(QComboBox_x_axis_div->currentText().toDouble()/5);
+  new_limit_fstart_Spinbox->setSingleStep(QSpinBox_x_axis_div->value()/5);
   new_limit_fstart_Spinbox->setValue(f_limit1);
   connect(new_limit_fstart_Spinbox, SIGNAL(valueChanged(double)), SLOT(updateTraces()));
   List_Limit_Start_Freq.append(new_limit_fstart_Spinbox);
@@ -2627,7 +2619,7 @@ void Qucs_S_SPAR_Viewer::addLimit(double f_limit1, QString f_limit1_unit, double
   new_limit_fstop_Spinbox->setObjectName(SpinBox_fstop_name);
   new_limit_fstop_Spinbox->setMaximum(QSpinBox_x_axis_max->minimum());
   new_limit_fstop_Spinbox->setMaximum(QSpinBox_x_axis_max->maximum());
-  new_limit_fstop_Spinbox->setSingleStep(QComboBox_x_axis_div->currentText().toDouble()/5);
+  new_limit_fstop_Spinbox->setSingleStep(QSpinBox_x_axis_div->value()/5);
   new_limit_fstop_Spinbox->setValue(f_limit2);
   connect(new_limit_fstop_Spinbox, SIGNAL(valueChanged(double)), SLOT(updateTraces()));
   List_Limit_Stop_Freq.append(new_limit_fstop_Spinbox);
@@ -2673,7 +2665,7 @@ void Qucs_S_SPAR_Viewer::addLimit(double f_limit1, QString f_limit1_unit, double
   new_limit_val_start_Spinbox->setMaximum(QSpinBox_y_axis_max->minimum());
   new_limit_val_start_Spinbox->setMaximum(QSpinBox_y_axis_max->maximum());
   new_limit_val_start_Spinbox->setValue(y_limit1);
-  new_limit_val_start_Spinbox->setSingleStep(QComboBox_y_axis_div->currentText().toDouble()/5);
+  new_limit_val_start_Spinbox->setSingleStep(QSpinBox_y_axis_div->value()/5);
   connect(new_limit_val_start_Spinbox, SIGNAL(valueChanged(double)), SLOT(updateLimits()));
   List_Limit_Start_Value.append(new_limit_val_start_Spinbox);
   this->LimitsGrid->addWidget(new_limit_val_start_Spinbox, limit_index+1, 1);
@@ -2695,7 +2687,7 @@ void Qucs_S_SPAR_Viewer::addLimit(double f_limit1, QString f_limit1_unit, double
   new_limit_val_stop_Spinbox->setMaximum(QSpinBox_y_axis_max->minimum());
   new_limit_val_stop_Spinbox->setMaximum(QSpinBox_y_axis_max->maximum());
   new_limit_val_stop_Spinbox->setValue(y_limit2);
-  new_limit_val_stop_Spinbox->setSingleStep(QComboBox_y_axis_div->currentText().toDouble()/5);
+  new_limit_val_stop_Spinbox->setSingleStep(QSpinBox_y_axis_div->value()/5);
   connect(new_limit_val_stop_Spinbox, SIGNAL(valueChanged(double)), SLOT(updateLimits()));
   List_Limit_Stop_Value.append(new_limit_val_stop_Spinbox);
   this->LimitsGrid->addWidget(new_limit_val_stop_Spinbox, limit_index+1, 3);
@@ -2840,7 +2832,7 @@ bool Qucs_S_SPAR_Viewer::save()
     xmlWriter.writeEndElement(); // Markers
   }
   // ----------------------------------------------------------------
-  // Save the limits 
+  // Save the limits
   if (List_Limit_Start_Freq.size() != 0){
       double freq, value;
       bool Coupled_Limits;
@@ -2919,11 +2911,11 @@ bool Qucs_S_SPAR_Viewer::save()
   xmlWriter.writeStartElement("AXES");
   xmlWriter.writeTextElement("x-axis-min", QString::number(QSpinBox_x_axis_min->value()));
   xmlWriter.writeTextElement("x-axis-max", QString::number(QSpinBox_x_axis_max->value()));
-  xmlWriter.writeTextElement("x-axis-div", QComboBox_x_axis_div->currentText());
+  xmlWriter.writeTextElement("x-axis-div", QString::number(QSpinBox_x_axis_div->value()));
   xmlWriter.writeTextElement("x-axis-scale", QCombobox_x_axis_units->currentText());
   xmlWriter.writeTextElement("y-axis-min", QString::number(QSpinBox_y_axis_min->value()));
   xmlWriter.writeTextElement("y-axis-max", QString::number(QSpinBox_y_axis_max->value()));
-  xmlWriter.writeTextElement("y-axis-div", QComboBox_y_axis_div->currentText());
+  xmlWriter.writeTextElement("y-axis-div", QString::number(QSpinBox_y_axis_div->value()));
   xmlWriter.writeTextElement("lock_status", QString::number(lock_axis));
 
   xmlWriter.writeEndElement(); // Axes
@@ -3026,7 +3018,7 @@ void Qucs_S_SPAR_Viewer::loadSession(QString session_file)
   QList<int> Limit_Couple_Values;
   QList<QString> Limit_Start_Freq_Unit, Limit_Stop_Freq_Unit;
   double x_axis_min, x_axis_max, y_axis_min, y_axis_max;
-  int index_x_axis_units, index_x_axis_div, index_y_axis_div;
+  int index_x_axis_units;
   bool lock_axis_setting;
   // Markers
   QList<double> Markers;
@@ -3064,8 +3056,8 @@ void Qucs_S_SPAR_Viewer::loadSession(QString session_file)
       } else if (xml.name().toString().contains("x-axis-max")) {
         x_axis_max = xml.readElementText().toDouble();
       } else if (xml.name().toString().contains("x-axis-div")) {
-        int x_axis_div = xml.readElementText().toInt();
-        index_x_axis_div = available_x_axis_div.indexOf(x_axis_div);
+        double x_axis_div = xml.readElementText().toDouble();
+        QSpinBox_x_axis_div->setValue(x_axis_div);
       } else if (xml.name().toString().contains("x-axis-scale")) {
         QString x_axis_scale = xml.readElementText();
         index_x_axis_units = frequency_units.indexOf(x_axis_scale);
@@ -3074,8 +3066,8 @@ void Qucs_S_SPAR_Viewer::loadSession(QString session_file)
       } else if (xml.name().toString().contains("y-axis-max")) {
         y_axis_max = xml.readElementText().toDouble();
       } else if (xml.name().toString().contains("y-axis-div")) {
-        int y_axis_div = xml.readElementText().toInt();
-        index_y_axis_div = available_y_axis_div.indexOf(y_axis_div);
+        double y_axis_div = xml.readElementText().toDouble();
+        QSpinBox_y_axis_div->setValue(y_axis_div);
       } else if (xml.name().toString().contains("lock_status")) {
         lock_axis_setting = xml.readElementText().toInt();
       } else if (xml.name() == QStringLiteral("Limit")) {
@@ -3196,22 +3188,20 @@ void Qucs_S_SPAR_Viewer::loadSession(QString session_file)
   // It's needed to disconnect the signals first in order to avoid unneeded calls to the slots
   disconnect(QSpinBox_x_axis_min, SIGNAL(valueChanged(double)), this, SLOT(updatePlot()));
   disconnect(QSpinBox_x_axis_max, SIGNAL(valueChanged(double)), this, SLOT(updatePlot()));
-  disconnect(QComboBox_x_axis_div, SIGNAL(currentIndexChanged(int)), this, SLOT(updatePlot()));
+  disconnect(QSpinBox_x_axis_div, SIGNAL(valueChanged(double)), this, SLOT(updatePlot()));
   disconnect(QCombobox_x_axis_units, SIGNAL(currentIndexChanged(int)), this, SLOT(changeFreqUnits()));
   disconnect(QSpinBox_y_axis_min, SIGNAL(valueChanged(double)), this, SLOT(updatePlot()));
   disconnect(QSpinBox_y_axis_max, SIGNAL(valueChanged(double)), this, SLOT(updatePlot()));
 
   QSpinBox_x_axis_min->setValue(x_axis_min);
   QSpinBox_x_axis_max->setValue(x_axis_max);
-  QComboBox_x_axis_div->setCurrentIndex(index_x_axis_div);
   QCombobox_x_axis_units->setCurrentIndex(index_x_axis_units);
   QSpinBox_y_axis_min->setValue(y_axis_min);
   QSpinBox_y_axis_max->setValue(y_axis_max);
-  QComboBox_y_axis_div->setCurrentIndex(index_y_axis_div);
 
   connect(QSpinBox_x_axis_min, SIGNAL(valueChanged(double)), SLOT(updatePlot()));
   connect(QSpinBox_x_axis_max, SIGNAL(valueChanged(double)), SLOT(updatePlot()));
-  connect(QComboBox_x_axis_div, SIGNAL(currentIndexChanged(int)), SLOT(updatePlot()));
+  connect(QSpinBox_x_axis_div, SIGNAL(valueChanged(double)), SLOT(updatePlot()));
   connect(QCombobox_x_axis_units, SIGNAL(currentIndexChanged(int)), SLOT(changeFreqUnits()));
   connect(QSpinBox_y_axis_min, SIGNAL(valueChanged(double)), SLOT(updatePlot()));
   connect(QSpinBox_y_axis_max, SIGNAL(valueChanged(double)), SLOT(updatePlot()));
