@@ -254,6 +254,9 @@ Qucs_S_SPAR_Viewer::Qucs_S_SPAR_Viewer()
   connect(QSpinBox_y_axis_div, SIGNAL(valueChanged(double)), SLOT(updatePlot()));
   SettingsGrid->addWidget(QSpinBox_y_axis_div, 2, 3);
 
+  QLabel *y_axis_unit_label = new QLabel("<b>dB</b>");
+  SettingsGrid->addWidget(y_axis_unit_label, 2, 4);
+
   // Right y-axis settings
   QLabel *y2_axis = new QLabel("<b>y2-axis</b>");
   SettingsGrid->addWidget(y2_axis, 3, 0);
@@ -276,9 +279,8 @@ Qucs_S_SPAR_Viewer::Qucs_S_SPAR_Viewer()
   QSpinBox_y2_axis_div->setValue(45); // Default interval for phase
   SettingsGrid->addWidget(QSpinBox_y2_axis_div, 3, 3);
 
-  QComboBox *QCombobox_y2_axis_units = new QComboBox();
-  QCombobox_y2_axis_units->addItem("deg"); // Degrees
-  SettingsGrid->addWidget(QCombobox_y2_axis_units, 3, 4);
+  QLabel *y2_axis_unit_label = new QLabel("<b>deg</b>");
+  SettingsGrid->addWidget(y2_axis_unit_label, 3, 4);
 
   // Connect signals for right y-axis updates
   connect(QSpinBox_y2_axis_min, SIGNAL(valueChanged(double)), SLOT(updatePlot()));
