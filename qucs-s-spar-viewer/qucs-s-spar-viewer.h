@@ -81,6 +81,7 @@ protected:
 
   void update_X_axis();
   void update_Y_axis();
+  void update_Y2_axis();
   void lock_unlock_axis_settings(bool toogle = true);
 
   void addMarker(double freq = -1);
@@ -135,7 +136,7 @@ protected:
 
   // Axis settings widgets
   QDockWidget *dockAxisSettings;
-  QComboBox *QCombobox_x_axis_units;//, *QCombobox_y_axis_units, *QCombobox_y2_axis_units;
+  QComboBox *QCombobox_x_axis_units, *QCombobox_y2_axis_units;
   QDoubleSpinBox *QSpinBox_x_axis_min, *QSpinBox_x_axis_max, *QSpinBox_x_axis_div;
   QDoubleSpinBox *QSpinBox_y_axis_min, *QSpinBox_y_axis_max, *QSpinBox_y_axis_div;
   QDoubleSpinBox *QSpinBox_y2_axis_min, *QSpinBox_y2_axis_max, *QSpinBox_y2_axis_div;
@@ -165,7 +166,7 @@ protected:
   // Chart
   QChart *chart;
   QDockWidget *dockChart;
-  QValueAxis *xAxis, *yAxis;
+  QValueAxis *xAxis, *yAxis, *y2Axis;
   double f_min, f_max, y_min, y_max; // Minimum (maximum) values of the display
   QList<QColor> default_colors;
   QList<QGraphicsItem*> textLabels;

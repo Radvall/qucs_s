@@ -254,35 +254,36 @@ Qucs_S_SPAR_Viewer::Qucs_S_SPAR_Viewer()
   connect(QSpinBox_y_axis_div, SIGNAL(valueChanged(double)), SLOT(updatePlot()));
   SettingsGrid->addWidget(QSpinBox_y_axis_div, 2, 3);
 
-  /*QCombobox_y_axis_units = new QComboBox();
-  QCombobox_y_axis_units->addItem("dB");
-  SettingsGrid->addWidget(QCombobox_y_axis_units, 2, 4);*/
-
+  // Right y-axis settings
   QLabel *y2_axis = new QLabel("<b>y2-axis</b>");
   SettingsGrid->addWidget(y2_axis, 3, 0);
 
   QSpinBox_y2_axis_min = new QDoubleSpinBox();
-  QSpinBox_y2_axis_min->setMinimum(0);
+  QSpinBox_y2_axis_min->setMinimum(-180); // Phase ranges from -180 to 180 degrees
+  QSpinBox_y2_axis_min->setMaximum(180);
+  QSpinBox_y2_axis_min->setValue(-180);
   SettingsGrid->addWidget(QSpinBox_y2_axis_min, 3, 1);
 
   QSpinBox_y2_axis_max = new QDoubleSpinBox();
-  QSpinBox_y2_axis_max->setMinimum(0);
+  QSpinBox_y2_axis_max->setMinimum(-180);
+  QSpinBox_y2_axis_max->setMaximum(180);
+  QSpinBox_y2_axis_max->setValue(180);
   SettingsGrid->addWidget(QSpinBox_y2_axis_max, 3, 2);
 
   QSpinBox_y2_axis_div = new QDoubleSpinBox();
-  QSpinBox_y2_axis_div->setMinimum(0);
+  QSpinBox_y2_axis_div->setMinimum(1);
+  QSpinBox_y2_axis_div->setMaximum(90);
+  QSpinBox_y2_axis_div->setValue(45); // Default interval for phase
   SettingsGrid->addWidget(QSpinBox_y2_axis_div, 3, 3);
 
-  /*QCombobox_y2_axis_units = new QComboBox();
-  QCombobox_y2_axis_units->addItem("dB");
-  SettingsGrid->addWidget(QCombobox_y2_axis_units, 3, 4);*/
+  QComboBox *QCombobox_y2_axis_units = new QComboBox();
+  QCombobox_y2_axis_units->addItem("deg"); // Degrees
+  SettingsGrid->addWidget(QCombobox_y2_axis_units, 3, 4);
 
-  // Hide y2 axis (temporary)
-  y2_axis->hide();
-  QSpinBox_y2_axis_min->hide();
-  QSpinBox_y2_axis_max->hide();
-  QSpinBox_y2_axis_div->hide();
- // QCombobox_y2_axis_units->hide();
+  // Connect signals for right y-axis updates
+  connect(QSpinBox_y2_axis_min, SIGNAL(valueChanged(double)), SLOT(updatePlot()));
+  connect(QSpinBox_y2_axis_max, SIGNAL(valueChanged(double)), SLOT(updatePlot()));
+  connect(QSpinBox_y2_axis_div, SIGNAL(valueChanged(double)), SLOT(updatePlot()));
 
   // Lock axis settings button
   Lock_axis_settings_Button =  new QPushButton("Lock Axes");
@@ -838,21 +839,21 @@ void Qucs_S_SPAR_Viewer::addFiles(QStringList fileNames)
 
     // Default behavior: If there's no more data loaded and a single S1P file is selected, then automatically plot S11
     if ((fileNames.length() == 1) && (fileNames.first().toLower().endsWith(".s1p")) && (datasets.size() == 1)){
-        this->addTrace(filename, QStringLiteral("S11"), Qt::red);
+        this->addTrace(filename, QStringLiteral("S11_dB"), Qt::red);
 
         adjust_x_axis_to_file(filename);
-        adjust_y_axis_to_trace(filename, "S11");
+        adjust_y_axis_to_trace(filename, "S11_dB");
     }
 
     // Default behavior: If there's no more data loaded and a single S2P file is selected, then automatically plot S21, S11 and S22
     if ((fileNames.length() == 1) && (fileNames.first().toLower().endsWith(".s2p")) && (datasets.size() == 1)){
-        this->addTrace(filename, QStringLiteral("S21"), Qt::red);
-        this->addTrace(filename, QStringLiteral("S11"), Qt::blue);
-        this->addTrace(filename, QStringLiteral("S22"), Qt::darkGreen);
+        this->addTrace(filename, QStringLiteral("S21_dB"), Qt::red);
+        this->addTrace(filename, QStringLiteral("S11_dB"), Qt::blue);
+        this->addTrace(filename, QStringLiteral("S22_dB"), Qt::darkGreen);
 
         adjust_x_axis_to_file(filename);
-        adjust_y_axis_to_trace(filename, "S11");
-        adjust_y_axis_to_trace(filename, "S21");
+        adjust_y_axis_to_trace(filename, "S11_dB");
+        adjust_y_axis_to_trace(filename, "S21_dB");
     }
 
     // Default behaviour: When adding multiple S2P file, then show the S21 of all traces
@@ -871,8 +872,8 @@ void Qucs_S_SPAR_Viewer::addFiles(QStringList fileNames)
                 filename = filename.left(filename.lastIndexOf('.'));
                 // Pick a random color
                 QColor trace_color = QColor(QRandomGenerator::global()->bounded(256), QRandomGenerator::global()->bounded(256), QRandomGenerator::global()->bounded(256));
-                this->addTrace(filename, QStringLiteral("S21"), trace_color);
-                adjust_y_axis_to_trace(filename, "S21");
+                this->addTrace(filename, QStringLiteral("S21_dB"), trace_color);
+                adjust_y_axis_to_trace(filename, "S21_dB");
             }
             // Update the frequency setting to fit the last s2p file
             adjust_x_axis_to_file(filename);
@@ -1178,92 +1179,81 @@ void Qucs_S_SPAR_Viewer::addTrace()
 // Read the dataset and trace Comboboxes and add a trace to the display list
 void Qucs_S_SPAR_Viewer::addTrace(QString selected_dataset, QString selected_trace, QColor trace_color, int trace_width, QString trace_style)
 {
-    int n_trace = this->trace_list.size()+1; // Number of displayed traces;
-    // Get the name of the selected dataset
+  int n_trace = this->trace_list.size() + 1; // Number of displayed traces
 
+         // Get the name of the trace to plot
+  QString trace_name = selected_dataset;
+  trace_name.append("."); // Separate the dataset from the trace name with a point
+  trace_name.append(selected_trace);
 
-    // Get the name of the trace to plot
-    QString trace_name = selected_dataset;
-    trace_name.append("."); // Separate the dataset from the trace name with a point
-    trace_name.append(selected_trace);
+  if (trace_list.contains(trace_name)) {
+    QMessageBox::information(
+        this,
+        tr("Warning"),
+        tr("This trace is already shown"));
+    return;
+  }
 
-    if (trace_list.contains(trace_name)){
-        QMessageBox::information(
-            this,
-            tr("Warning"),
-            tr("This trace is already shown") );
-        return;
-    }
+         // Add the trace to the list of displayed list and create the widgets associated to the trace properties
 
-    // Add the trace to the list of displayed list and create the widgets associated to the trace properties
+         // Label
+  QLabel *new_trace_label = new QLabel(trace_name);
+  new_trace_label->setObjectName(QStringLiteral("Trace_Name_") + trace_name);
+  List_TraceNames.append(new_trace_label);
+  this->TracesGrid->addWidget(new_trace_label, n_trace, 0);
 
-    // Label
-    QLabel * new_trace_label = new QLabel(trace_name);
-    new_trace_label->setObjectName(QStringLiteral("Trace_Name_") + trace_name);
-    List_TraceNames.append(new_trace_label);
-    this->TracesGrid->addWidget(new_trace_label, n_trace, 0);
+         // Color picker
+  QPushButton *new_trace_color = new QPushButton();
+  new_trace_color->setObjectName(QStringLiteral("Trace_Color_") + trace_name);
+  connect(new_trace_color, SIGNAL(clicked()), SLOT(changeTraceColor()));
+  QString styleSheet = QStringLiteral("QPushButton { background-color: %1; }").arg(trace_color.name());
+  new_trace_color->setStyleSheet(styleSheet);
+  new_trace_color->setAttribute(Qt::WA_TranslucentBackground); // Needed for Windows buttons to behave as they should
+  List_Trace_Color.append(new_trace_color);
+  this->TracesGrid->addWidget(new_trace_color, n_trace, 1);
 
-    // Color picker
-    QPushButton * new_trace_color = new QPushButton();
-    new_trace_color->setObjectName(QStringLiteral("Trace_Color_") + trace_name);
-    connect(new_trace_color, SIGNAL(clicked()), SLOT(changeTraceColor()));
-    QString styleSheet = QStringLiteral("QPushButton { background-color: %1; }").arg(trace_color.name());
-    new_trace_color->setStyleSheet(styleSheet);
-    new_trace_color->setAttribute(Qt::WA_TranslucentBackground); // Needed for Windows buttons to behave as they should
-    List_Trace_Color.append(new_trace_color);
-    this->TracesGrid->addWidget(new_trace_color, n_trace, 1);
+         // Line Style
+  QComboBox *new_trace_linestyle = new QComboBox();
+  new_trace_linestyle->setObjectName(QStringLiteral("Trace_LineStyle_") + trace_name);
+  new_trace_linestyle->addItem("Solid");
+  new_trace_linestyle->addItem("- - - -");
+  new_trace_linestyle->addItem("·······");
+  new_trace_linestyle->addItem("-·-·-·-");
+  new_trace_linestyle->addItem("-··-··-");
+  int index = new_trace_linestyle->findText(trace_style);
+  new_trace_linestyle->setCurrentIndex(index);
+  connect(new_trace_linestyle, SIGNAL(currentIndexChanged(int)), SLOT(changeTraceLineStyle()));
+  List_Trace_LineStyle.append(new_trace_linestyle);
+  this->TracesGrid->addWidget(new_trace_linestyle, n_trace, 2);
 
-    // Line Style
-    QComboBox * new_trace_linestyle = new QComboBox();
-    new_trace_linestyle->setObjectName(QStringLiteral("Trace_LineStyle_") + trace_name);
-    new_trace_linestyle->addItem("Solid");
-    new_trace_linestyle->addItem("- - - -");
-    new_trace_linestyle->addItem("·······");
-    new_trace_linestyle->addItem("-·-·-·-");
-    new_trace_linestyle->addItem("-··-··-");
-    int index = new_trace_linestyle->findText(trace_style);
-    new_trace_linestyle->setCurrentIndex(index);
-    connect(new_trace_linestyle, SIGNAL(currentIndexChanged(int)), SLOT(changeTraceLineStyle()));
-    List_Trace_LineStyle.append(new_trace_linestyle);
-    this->TracesGrid->addWidget(new_trace_linestyle, n_trace, 2);
+         // Capture the pen style to correctly render the trace
+  Qt::PenStyle pen_style;
+  if (!trace_style.compare("Solid")) {
+    pen_style = Qt::SolidLine;
+  } else if (!trace_style.compare("- - - -")) {
+    pen_style = Qt::DashLine;
+  } else if (!trace_style.compare("·······")) {
+    pen_style = Qt::DotLine;
+  } else if (!trace_style.compare("-·-·-·-")) {
+    pen_style = Qt::DashDotLine;
+  } else if (!trace_style.compare("-··-··-")) {
+    pen_style = Qt::DashDotDotLine;
+  }
 
-    // Capture the pen style to correctly render the trace
-    Qt::PenStyle pen_style;
-    if (!trace_style.compare("Solid")) {
-      pen_style = Qt::SolidLine;
-    } else {
-      if (!trace_style.compare("- - - -")) {
-        pen_style = Qt::DashLine;
-      } else {
-        if (!trace_style.compare("·······")) {
-          pen_style = Qt::DotLine;
-        } else {
-          if (!trace_style.compare("-·-·-·-")) {
-            pen_style = Qt::DashDotLine;
-          } else {
-            if (!trace_style.compare("-··-··-")) {
-              pen_style = Qt::DashDotDotLine;
-            }
-          }
-        }
-      }
-    }
+         // Line width
+  QSpinBox *new_trace_width = new QSpinBox();
+  new_trace_width->setObjectName(QStringLiteral("Trace_Width_") + trace_name);
+  new_trace_width->setValue(trace_width);
+  connect(new_trace_width, SIGNAL(valueChanged(int)), SLOT(changeTraceWidth()));
+  List_TraceWidth.append(new_trace_width);
+  this->TracesGrid->addWidget(new_trace_width, n_trace, 3);
 
-    // Line width
-    QSpinBox * new_trace_width = new QSpinBox();
-    new_trace_width->setObjectName(QStringLiteral("Trace_Width_") + trace_name);
-    new_trace_width->setValue(trace_width);
-    connect(new_trace_width, SIGNAL(valueChanged(int)), SLOT(changeTraceWidth()));
-    List_TraceWidth.append(new_trace_width);
-    this->TracesGrid->addWidget(new_trace_width, n_trace, 3);
-
-
-    // Remove button
-    QToolButton * new_trace_removebutton = new QToolButton();
-    new_trace_removebutton->setObjectName(QStringLiteral("Trace_RemoveButton_") + trace_name);
-    QIcon icon(":/bitmaps/trash.png"); // Use a resource path or a relative path
-    new_trace_removebutton->setIcon(icon);
-    new_trace_removebutton->setStyleSheet(R"(
+         // Remove button
+  QToolButton *new_trace_removebutton = new QToolButton();
+  new_trace_removebutton->setObjectName(QStringLiteral("Trace_RemoveButton_") + trace_name);
+  QIcon icon(":/bitmaps/trash.png"); // Use a resource path or a relative path
+  new_trace_removebutton->setIcon(icon);
+  new_trace_removebutton->setStyleSheet(R"(
             QToolButton {
                 background-color: #FF0000;
                 color: white;
@@ -1271,63 +1261,80 @@ void Qucs_S_SPAR_Viewer::addTrace(QString selected_dataset, QString selected_tra
                 margin: auto;
             }
         )");
-    connect(new_trace_removebutton, SIGNAL(clicked()), SLOT(removeTrace()));
-    List_Button_DeleteTrace.append(new_trace_removebutton);
-    this->TracesGrid->addWidget(new_trace_removebutton, n_trace, 4);
+  connect(new_trace_removebutton, SIGNAL(clicked()), SLOT(removeTrace()));
+  List_Button_DeleteTrace.append(new_trace_removebutton);
+  this->TracesGrid->addWidget(new_trace_removebutton, n_trace, 4);
 
-    QLineSeries* series = new QLineSeries();
-    series->setName(trace_name);
-    trace_list.append(trace_name);
+         // Create the series for the trace
+  QLineSeries* series = new QLineSeries();
+  series->setName(trace_name);
+  trace_list.append(trace_name);
 
-    // Color settings
-    QPen pen;
-    pen.setColor(trace_color);
-    pen.setStyle(pen_style);
-    pen.setWidth(trace_width);
-    series->setPen(pen);// Apply the pen to the series
+         // Color settings
+  QPen pen;
+  pen.setColor(trace_color);
+  pen.setStyle(pen_style);
+  pen.setWidth(trace_width);
+  series->setPen(pen); // Apply the pen to the series
 
-    chart->addSeries(series);
+         // Attach the series to the appropriate axis
+  if (selected_trace.endsWith("_ang")) {
+    // Attach phase traces to the right y-axis
+    series->attachAxis(xAxis); // Attach to x-axis (frequency)
+    series->attachAxis(y2Axis); // Attach to right y-axis (phase)
+  } else {
+    // Attach magnitude traces to the left y-axis
+    series->attachAxis(xAxis); // Attach to x-axis (frequency)
+    series->attachAxis(yAxis); // Attach to left y-axis (magnitude)
+  }
 
-    updatePlot();
+         // Add the series to the chart
+  chart->addSeries(series);
+
+         // Update the plot
+  updatePlot();
 }
 
 // This function is used for setting the available traces depending on the selected dataset
 void Qucs_S_SPAR_Viewer::updateTracesCombo()
 {
-    QCombobox_traces->clear();
-    QStringList traces;
-    QString current_dataset = QCombobox_datasets->currentText();
-    if (current_dataset.isEmpty())
-        return; // No datasets loaded. This happens if the user had one single file and deleted it
-    int n_ports = datasets[current_dataset]["n_ports"].at(0);
+  QCombobox_traces->clear();
+  QStringList traces;
+  QString current_dataset = QCombobox_datasets->currentText();
+  if (current_dataset.isEmpty()){
+    return; // No datasets loaded. This happens if the user had one single file and deleted it
+  }
 
-    for (int i=1; i<=n_ports; i++){
-        for (int j=1; j<=n_ports; j++){
-            traces.append(QStringLiteral("S") + QString::number(i) + QString::number(j));
-        }
+  int n_ports = datasets[current_dataset]["n_ports"].at(0);
+
+  for (int i = 1; i <= n_ports; i++) {
+    for (int j = 1; j <= n_ports; j++) {
+      traces.append(QStringLiteral("S%1%2_dB").arg(i).arg(j)); // Magnitude (dB)
+      traces.append(QStringLiteral("S%1%2_ang").arg(i).arg(j)); // Phase (degrees)
     }
+  }
 
-    if(n_ports == 1){
-        // Additional traces
-        traces.append("Re{Zin}");
-        traces.append("Im{Zin}");
-    }
+  if (n_ports == 1) {
+    // Additional traces
+    traces.append("Re{Zin}");
+    traces.append("Im{Zin}");
+  }
 
-    if(n_ports == 2){
-        // Additional traces
-        traces.append(QStringLiteral("|%1|").arg(QChar(0x0394)));
-        traces.append("K");
-        traces.append(QStringLiteral("%1%2").arg(QChar(0x03BC)).arg(QChar(0x209B)));
-        traces.append(QStringLiteral("%1%2").arg(QChar(0x03BC)).arg(QChar(0x209A)));
-        traces.append("MAG");
-        traces.append("MSG");
-        traces.append("Re{Zin}");
-        traces.append("Im{Zin}");
-        traces.append("Re{Zout}");
-        traces.append("Im{Zout}");
-    }
+  if (n_ports == 2) {
+    // Additional traces
+    traces.append(QStringLiteral("|%1|").arg(QChar(0x0394)));
+    traces.append("K");
+    traces.append(QStringLiteral("%1%2").arg(QChar(0x03BC)).arg(QChar(0x209B)));
+    traces.append(QStringLiteral("%1%2").arg(QChar(0x03BC)).arg(QChar(0x209A)));
+    traces.append("MAG");
+    traces.append("MSG");
+    traces.append("Re{Zin}");
+    traces.append("Im{Zin}");
+    traces.append("Re{Zout}");
+    traces.append("Im{Zout}");
+  }
 
-    QCombobox_traces->addItems(traces);
+  QCombobox_traces->addItems(traces);
 }
 
 // This is the handler that is triggered when the user hits the button to change the color of a given trace
@@ -1448,16 +1455,39 @@ void Qucs_S_SPAR_Viewer::changeTraceWidth()
 
 void Qucs_S_SPAR_Viewer::updatePlot()
 {
-  if (lock_axis == false){
+  if (lock_axis == false) {
     // Update axes
     update_X_axis();
     update_Y_axis();
+    update_Y2_axis();
   }
 
-    // Trim the traces according to the new settings
-    updateTraces();
-    updateMarkerTable();
+         // Trim the traces according to the new settings
+  updateTraces();
+  updateMarkerTable();
 
+         // Reattach all series to the correct axes
+  const auto seriesList = chart->series();
+  for (QAbstractSeries *series : seriesList) {
+    // Detach the series from all axes first
+    for (QAbstractAxis *axis : series->attachedAxes()) {
+      series->detachAxis(axis);
+    }
+
+           // Reattach the series to the correct axes
+    if (series->name().endsWith("_ang")) {
+      // Attach phase traces to the right y-axis
+      series->attachAxis(xAxis); // Attach to x-axis (frequency)
+      series->attachAxis(y2Axis); // Attach to right y-axis (phase)
+    } else {
+      // Attach magnitude traces to the left y-axis
+      series->attachAxis(xAxis); // Attach to x-axis (frequency)
+      series->attachAxis(yAxis); // Attach to left y-axis (magnitude)
+    }
+  }
+
+         // Update the chart
+  chart->update();
 }
 
 // This is the handler that updates the x-axis when the x-axis QSpinBoxes change their value
@@ -1525,6 +1555,55 @@ void Qucs_S_SPAR_Viewer::update_Y_axis()
     chart->addAxis(yAxis, Qt::AlignLeft);
 }
 
+
+void Qucs_S_SPAR_Viewer::update_Y2_axis()
+{
+  // y2-axis (phase)
+  double y2_min = QSpinBox_y2_axis_min->value();
+  double y2_max = QSpinBox_y2_axis_max->value();
+  double y2_div = QSpinBox_y2_axis_div->value();
+
+  // Remove the existing y2-axis if it exists
+  if (y2Axis != NULL) {
+    chart->removeAxis(y2Axis);
+  }
+
+  // Create a new y2-axis
+  y2Axis = new QValueAxis();
+  y2Axis->setRange(y2_min, y2_max);  // Set the range of the axis
+  y2Axis->setTitleText("Phase (deg)");
+
+  // Calculate the exact tick positions
+  QList<double> tickPositions;
+  for (double tick = y2_min; tick <= y2_max; tick += y2_div) {
+    tickPositions.append(tick);
+  }
+
+  // Set the tick positions explicitly
+  y2Axis->setTickCount(tickPositions.size());
+  y2Axis->setTickAnchor(y2_min);
+  y2Axis->setTickInterval(y2_div);
+
+         // Add the axis to the chart
+  chart->addAxis(y2Axis, Qt::AlignRight);
+
+         // Attach phase traces to the right y-axis
+  const auto seriesList = chart->series();
+  for (QAbstractSeries *series : seriesList) {
+    // qDebug() << series->name();
+    if (series->name().endsWith("_ang")) {
+      // Attach phase traces to the right y-axis
+      series->attachAxis(xAxis); // Attach to x-axis (frequency)
+      series->attachAxis(y2Axis); // Attach to right y-axis (phase)
+    } else {
+      // Attach magnitude traces to the left y-axis
+      series->attachAxis(xAxis); // Attach to x-axis (frequency)
+      series->attachAxis(yAxis); // Attach to left y-axis (magnitude)
+    }
+  }
+}
+
+
 // Each time the x-axis or the y-axis settings change, the traces need to be realigned with respect to
 // the new axis. Otherwise, the trace is show as it was with the initial axis settings, without any kind of rescaling
 void Qucs_S_SPAR_Viewer::updateTraces()
@@ -1553,6 +1632,9 @@ void Qucs_S_SPAR_Viewer::updateTraces()
 
     double y_axis_min = QSpinBox_y_axis_min->value();
     double y_axis_max = QSpinBox_y_axis_max->value();
+
+    double y2_axis_min = QSpinBox_y2_axis_min->value();
+    double y2_axis_max = QSpinBox_y2_axis_max->value();
 
     // Remove marker and limit traces
     // Iterate through the series list
@@ -1594,9 +1676,6 @@ void Qucs_S_SPAR_Viewer::updateTraces()
         QString data_file = trace_name_parts[0];
         QString trace_file = trace_name_parts[1];
 
-        if (trace_file.at(0) == 'S'){
-            trace_file = trace_file + QStringLiteral("_dB");
-        }
         if (trace_file == QStringLiteral("|%1|").arg(QChar(0x0394))){
             trace_file = "delta";
         }
@@ -1631,18 +1710,30 @@ void Qucs_S_SPAR_Viewer::updateTraces()
         QXYSeries *xySeries = qobject_cast<QXYSeries*>(series);
         xySeries->clear(); // Remove its data
 
+        // Select the proper y-axis clipping limits depending on wheter the trace is phase (right y-axis) or magnitude (left y-axis)
+        double y_min, y_max;
+        if (trace_file.contains("_ang")){
+          // Choose the right y-axis limits
+          y_min = y2_axis_min;
+          y_max = y2_axis_max;
+        } else {
+          // Choose the left y-axis limits
+          y_min = y_axis_min;
+          y_max = y_axis_max;
+        }
+
         // Apply clipping if the data exceeds the lower/upper limits
         for (int i = 0; i < freq_trimmed.size(); i++) {
             double y_value = data_trimmed[i];
 
             // Data exceeds the upper limit
-            if (y_value > y_axis_max){
-                y_value = y_axis_max;
+            if (y_value > y_max){
+                y_value = y_max;
             }
 
             // Data exceeds the lower limit
-            if (y_value < y_axis_min){
-                y_value = y_axis_min;
+            if (y_value < y_min){
+                y_value = y_min;
             }
 
             // Add (clipped) data to the series
@@ -1757,9 +1848,16 @@ void Qucs_S_SPAR_Viewer::updateTraces()
 
     // Add series again to the chart. Each series must be linked to an axis
     for (QAbstractSeries *series : qAsConst(seriesList)) {
-            chart->addSeries(series);
-            series->attachAxis(xAxis);
-            series->attachAxis(yAxis);
+          if (series->name().endsWith("_ang")) {
+            // Attach phase traces to the right y-axis
+            series->attachAxis(xAxis); // Attach to x-axis (frequency)
+            series->attachAxis(y2Axis); // Attach to right y-axis (phase)
+          } else {
+            // Attach magnitude traces to the left y-axis
+            series->attachAxis(xAxis); // Attach to x-axis (frequency)
+            series->attachAxis(yAxis); // Attach to left y-axis (magnitude)
+          }
+          chart->addSeries(series);
         }
     chart->update();
 }
@@ -1779,6 +1877,18 @@ void Qucs_S_SPAR_Viewer::getMinMaxValues(QString filename, QString tracename, qr
 
     minY = *minIterator;
     maxY = *maxIterator;
+
+    if (tracename.endsWith("_ang")) {
+      // Phase traces range from -180 to 180 degrees
+      minY = -180;
+      maxY = 180;
+    } else {
+      // Magnitude traces (dB)
+      auto minIterator = std::min_element(trace_data.begin(), trace_data.end());
+      auto maxIterator = std::max_element(trace_data.begin(), trace_data.end());
+      minY = *minIterator;
+      maxY = *maxIterator;
+    }
 
 }
 
@@ -1857,9 +1967,6 @@ void Qucs_S_SPAR_Viewer::checkFreqSettingsLimits(QString filename, double& fmin,
 void Qucs_S_SPAR_Viewer::adjust_y_axis_to_trace(QString filename, QString tracename){
     qreal minX, maxX, minY, maxY;
 
-    if (tracename.at(0) == 'S'){
-        tracename = tracename + QStringLiteral("_dB");
-    }
     if (tracename == QStringLiteral("|%1|").arg(QChar(0x0394))){
         tracename = "delta";
     }
