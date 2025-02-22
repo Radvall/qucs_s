@@ -158,10 +158,18 @@ Qucs_S_SPAR_Viewer::Qucs_S_SPAR_Viewer()
   QChartView *chartView = new QChartView(chart);
   chartView->setRenderHint(QPainter::Antialiasing);
     setCentralWidget(nullptr);
-  dockChart = new QDockWidget("Chart", this);
+  dockChart = new QDockWidget("Magnitude / Phase", this);
   dockChart->setWidget(chartView);
   dockChart->setAllowedAreas(Qt::AllDockWidgetAreas);
   addDockWidget(Qt::LeftDockWidgetArea, dockChart);
+
+  // Smith Chart
+  SmithChartWidget *smithChart = new SmithChartWidget(this);
+  smithChart->setMinimumSize(300, 300);
+  dockSmithChart = new QDockWidget("Smith Chart", this);
+  dockSmithChart->setWidget(smithChart);
+  dockSmithChart->setAllowedAreas(Qt::AllDockWidgetAreas);
+  addDockWidget(Qt::LeftDockWidgetArea, dockSmithChart);
 
 
   // These are two maximum markers to find the lowest and the highest frequency in the data samples.
@@ -498,8 +506,6 @@ Qucs_S_SPAR_Viewer::Qucs_S_SPAR_Viewer()
   // Notes
   Notes_Widget = new CodeEditor();
 
-
-
   dockFiles = new QDockWidget("S-parameter files", this);
   dockAxisSettings = new QDockWidget("Axis Settings", this);
   dockTracesList = new QDockWidget("Traces List", this);
@@ -509,6 +515,7 @@ Qucs_S_SPAR_Viewer::Qucs_S_SPAR_Viewer()
 
   // Disable dock closing
   dockChart->setFeatures(dockChart->features() & ~QDockWidget::DockWidgetClosable);
+  dockSmithChart->setFeatures(dockSmithChart->features() & ~QDockWidget::DockWidgetClosable);
   dockFiles->setFeatures(dockFiles->features() & ~QDockWidget::DockWidgetClosable);
   dockAxisSettings->setFeatures(dockAxisSettings->features() & ~QDockWidget::DockWidgetClosable);
   dockTracesList->setFeatures(dockTracesList->features() & ~QDockWidget::DockWidgetClosable);
@@ -535,7 +542,9 @@ Qucs_S_SPAR_Viewer::Qucs_S_SPAR_Viewer()
   tabifyDockWidget(dockTracesList, dockMarkers);
   tabifyDockWidget(dockMarkers, dockLimits);
   tabifyDockWidget(dockMarkers, dockNotes);
+  tabifyDockWidget(dockChart, dockSmithChart);
   dockFiles->raise();
+  dockChart->raise();
   setDockNestingEnabled(true);
 
   // Set the height of the axis settings widget to its minimum. This makes the layout much clearer
@@ -550,6 +559,7 @@ Qucs_S_SPAR_Viewer::~Qucs_S_SPAR_Viewer()
 {
   QSettings settings;
   settings.setValue("recentFiles", QVariant::fromValue(recentFiles));
+  delete smithChart;
 }
 
 void Qucs_S_SPAR_Viewer::slotHelpIntro()
@@ -1467,7 +1477,7 @@ void Qucs_S_SPAR_Viewer::updatePlot()
          // Trim the traces according to the new settings
   updateTraces();
   updateMarkerTable();
-
+/*
          // Reattach all series to the correct axes
   const auto seriesList = chart->series();
   for (QAbstractSeries *series : seriesList) {
@@ -1487,7 +1497,7 @@ void Qucs_S_SPAR_Viewer::updatePlot()
       series->attachAxis(yAxis); // Attach to left y-axis (magnitude)
     }
   }
-
+*/
          // Update the chart
   chart->update();
 }
@@ -1850,6 +1860,7 @@ void Qucs_S_SPAR_Viewer::updateTraces()
 
     // Add series again to the chart. Each series must be linked to an axis
     for (QAbstractSeries *series : qAsConst(seriesList)) {
+      qDebug() << series->name();
           if (series->name().endsWith("_ang")) {
             // Attach phase traces to the right y-axis
             series->attachAxis(xAxis); // Attach to x-axis (frequency)

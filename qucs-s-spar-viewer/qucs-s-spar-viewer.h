@@ -2,6 +2,7 @@
 #define QUCSSPARVIEWER_H
 
 #include "codeeditor.h"
+#include "smithchartwidget.h"
 
 #include <QMainWindow>
 #include <QLabel>
@@ -112,6 +113,7 @@ protected:
   QDockWidget *dockFiles;
   QTableWidget * spar_files_Widget;
   QPushButton *Button_Add_File, *Delete_All_Files;
+  SmithChartWidget *smithChart;
 
   // File list
   QList<QPushButton*> Button_DeleteFile;
@@ -171,6 +173,10 @@ protected:
   QList<QColor> default_colors;
   QList<QGraphicsItem*> textLabels;
   bool removeSeriesByName(QChart*, const QString&);
+
+  // Smith Chart
+  QDockWidget *dockSmithChart;
+
 
   // Markers
   QDockWidget *dockMarkers;

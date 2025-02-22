@@ -85,9 +85,9 @@ ADD_DEFINITIONS(${QT_DEFINITIONS})
 
 #ADD_SUBDIRECTORY( bitmaps ) -> added as resources
 
-SET( spar_viewer_sources main.cpp qucs-s-spar-viewer.cpp codeeditor.cpp)
+SET( spar_viewer_sources main.cpp qucs-s-spar-viewer.cpp codeeditor.cpp smithchartwidget.cpp)
 
-SET( spar_viewer_moc_headers qucs-s-spar-viewer.h codeeditor.h)
+SET( spar_viewer_moc_headers qucs-s-spar-viewer.h codeeditor.h smithchartwidget.h)
 
 SET(RESOURCES qucs-s-spar-viewer.qrc)
 
@@ -116,8 +116,7 @@ ADD_EXECUTABLE( ${QUCS_NAME}spar-viewer MACOSX_BUNDLE WIN32
   ${spar_viewer_sources}
   ${spar_viewer_moc_sources}
   ${RESOURCES_SRCS}
-  codeeditor.cpp
-  codeeditor.h )
+)
 
 TARGET_LINK_LIBRARIES( ${QUCS_NAME}spar-viewer Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Charts )
 SET_TARGET_PROPERTIES(${QUCS_NAME}spar-viewer PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
