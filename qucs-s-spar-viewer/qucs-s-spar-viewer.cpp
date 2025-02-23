@@ -1477,7 +1477,7 @@ void Qucs_S_SPAR_Viewer::updatePlot()
          // Trim the traces according to the new settings
   updateTraces();
   updateMarkerTable();
-/*
+
          // Reattach all series to the correct axes
   const auto seriesList = chart->series();
   for (QAbstractSeries *series : seriesList) {
@@ -1485,7 +1485,7 @@ void Qucs_S_SPAR_Viewer::updatePlot()
     for (QAbstractAxis *axis : series->attachedAxes()) {
       series->detachAxis(axis);
     }
-
+    qDebug() << series->name();
            // Reattach the series to the correct axes
     if (series->name().endsWith("_ang")) {
       // Attach phase traces to the right y-axis
@@ -1497,8 +1497,8 @@ void Qucs_S_SPAR_Viewer::updatePlot()
       series->attachAxis(yAxis); // Attach to left y-axis (magnitude)
     }
   }
-*/
-         // Update the chart
+
+   // Update the chart
   chart->update();
 }
 
@@ -1872,7 +1872,29 @@ void Qucs_S_SPAR_Viewer::updateTraces()
           }
           chart->addSeries(series);
         }
+
+           // Reattach all series to the correct axes
+    for (QAbstractSeries *series : seriesList) {
+      // Detach the series from all axes first
+      for (QAbstractAxis *axis : series->attachedAxes()) {
+        series->detachAxis(axis);
+      }
+      qDebug() << series->name();
+                                  // Reattach the series to the correct axes
+      if (series->name().endsWith("_ang")) {
+        // Attach phase traces to the right y-axis
+        series->attachAxis(xAxis); // Attach to x-axis (frequency)
+        series->attachAxis(y2Axis); // Attach to right y-axis (phase)
+      } else {
+        // Attach magnitude traces to the left y-axis
+        series->attachAxis(xAxis); // Attach to x-axis (frequency)
+        series->attachAxis(yAxis); // Attach to left y-axis (magnitude)
+      }
+    }
+
+           // Update the chart
     chart->update();
+
 }
 
 // Given a trace, it gives the minimum and the maximum values at both axis.
@@ -2240,9 +2262,7 @@ void Qucs_S_SPAR_Viewer::updateMarkerTable(){
             };
             QString file = parts[0];
             QString trace = parts[1];
-            if (trace.at(0) == 'S'){
-              trace.append("_dB");
-            }
+
             P = findClosestPoint(datasets[file]["frequency"], datasets[file][trace], targetX);
             new_val = QStringLiteral("%1").arg(QString::number(P.y(), 'f', 2));
             QTableWidgetItem *new_item = new QTableWidgetItem(new_val);
