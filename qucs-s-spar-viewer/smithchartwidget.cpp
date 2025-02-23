@@ -13,9 +13,9 @@ SmithChartWidget::~SmithChartWidget()
 {
 }
 
-void SmithChartWidget::setData(const QList<std::complex<double>>& impedances)
-{
-  impedanceData = impedances;
+
+void SmithChartWidget::addTrace(const Trace& trace) {
+  traces.append(trace);
   update(); // Trigger a repaint
 }
 
@@ -48,17 +48,17 @@ void SmithChartWidget::paintEvent(QPaintEvent *event)
   painter.restore();
 }
 
-void SmithChartWidget::mousePressEvent(QMouseEvent *event)
-{
-  // Handle mouse clicks (e.g., for data point selection)
+
+void SmithChartWidget::mousePressEvent(QMouseEvent *event) {
   lastMousePos = event->pos();
 
   std::complex<double> reflectionCoefficient = widgetToSmithChart(lastMousePos);
 
-         // Calculate impedance from reflection coefficient
-  std::complex<double> normalizedImpedance = (1.0 + reflectionCoefficient) / (1.0 - reflectionCoefficient);
-  std::complex<double> impedance = normalizedImpedance * z0;
-  emit impedanceSelected(impedance); // Emit the signal
+  for (const auto& trace : traces) {
+    std::complex<double> normalizedImpedance = (1.0 + reflectionCoefficient) / (1.0 - reflectionCoefficient);
+    std::complex<double> impedance = normalizedImpedance * trace.Z0;
+    emit impedanceSelected(impedance); // Emit the signal
+  }
 }
 
 void SmithChartWidget::drawSmithChartGrid(QPainter *painter) {
@@ -210,19 +210,36 @@ void SmithChartWidget::calculateArcPoints(const QRectF& arcRect, double startAng
   endPoint.setY(cy - (arcRect.height() / 2.0) * std::sin(endRad)); // Subtract for Qt's coordinate system
 }
 
-void SmithChartWidget::plotImpedanceData(QPainter *painter)
-{
+
+void SmithChartWidget::plotImpedanceData(QPainter *painter) {
   painter->save();
-  painter->setPen(QPen(Qt::red, 4));
 
   QPointF center(width() / 2.0, height() / 2.0);
   double radius = qMin(width(), height()) / 2.0 - 10;
 
-  for (const auto& impedance : impedanceData) {
-    std::complex<double> gamma = (impedance - z0) / (impedance + z0);
-    double x = center.x() + radius * gamma.real();
-    double y = center.y() - radius * gamma.imag();
-    painter->drawPoint(QPointF(x, y));
+  for (const auto& trace : traces) {
+    painter->setPen(trace.pen); // Use the trace's pen (color, line width, style)
+
+           // Check if there are at least two points to draw a line
+    if (trace.impedances.size() < 2) {
+      continue; // Skip traces with fewer than two points
+    }
+
+           // Convert the first impedance point to widget coordinates
+    std::complex<double> gammaPrev = (trace.impedances[0] - trace.Z0) / (trace.impedances[0] + trace.Z0);
+    QPointF prevPoint(center.x() + radius * gammaPrev.real(), center.y() - radius * gammaPrev.imag());
+
+           // Iterate through the remaining points and draw lines between consecutive points
+    for (int i = 1; i < trace.impedances.size(); ++i) {
+      std::complex<double> gamma = (trace.impedances[i] - trace.Z0) / (trace.impedances[i] + trace.Z0);
+      QPointF currentPoint(center.x() + radius * gamma.real(), center.y() - radius * gamma.imag());
+
+             // Draw a line between the previous point and the current point
+      painter->drawLine(prevPoint, currentPoint);
+
+             // Update the previous point
+      prevPoint = currentPoint;
+    }
   }
 
   painter->restore();
@@ -262,4 +279,10 @@ std::complex<double> SmithChartWidget::widgetToSmithChart(const QPointF& widgetP
   double gammaImag = y / (x * x + y * y + 1);
 
   return std::complex<double>(gammaReal, gammaImag);
+}
+
+// Remove all traces in a row
+void SmithChartWidget::clearTraces() {
+  traces.clear(); // Remove all traces
+  update(); // Trigger a repaint to reflect the changes
 }

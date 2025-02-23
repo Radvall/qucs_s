@@ -6,6 +6,7 @@
 #include <QMouseEvent>
 #include <QList>
 #include <complex>
+#include <QPen>
 
 class Qucs_S_SPAR_Viewer; // Forward declaration
 
@@ -13,10 +14,18 @@ class SmithChartWidget : public QWidget {
   Q_OBJECT
 
 public:
+  struct Trace {
+    QList<std::complex<double>> impedances;
+    QList<double> frequencies;
+    QPen pen;
+    double Z0;
+  };
+
   SmithChartWidget(QWidget *parent = nullptr);
   ~SmithChartWidget() override;
 
-  void setData(const QList<std::complex<double>>& impedances);
+  void addTrace(const Trace& trace);
+  void clearTraces(); // New method to remove all traces
   void setCharacteristicImpedance(double z0);
   double characteristicImpedance() const { return z0; }
 
@@ -36,10 +45,8 @@ private:
 
   void calculateArcPoints(const QRectF& arcRect, double startAngle, double sweepAngle, QPointF& startPoint, QPointF& endPoint);
 
-
-
 private:
-  QList<std::complex<double>> impedanceData;
+  QList<Trace> traces;
   double z0; // Characteristic impedance
   QPointF lastMousePos;
 

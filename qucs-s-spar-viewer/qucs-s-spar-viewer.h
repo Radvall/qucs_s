@@ -71,6 +71,8 @@ protected:
 
   void updatePlot();
   void updateTraces();
+  void updateTraces_Magnitude_Phase_Plot();
+  void updateTraces_Smith_Chart();
   void updateTracesCombo();
 
   void changeTraceColor();
@@ -176,6 +178,7 @@ protected:
   // Smith Chart
   SmithChartWidget *smithChart;
   QDockWidget *dockSmithChart;
+  QList<SmithChartWidget::Trace> SmithChartTraces;
 
 
   // Markers

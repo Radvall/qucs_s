@@ -863,6 +863,8 @@ void Qucs_S_SPAR_Viewer::addFiles(QStringList fileNames)
 
         adjust_x_axis_to_file(filename);
         adjust_y_axis_to_trace(filename, "S11_dB");
+
+        this->addTrace(filename, QStringLiteral("S11_Smith"), Qt::darkBlue);
     }
 
     // Default behavior: If there's no more data loaded and a single S2P file is selected, then automatically plot S21, S11 and S22
@@ -870,6 +872,10 @@ void Qucs_S_SPAR_Viewer::addFiles(QStringList fileNames)
         this->addTrace(filename, QStringLiteral("S21_dB"), Qt::red);
         this->addTrace(filename, QStringLiteral("S11_dB"), Qt::blue);
         this->addTrace(filename, QStringLiteral("S22_dB"), Qt::darkGreen);
+
+        this->addTrace(filename, QStringLiteral("S11_Smith"), Qt::darkBlue);
+        this->addTrace(filename, QStringLiteral("S22_Smith"), Qt::darkGreen);
+
 
         adjust_x_axis_to_file(filename);
         adjust_y_axis_to_trace(filename, "S11_dB");
@@ -894,6 +900,8 @@ void Qucs_S_SPAR_Viewer::addFiles(QStringList fileNames)
                 QColor trace_color = QColor(QRandomGenerator::global()->bounded(256), QRandomGenerator::global()->bounded(256), QRandomGenerator::global()->bounded(256));
                 this->addTrace(filename, QStringLiteral("S21_dB"), trace_color);
                 adjust_y_axis_to_trace(filename, "S21_dB");
+
+                this->addTrace(filename, QStringLiteral("S11_Smith"), Qt::darkBlue);
             }
             // Update the frequency setting to fit the last s2p file
             adjust_x_axis_to_file(filename);
@@ -1186,6 +1194,11 @@ void Qucs_S_SPAR_Viewer::addTrace()
       selected_trace += QString("_") + selected_view;
     }
 
+    int linewidth = 1;
+    if (!selected_view.compare("Smith")){
+      linewidth = 3;
+    }
+
     // Color settings
     QColor trace_color;
     QPen pen;
@@ -1198,7 +1211,7 @@ void Qucs_S_SPAR_Viewer::addTrace()
         trace_color = this->default_colors.at(num_traces);
     }
 
-    addTrace(selected_dataset, selected_trace, trace_color);
+    addTrace(selected_dataset, selected_trace, trace_color, linewidth);
 }
 
 
@@ -1328,21 +1341,32 @@ void Qucs_S_SPAR_Viewer::addTrace(QString selected_dataset, QString selected_tra
       // Convert S-parameters to impedances
       QList<std::complex<double>> impedances;
       QList<double> frequencies = datasets[selected_dataset]["frequency"];
-      QList<double> s11_re = datasets[selected_dataset]["S11_re"];
-      QList<double> s11_im = datasets[selected_dataset]["S11_im"];
+
+      QString trace_dataset = selected_trace.replace("Smith", "");
+
+      QList<double> sii_re = datasets[selected_dataset][trace_dataset + QString("re")];
+      QList<double> sii_im = datasets[selected_dataset][trace_dataset + QString("im")];
 
       double Z0 = datasets[selected_dataset]["Z0"].first();
 
       for (int i = 0; i < frequencies.size(); i++) {
-        std::complex<double> s11(s11_re[i], s11_im[i]);
-        std::complex<double> gamma = s11; // Reflection coefficient
+        std::complex<double> sii(sii_re[i], sii_im[i]);
+        std::complex<double> gamma = sii; // Reflection coefficient
         std::complex<double> impedance = Z0 * (1.0 + gamma) / (1.0 - gamma); // Convert to impedance
         impedances.push_back(impedance);
       }
 
       // Set the impedance data to the Smith Chart widget
-      //smithChart->addTrace(impedances, frequencies, Z0, pen, trace_name);
-      smithChart->setData(impedances);
+      SmithChartWidget::Trace new_trace;
+      new_trace.impedances = impedances;
+      new_trace.frequencies = frequencies;
+      new_trace.pen = pen;
+      new_trace.Z0 = Z0;
+
+      SmithChartTraces.append(new_trace);
+
+      smithChart->addTrace(new_trace);
+
     }
   }
 }
@@ -1659,281 +1683,299 @@ void Qucs_S_SPAR_Viewer::update_Y2_axis()
 // the new axis. Otherwise, the trace is show as it was with the initial axis settings, without any kind of rescaling
 void Qucs_S_SPAR_Viewer::updateTraces()
 {
-    // Get the series
-    QList<QAbstractSeries *> seriesList = chart->series();
+  updateTraces_Magnitude_Phase_Plot();
+ // updateTraces_Smith_Chart();
+}
 
-    // Remove series from the chart
-    for (QAbstractSeries *series : qAsConst(seriesList)) {
-      chart->removeSeries(series);
+void Qucs_S_SPAR_Viewer::updateTraces_Smith_Chart(){
+
+  // User settings
+  double freq_scale = getFreqScale();
+  double x_axis_min = QSpinBox_x_axis_min->value()/freq_scale;
+  double x_axis_max = QSpinBox_x_axis_max->value()/freq_scale;
+
+  // Remove all series and add them again according to the new user settings.
+  smithChart->clearTraces(); // Remove all the traces in the widget
+
+  // Go through the list of Smith Chart traces and add them
+
+
+}
+
+void Qucs_S_SPAR_Viewer::updateTraces_Magnitude_Phase_Plot(){
+  // Get the series
+  QList<QAbstractSeries *> seriesList = chart->series();
+
+         // Remove series from the chart
+  for (QAbstractSeries *series : qAsConst(seriesList)) {
+    chart->removeSeries(series);
+  }
+
+         // Remove all custom labels
+  for (QGraphicsItem* label : textLabels) {
+    chart->scene()->removeItem(label);
+    delete label;
+  }
+  textLabels.clear();
+
+  double freq_scale = getFreqScale();
+
+         // User settings
+  double x_axis_min = QSpinBox_x_axis_min->value()/freq_scale;
+  double x_axis_max = QSpinBox_x_axis_max->value()/freq_scale;
+
+  double y_axis_min = QSpinBox_y_axis_min->value();
+  double y_axis_max = QSpinBox_y_axis_max->value();
+
+  double y2_axis_min = QSpinBox_y2_axis_min->value();
+  double y2_axis_max = QSpinBox_y2_axis_max->value();
+
+         // Remove marker and limit traces
+         // Iterate through the series list
+  QList<QAbstractSeries *> seriesToRemove;
+  for (QAbstractSeries *series : qAsConst(seriesList)) {
+    //qDebug() << series->name();
+    if (series->name().startsWith("Mkr", Qt::CaseInsensitive)) {
+      seriesToRemove.append(series);
+    }
+    if (series->name().startsWith("Limit", Qt::CaseInsensitive)) {
+      seriesToRemove.append(series);
+    }
+  }
+  for (QAbstractSeries *series : qAsConst(seriesToRemove)) {
+    seriesList.removeOne(series);
+
+           // If the series is added to a chart, remove it from the chart as well
+    if (series->chart()) {
+      series->chart()->removeSeries(series);
     }
 
+           // Delete the series object to free memory
+    delete series;
+  }
 
-    // Remove all custom labels
-    for (QGraphicsItem* label : textLabels) {
-      chart->scene()->removeItem(label);
-      delete label;
+         // Iterate over all the traces and, if needed:
+         // 1) Find if the data in the dataset can cover the new frequency span
+         // 2) If so, trim the trace according to the new limits
+         // 3) If not, add extra padding
+
+  for (QAbstractSeries *series : qAsConst(seriesList)) {
+    QString trace_name = series->name();
+    qreal minX_trace, maxX_trace, minY_trace, maxY_trace;
+
+    QStringList trace_name_parts = {
+        trace_name.section('.', 0, -2),
+        trace_name.section('.', -1)
+    };
+    QString data_file = trace_name_parts[0];
+    QString trace_file = trace_name_parts[1];
+
+    if (trace_file == QStringLiteral("|%1|").arg(QChar(0x0394))){
+      trace_file = "delta";
     }
-    textLabels.clear();
-
-    double freq_scale = getFreqScale();
-
-    // User settings
-    double x_axis_min = QSpinBox_x_axis_min->value()/freq_scale;
-    double x_axis_max = QSpinBox_x_axis_max->value()/freq_scale;
-
-    double y_axis_min = QSpinBox_y_axis_min->value();
-    double y_axis_max = QSpinBox_y_axis_max->value();
-
-    double y2_axis_min = QSpinBox_y2_axis_min->value();
-    double y2_axis_max = QSpinBox_y2_axis_max->value();
-
-    // Remove marker and limit traces
-    // Iterate through the series list
-    QList<QAbstractSeries *> seriesToRemove;
-    for (QAbstractSeries *series : qAsConst(seriesList)) {
-        //qDebug() << series->name();
-        if (series->name().startsWith("Mkr", Qt::CaseInsensitive)) {
-            seriesToRemove.append(series);
-        }
-        if (series->name().startsWith("Limit", Qt::CaseInsensitive)) {
-          seriesToRemove.append(series);
-        }
+    if (trace_file == QStringLiteral("%1%2").arg(QChar(0x03BC)).arg(QChar(0x209B))){
+      trace_file = "mu";
     }
-    for (QAbstractSeries *series : qAsConst(seriesToRemove)) {
-        seriesList.removeOne(series);
-
-        // If the series is added to a chart, remove it from the chart as well
-        if (series->chart()) {
-            series->chart()->removeSeries(series);
-        }
-
-        // Delete the series object to free memory
-        delete series;
+    if (trace_file == QStringLiteral("%1%2").arg(QChar(0x03BC)).arg(QChar(0x209A))){
+      trace_file = "mu_p";
     }
 
-    // Iterate over all the traces and, if needed:
-    // 1) Find if the data in the dataset can cover the new frequency span
-    // 2) If so, trim the trace according to the new limits
-    // 3) If not, add extra padding
-
-    for (QAbstractSeries *series : qAsConst(seriesList)) {
-        QString trace_name = series->name();
-        qreal minX_trace, maxX_trace, minY_trace, maxY_trace;
-
-        QStringList trace_name_parts = {
-            trace_name.section('.', 0, -2),
-            trace_name.section('.', -1)
-        };
-        QString data_file = trace_name_parts[0];
-        QString trace_file = trace_name_parts[1];
-
-        if (trace_file == QStringLiteral("|%1|").arg(QChar(0x0394))){
-            trace_file = "delta";
-        }
-        if (trace_file == QStringLiteral("%1%2").arg(QChar(0x03BC)).arg(QChar(0x209B))){
-            trace_file = "mu";
-        }
-        if (trace_file == QStringLiteral("%1%2").arg(QChar(0x03BC)).arg(QChar(0x209A))){
-            trace_file = "mu_p";
-        }
-
-        // Check if the trace is empty or not. If empty, it is because the user wants to see K, mu, mu_p, etc. and
-        // these traces are not calculated at the file load.
-        if (datasets[data_file][trace_file].isEmpty()){
-          calculate_Sparameter_trace(data_file, trace_file);
-        }
-
-        // Check the limits of the data in the dataset in order to see if the new settings given by the user
-        // exceed the limits of the available data
-        getMinMaxValues(data_file, trace_file, minX_trace, maxX_trace, minY_trace, maxY_trace);
-
-        // Find the closest indices to the minimum and the maximum given by the user
-        int minIndex = findClosestIndex(datasets[data_file]["frequency"], x_axis_min);
-        int maxIndex = findClosestIndex(datasets[data_file]["frequency"], x_axis_max);
-
-        QList<double> freq_trimmed = datasets[data_file]["frequency"].mid(minIndex, maxIndex - minIndex + 1);
-        std::transform(freq_trimmed.begin(), freq_trimmed.end(), freq_trimmed.begin(),
-                       [freq_scale](double value) { return value * freq_scale; });
-
-        QList<double> data_trimmed = datasets[data_file][trace_file].mid(minIndex, maxIndex - minIndex + 1);
-
-        // Get the series data
-        QXYSeries *xySeries = qobject_cast<QXYSeries*>(series);
-        xySeries->clear(); // Remove its data
-
-        // Select the proper y-axis clipping limits depending on wheter the trace is phase (right y-axis) or magnitude (left y-axis)
-        double y_min, y_max;
-        if (trace_file.contains("_ang")){
-          // Choose the right y-axis limits
-          y_min = y2_axis_min;
-          y_max = y2_axis_max;
-        } else {
-          // Choose the left y-axis limits
-          y_min = y_axis_min;
-          y_max = y_axis_max;
-        }
-
-        // Apply clipping if the data exceeds the lower/upper limits
-        for (int i = 0; i < freq_trimmed.size(); i++) {
-            double y_value = data_trimmed[i];
-
-            // Data exceeds the upper limit
-            if (y_value > y_max){
-                y_value = y_max;
-            }
-
-            // Data exceeds the lower limit
-            if (y_value < y_min){
-                y_value = y_min;
-            }
-
-            // Add (clipped) data to the series
-            xySeries->append(QPointF(freq_trimmed[i], y_value));
-        }
-
+           // Check if the trace is empty or not. If empty, it is because the user wants to see K, mu, mu_p, etc. and
+           // these traces are not calculated at the file load.
+    if (datasets[data_file][trace_file].isEmpty()){
+      calculate_Sparameter_trace(data_file, trace_file);
     }
 
-    // Add marker traces. One per trace
-    for (int c = 1; c<tableMarkers->columnCount(); c++){//Traces
-        QScatterSeries *marker_series = new QScatterSeries();
-        marker_series->setMarkerShape(QScatterSeries::MarkerShapeCircle);
-        marker_series->setMarkerSize(10);
-        marker_series->setColor(Qt::black);
+           // Check the limits of the data in the dataset in order to see if the new settings given by the user
+           // exceed the limits of the available data
+    getMinMaxValues(data_file, trace_file, minX_trace, maxX_trace, minY_trace, maxY_trace);
 
-        for (int r = 0; r<tableMarkers->rowCount(); r++){//Marker
-            QString y_val = tableMarkers->item(r,c)->text();
-            QString text = tableMarkers->item(r,0)->text();
-            QStringList parts = text.split(' ');
-            QString freq = parts[0];
-            QString freq_scale = parts[1];
-            double x = freq.toDouble()/getFreqScale(freq_scale);
-            x *= getFreqScale();// Normalize x with respect to the axis scale
-            double y = y_val.toDouble();
-            marker_series->append(x, y);
-        }
-        QString trace_name = tableMarkers->horizontalHeaderItem(c)->text();
-        QString marker_series_name = QStringLiteral("Mkr_%1").arg(trace_name);
-        marker_series->setName(marker_series_name);
-        seriesList.append(marker_series);
+           // Find the closest indices to the minimum and the maximum given by the user
+    int minIndex = findClosestIndex(datasets[data_file]["frequency"], x_axis_min);
+    int maxIndex = findClosestIndex(datasets[data_file]["frequency"], x_axis_max);
+
+    QList<double> freq_trimmed = datasets[data_file]["frequency"].mid(minIndex, maxIndex - minIndex + 1);
+    std::transform(freq_trimmed.begin(), freq_trimmed.end(), freq_trimmed.begin(),
+                   [freq_scale](double value) { return value * freq_scale; });
+
+    QList<double> data_trimmed = datasets[data_file][trace_file].mid(minIndex, maxIndex - minIndex + 1);
+
+           // Get the series data
+    QXYSeries *xySeries = qobject_cast<QXYSeries*>(series);
+    xySeries->clear(); // Remove its data
+
+           // Select the proper y-axis clipping limits depending on wheter the trace is phase (right y-axis) or magnitude (left y-axis)
+    double y_min, y_max;
+    if (trace_file.contains("_ang")){
+      // Choose the right y-axis limits
+      y_min = y2_axis_min;
+      y_max = y2_axis_max;
+    } else {
+      // Choose the left y-axis limits
+      y_min = y_axis_min;
+      y_max = y_axis_max;
     }
 
-    // Add the marker vertical bar
-    int n_rows = tableMarkers->rowCount();
-    int n_cols = tableMarkers->columnCount();
-    if (n_cols > 1){
-        for (int r = 0; r<n_rows; r++){//Marker
-            QString text = tableMarkers->item(r,0)->text();
-            QStringList parts = text.split(' ');
-            QString freq = parts[0];
-            QString freq_scale = parts[1];
-            double x = freq.toDouble()/getFreqScale(freq_scale);
-            x *= getFreqScale();// Normalize x with respect to the axis scale
-            QLineSeries *verticalLine = new QLineSeries();
-            verticalLine->append(x, y_axis_min);
-            verticalLine->append(x, y_axis_max);
-            verticalLine->setPen(QPen(Qt::black, 1, Qt::DashLine));
+           // Apply clipping if the data exceeds the lower/upper limits
+    for (int i = 0; i < freq_trimmed.size(); i++) {
+      double y_value = data_trimmed[i];
 
-            QString verticalLine_name = QStringLiteral("Mkr_%1").arg(r);
-            verticalLine->setName(verticalLine_name);
-
-            seriesList.append(verticalLine);
-
-            QGraphicsTextItem *textItem = new QGraphicsTextItem(chart);
-            QString freq_marker = tableMarkers->item(r,0)->text();
-            textItem->setPlainText(QStringLiteral("%1").arg(freq_marker));
-            textItem->setFont(QFont("Arial", 8));
-
-            // Get the axes
-            auto axes = chart->axes(Qt::Horizontal);
-            QValueAxis *xAxis = qobject_cast<QValueAxis*>(axes.first());
-            qreal xRatio = (x - xAxis->min()) / (xAxis->max() - xAxis->min());
-
-            // Calculate the position
-            QRectF plotArea = chart->plotArea();
-            qreal xPixel = plotArea.left() + xRatio * plotArea.width();
-
-            // Center the text horizontally
-            QFontMetrics fm(textItem->font());
-            int textWidth = fm.horizontalAdvance(textItem->toPlainText());
-            qreal textX = xPixel - textWidth / 2;
-
-            // Position above the chart area
-            qreal textY = plotArea.top() - fm.height() - 5; // 5 pixels above the plot area
-
-            textItem->setPos(textX, textY);
-            textLabels.append(textItem);
-        }
-    }
-
-    // Add limits
-    double limits_offset = Limits_Offset->value();
-    for (int i = 0; i < List_LimitNames.size(); i++){
-      // Start frequency
-      double fstart = List_Limit_Start_Freq[i]->value();
-      double fstart_scale = getFreqScale(List_Limit_Start_Freq_Scale[i]->currentText());
-      fstart = fstart / fstart_scale;// Hz
-      fstart *= getFreqScale();// Normalize x with respect to the axis scale
-
-      // Stop frequency
-      double fstop = List_Limit_Stop_Freq[i]->value();
-      double fstop_scale = getFreqScale(List_Limit_Stop_Freq_Scale[i]->currentText());
-      fstop = fstop / fstop_scale;// Hz
-      fstop *= getFreqScale();// Normalize x with respect to the axis scale
-
-      // Start value
-      double val_start = List_Limit_Start_Value[i]->value()+limits_offset;
-
-      // Stop value
-      double val_stop = List_Limit_Stop_Value[i]->value()+limits_offset;
-
-      QLineSeries *limitLine = new QLineSeries();
-      limitLine->append(fstart, val_start);
-      limitLine->append(fstop, val_stop);
-      limitLine->setPen(QPen(Qt::black, 2));
-
-      QString limitLine_name = QStringLiteral("Limit_%1").arg(i);
-      limitLine->setName(limitLine_name);
-
-      seriesList.append(limitLine);
-    }
-
-    // Add series again to the chart. Each series must be linked to an axis
-    for (QAbstractSeries *series : qAsConst(seriesList)) {
-      qDebug() << series->name();
-          if (series->name().endsWith("_ang")) {
-            // Attach phase traces to the right y-axis
-            series->attachAxis(xAxis); // Attach to x-axis (frequency)
-            series->attachAxis(y2Axis); // Attach to right y-axis (phase)
-          } else {
-            // Attach magnitude traces to the left y-axis
-            series->attachAxis(xAxis); // Attach to x-axis (frequency)
-            series->attachAxis(yAxis); // Attach to left y-axis (magnitude)
-          }
-          chart->addSeries(series);
-        }
-
-           // Reattach all series to the correct axes
-    for (QAbstractSeries *series : seriesList) {
-      // Detach the series from all axes first
-      for (QAbstractAxis *axis : series->attachedAxes()) {
-        series->detachAxis(axis);
+             // Data exceeds the upper limit
+      if (y_value > y_max){
+        y_value = y_max;
       }
-      qDebug() << series->name();
-                                  // Reattach the series to the correct axes
-      if (series->name().endsWith("_ang")) {
-        // Attach phase traces to the right y-axis
-        series->attachAxis(xAxis); // Attach to x-axis (frequency)
-        series->attachAxis(y2Axis); // Attach to right y-axis (phase)
-      } else {
-        // Attach magnitude traces to the left y-axis
-        series->attachAxis(xAxis); // Attach to x-axis (frequency)
-        series->attachAxis(yAxis); // Attach to left y-axis (magnitude)
+
+             // Data exceeds the lower limit
+      if (y_value < y_min){
+        y_value = y_min;
       }
+
+             // Add (clipped) data to the series
+      xySeries->append(QPointF(freq_trimmed[i], y_value));
     }
 
-           // Update the chart
-    chart->update();
+  }
 
+         // Add marker traces. One per trace
+  for (int c = 1; c<tableMarkers->columnCount(); c++){//Traces
+    QScatterSeries *marker_series = new QScatterSeries();
+    marker_series->setMarkerShape(QScatterSeries::MarkerShapeCircle);
+    marker_series->setMarkerSize(10);
+    marker_series->setColor(Qt::black);
+
+    for (int r = 0; r<tableMarkers->rowCount(); r++){//Marker
+      QString y_val = tableMarkers->item(r,c)->text();
+      QString text = tableMarkers->item(r,0)->text();
+      QStringList parts = text.split(' ');
+      QString freq = parts[0];
+      QString freq_scale = parts[1];
+      double x = freq.toDouble()/getFreqScale(freq_scale);
+      x *= getFreqScale();// Normalize x with respect to the axis scale
+      double y = y_val.toDouble();
+      marker_series->append(x, y);
+    }
+    QString trace_name = tableMarkers->horizontalHeaderItem(c)->text();
+    QString marker_series_name = QStringLiteral("Mkr_%1").arg(trace_name);
+    marker_series->setName(marker_series_name);
+    seriesList.append(marker_series);
+  }
+
+         // Add the marker vertical bar
+  int n_rows = tableMarkers->rowCount();
+  int n_cols = tableMarkers->columnCount();
+  if (n_cols > 1){
+    for (int r = 0; r<n_rows; r++){//Marker
+      QString text = tableMarkers->item(r,0)->text();
+      QStringList parts = text.split(' ');
+      QString freq = parts[0];
+      QString freq_scale = parts[1];
+      double x = freq.toDouble()/getFreqScale(freq_scale);
+      x *= getFreqScale();// Normalize x with respect to the axis scale
+      QLineSeries *verticalLine = new QLineSeries();
+      verticalLine->append(x, y_axis_min);
+      verticalLine->append(x, y_axis_max);
+      verticalLine->setPen(QPen(Qt::black, 1, Qt::DashLine));
+
+      QString verticalLine_name = QStringLiteral("Mkr_%1").arg(r);
+      verticalLine->setName(verticalLine_name);
+
+      seriesList.append(verticalLine);
+
+      QGraphicsTextItem *textItem = new QGraphicsTextItem(chart);
+      QString freq_marker = tableMarkers->item(r,0)->text();
+      textItem->setPlainText(QStringLiteral("%1").arg(freq_marker));
+      textItem->setFont(QFont("Arial", 8));
+
+             // Get the axes
+      auto axes = chart->axes(Qt::Horizontal);
+      QValueAxis *xAxis = qobject_cast<QValueAxis*>(axes.first());
+      qreal xRatio = (x - xAxis->min()) / (xAxis->max() - xAxis->min());
+
+             // Calculate the position
+      QRectF plotArea = chart->plotArea();
+      qreal xPixel = plotArea.left() + xRatio * plotArea.width();
+
+             // Center the text horizontally
+      QFontMetrics fm(textItem->font());
+      int textWidth = fm.horizontalAdvance(textItem->toPlainText());
+      qreal textX = xPixel - textWidth / 2;
+
+             // Position above the chart area
+      qreal textY = plotArea.top() - fm.height() - 5; // 5 pixels above the plot area
+
+      textItem->setPos(textX, textY);
+      textLabels.append(textItem);
+    }
+  }
+
+         // Add limits
+  double limits_offset = Limits_Offset->value();
+  for (int i = 0; i < List_LimitNames.size(); i++){
+    // Start frequency
+    double fstart = List_Limit_Start_Freq[i]->value();
+    double fstart_scale = getFreqScale(List_Limit_Start_Freq_Scale[i]->currentText());
+    fstart = fstart / fstart_scale;// Hz
+    fstart *= getFreqScale();// Normalize x with respect to the axis scale
+
+           // Stop frequency
+    double fstop = List_Limit_Stop_Freq[i]->value();
+    double fstop_scale = getFreqScale(List_Limit_Stop_Freq_Scale[i]->currentText());
+    fstop = fstop / fstop_scale;// Hz
+    fstop *= getFreqScale();// Normalize x with respect to the axis scale
+
+           // Start value
+    double val_start = List_Limit_Start_Value[i]->value()+limits_offset;
+
+           // Stop value
+    double val_stop = List_Limit_Stop_Value[i]->value()+limits_offset;
+
+    QLineSeries *limitLine = new QLineSeries();
+    limitLine->append(fstart, val_start);
+    limitLine->append(fstop, val_stop);
+    limitLine->setPen(QPen(Qt::black, 2));
+
+    QString limitLine_name = QStringLiteral("Limit_%1").arg(i);
+    limitLine->setName(limitLine_name);
+
+    seriesList.append(limitLine);
+  }
+
+         // Add series again to the chart. Each series must be linked to an axis
+  for (QAbstractSeries *series : qAsConst(seriesList)) {
+    qDebug() << series->name();
+    if (series->name().endsWith("_ang")) {
+      // Attach phase traces to the right y-axis
+      series->attachAxis(xAxis); // Attach to x-axis (frequency)
+      series->attachAxis(y2Axis); // Attach to right y-axis (phase)
+    } else {
+      // Attach magnitude traces to the left y-axis
+      series->attachAxis(xAxis); // Attach to x-axis (frequency)
+      series->attachAxis(yAxis); // Attach to left y-axis (magnitude)
+    }
+    chart->addSeries(series);
+  }
+
+         // Reattach all series to the correct axes
+  for (QAbstractSeries *series : seriesList) {
+    // Detach the series from all axes first
+    for (QAbstractAxis *axis : series->attachedAxes()) {
+      series->detachAxis(axis);
+    }
+    qDebug() << series->name();
+                                // Reattach the series to the correct axes
+    if (series->name().endsWith("_ang")) {
+      // Attach phase traces to the right y-axis
+      series->attachAxis(xAxis); // Attach to x-axis (frequency)
+      series->attachAxis(y2Axis); // Attach to right y-axis (phase)
+    } else {
+      // Attach magnitude traces to the left y-axis
+      series->attachAxis(xAxis); // Attach to x-axis (frequency)
+      series->attachAxis(yAxis); // Attach to left y-axis (magnitude)
+    }
+  }
+
+         // Update the chart
+  chart->update();
 }
 
 // Given a trace, it gives the minimum and the maximum values at both axis.
