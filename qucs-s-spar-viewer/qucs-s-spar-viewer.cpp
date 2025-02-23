@@ -164,7 +164,7 @@ Qucs_S_SPAR_Viewer::Qucs_S_SPAR_Viewer()
   addDockWidget(Qt::LeftDockWidgetArea, dockChart);
 
   // Smith Chart
-  SmithChartWidget *smithChart = new SmithChartWidget(this);
+  smithChart = new SmithChartWidget(this);
   smithChart->setMinimumSize(300, 300);
   dockSmithChart = new QDockWidget("Smith Chart", this);
   dockSmithChart->setWidget(smithChart);
@@ -315,9 +315,8 @@ Qucs_S_SPAR_Viewer::Qucs_S_SPAR_Viewer()
   QLabel *Traces_label = new QLabel("<b>Traces</b>");
   DatasetsGrid->addWidget(Traces_label, 0, 1, Qt::AlignCenter);
 
-  QLabel *empty_label = new QLabel("<b>Empty</b>");
-  DatasetsGrid->addWidget(empty_label, 0, 2, Qt::AlignCenter);
-  empty_label->hide();
+  QLabel *displayTypeLabel = new QLabel("<b>Display Type</b>");
+  DatasetsGrid->addWidget(displayTypeLabel, 0, 2, Qt::AlignCenter);
 
   QCombobox_datasets = new QComboBox();
   DatasetsGrid->addWidget(QCombobox_datasets, 1, 0);
@@ -341,7 +340,16 @@ Qucs_S_SPAR_Viewer::Qucs_S_SPAR_Viewer()
                               }");
  connect(Button_add_trace, SIGNAL(clicked()), SLOT(addTrace())); // Connect button with the handler
 
-  DatasetsGrid->addWidget(Button_add_trace, 1, 2);
+  QCombobox_display_mode= new QComboBox();
+  QCombobox_display_mode->addItem("dB");
+  QCombobox_display_mode->addItem("ang");
+  QCombobox_display_mode->addItem("Smith");
+  QCombobox_display_mode->addItem("n.u.");
+  QCombobox_display_mode->setCurrentIndex(0); // Default to dB
+  QCombobox_display_mode->setObjectName("DisplayTypeCombo");
+  DatasetsGrid->addWidget(QCombobox_display_mode, 1, 2);
+
+  DatasetsGrid->addWidget(Button_add_trace, 1, 3);
 
   // Trace management
   // Titles
@@ -755,7 +763,7 @@ void Qucs_S_SPAR_Viewer::addFiles(QStringList fileNames)
                                       // specification). The default value is MA.
 
                Z0 = info.at(5).toDouble();
-               file_data["Rn"].append(Z0); // Specifies the reference resistance in ohms, where n is a real, positive number of
+               file_data["Z0"].append(Z0); // Specifies the reference resistance in ohms, where n is a real, positive number of
                                            // ohms. The default reference resistance is 50 ohms. Note that this is overridden
                                            // by the [Reference] keyword, described below, for files of [Version] 2.0 and above
 
@@ -1165,12 +1173,18 @@ double Qucs_S_SPAR_Viewer::getFreqScale(QString frequency_unit)
     return freq_scale;
 }
 
-
+// This function is called when the user hits the button to add a trace
 void Qucs_S_SPAR_Viewer::addTrace()
 {
-    QString selected_dataset, selected_trace;
+    QString selected_dataset, selected_trace, selected_view;
     selected_dataset = this->QCombobox_datasets->currentText();
     selected_trace = this->QCombobox_traces->currentText();
+    selected_view = this->QCombobox_display_mode->currentText();
+
+    QString suffix;
+    if (selected_view.compare("n.u.")){
+      selected_trace += QString("_") + selected_view;
+    }
 
     // Color settings
     QColor trace_color;
@@ -1289,22 +1303,48 @@ void Qucs_S_SPAR_Viewer::addTrace(QString selected_dataset, QString selected_tra
   pen.setWidth(trace_width);
   series->setPen(pen); // Apply the pen to the series
 
-         // Attach the series to the appropriate axis
-  if (selected_trace.endsWith("_ang")) {
-    // Attach phase traces to the right y-axis
-    series->attachAxis(xAxis); // Attach to x-axis (frequency)
-    series->attachAxis(y2Axis); // Attach to right y-axis (phase)
+  if (selected_trace.contains("dB") || selected_trace.contains("ang")){
+    // Magnitude / Phase rectangular diagram
+    // Attach the series to the appropriate axis
+    if (selected_trace.endsWith("_ang")) {
+      // Attach phase traces to the right y-axis
+      series->attachAxis(xAxis); // Attach to x-axis (frequency)
+      series->attachAxis(y2Axis); // Attach to right y-axis (phase)
+    } else {
+      // Attach magnitude traces to the left y-axis
+      series->attachAxis(xAxis); // Attach to x-axis (frequency)
+      series->attachAxis(yAxis); // Attach to left y-axis (magnitude)
+    }
+
+    // Add the series to the chart
+    chart->addSeries(series);
+
+    // Update the plot
+    updatePlot();
+
   } else {
-    // Attach magnitude traces to the left y-axis
-    series->attachAxis(xAxis); // Attach to x-axis (frequency)
-    series->attachAxis(yAxis); // Attach to left y-axis (magnitude)
+    if (selected_trace.contains("Smith")){
+      // Smith Chart
+      // Convert S-parameters to impedances
+      QList<std::complex<double>> impedances;
+      QList<double> frequencies = datasets[selected_dataset]["frequency"];
+      QList<double> s11_re = datasets[selected_dataset]["S11_re"];
+      QList<double> s11_im = datasets[selected_dataset]["S11_im"];
+
+      double Z0 = datasets[selected_dataset]["Z0"].first();
+
+      for (int i = 0; i < frequencies.size(); i++) {
+        std::complex<double> s11(s11_re[i], s11_im[i]);
+        std::complex<double> gamma = s11; // Reflection coefficient
+        std::complex<double> impedance = Z0 * (1.0 + gamma) / (1.0 - gamma); // Convert to impedance
+        impedances.push_back(impedance);
+      }
+
+      // Set the impedance data to the Smith Chart widget
+      //smithChart->addTrace(impedances, frequencies, Z0, pen, trace_name);
+      smithChart->setData(impedances);
+    }
   }
-
-         // Add the series to the chart
-  chart->addSeries(series);
-
-         // Update the plot
-  updatePlot();
 }
 
 // This function is used for setting the available traces depending on the selected dataset
@@ -1321,8 +1361,7 @@ void Qucs_S_SPAR_Viewer::updateTracesCombo()
 
   for (int i = 1; i <= n_ports; i++) {
     for (int j = 1; j <= n_ports; j++) {
-      traces.append(QStringLiteral("S%1%2_dB").arg(i).arg(j)); // Magnitude (dB)
-      traces.append(QStringLiteral("S%1%2_ang").arg(i).arg(j)); // Phase (degrees)
+      traces.append(QStringLiteral("S%1%2").arg(i).arg(j)); // Magnitude (dB)
     }
   }
 

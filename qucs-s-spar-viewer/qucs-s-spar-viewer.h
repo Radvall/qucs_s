@@ -113,7 +113,6 @@ protected:
   QDockWidget *dockFiles;
   QTableWidget * spar_files_Widget;
   QPushButton *Button_Add_File, *Delete_All_Files;
-  SmithChartWidget *smithChart;
 
   // File list
   QList<QPushButton*> Button_DeleteFile;
@@ -147,7 +146,7 @@ protected:
   QStringList frequency_units;
 
   // Trace management widgets
-  QComboBox *QCombobox_datasets, *QCombobox_traces;
+  QComboBox *QCombobox_datasets, *QCombobox_traces, *QCombobox_display_mode;
   QPushButton *Button_add_trace;
   QTableWidget *Traces_Widget;
 
@@ -175,6 +174,7 @@ protected:
   bool removeSeriesByName(QChart*, const QString&);
 
   // Smith Chart
+  SmithChartWidget *smithChart;
   QDockWidget *dockSmithChart;
 
 

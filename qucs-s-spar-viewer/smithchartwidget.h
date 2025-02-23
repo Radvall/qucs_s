@@ -4,7 +4,7 @@
 #include <QWidget>
 #include <QPainter>
 #include <QMouseEvent>
-#include <vector>
+#include <QList>
 #include <complex>
 
 class Qucs_S_SPAR_Viewer; // Forward declaration
@@ -16,7 +16,7 @@ public:
   SmithChartWidget(QWidget *parent = nullptr);
   ~SmithChartWidget() override;
 
-  void setData(const std::vector<std::complex<double>>& impedances);
+  void setData(const QList<std::complex<double>>& impedances);
   void setCharacteristicImpedance(double z0);
   double characteristicImpedance() const { return z0; }
 
@@ -39,7 +39,7 @@ private:
 
 
 private:
-  std::vector<std::complex<double>> impedanceData;
+  QList<std::complex<double>> impedanceData;
   double z0; // Characteristic impedance
   QPointF lastMousePos;
 

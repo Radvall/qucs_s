@@ -13,7 +13,7 @@ SmithChartWidget::~SmithChartWidget()
 {
 }
 
-void SmithChartWidget::setData(const std::vector<std::complex<double>>& impedances)
+void SmithChartWidget::setData(const QList<std::complex<double>>& impedances)
 {
   impedanceData = impedances;
   update(); // Trigger a repaint
