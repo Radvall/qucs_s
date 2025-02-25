@@ -318,12 +318,6 @@ Qucs_S_SPAR_Viewer::Qucs_S_SPAR_Viewer()
   QLabel *displayTypeLabel = new QLabel("<b>Display Type</b>");
   DatasetsGrid->addWidget(displayTypeLabel, 0, 2, Qt::AlignCenter);
 
-  QCombobox_datasets = new QComboBox();
-  DatasetsGrid->addWidget(QCombobox_datasets, 1, 0);
-  connect(QCombobox_datasets, SIGNAL(currentIndexChanged(int)), SLOT(updateTracesCombo())); // Each time the dataset is changed it is needed to update the traces combo.
-                                                                    // This is needed when the user has data with different number of ports.
-
-
   QCombobox_traces = new QComboBox();
   DatasetsGrid->addWidget(QCombobox_traces, 1, 1);
 
@@ -351,6 +345,59 @@ Qucs_S_SPAR_Viewer::Qucs_S_SPAR_Viewer()
 
   DatasetsGrid->addWidget(Button_add_trace, 1, 3);
 
+  QCombobox_datasets = new QComboBox();
+  DatasetsGrid->addWidget(QCombobox_datasets, 1, 0);
+  connect(QCombobox_datasets, SIGNAL(currentIndexChanged(int)), SLOT(updateTracesCombo())); // Each time the dataset is changed it is needed to update the traces combo.
+                                                                                            // This is needed when the user has data with different number of ports.
+
+
+  traceTabs = new QTabWidget(this); // Ensure 'this' is the parent
+
+         // Create tabs for Magnitude/Phase and Smith Chart
+  magnitudePhaseTab = new QWidget(traceTabs); // Parent is traceTabs
+  smithTab = new QWidget(traceTabs); // Parent is traceTabs
+
+         // Add tabs to the tab widget
+  traceTabs->addTab(magnitudePhaseTab, "Magnitude/Phase");
+  traceTabs->addTab(smithTab, "Smith Chart");
+
+         // Create layouts for each tab
+  magnitudePhaseLayout = new QGridLayout(magnitudePhaseTab);
+  smithLayout = new QGridLayout(smithTab);
+
+         // Set the layouts on the tabs
+  magnitudePhaseTab->setLayout(magnitudePhaseLayout);
+  smithTab->setLayout(smithLayout);
+
+  // Set Magnitude tab
+  QLabel * Label_Name_mag = new QLabel("<b>Name</b>");
+  QLabel * Label_Color_mag = new QLabel("<b>Color</b>");
+  QLabel * Label_LineStyle_mag = new QLabel("<b>Line Style</b>");
+  QLabel * Label_LineWidth_mag = new QLabel("<b>Width</b>");
+  QLabel * Label_Remove_mag = new QLabel("<b>Remove</b>");
+
+  magnitudePhaseLayout->addWidget(Label_Name_mag, 0, 0, Qt::AlignCenter);
+  magnitudePhaseLayout->addWidget(Label_Color_mag, 0, 1, Qt::AlignCenter);
+  magnitudePhaseLayout->addWidget(Label_LineStyle_mag, 0, 2, Qt::AlignCenter);
+  magnitudePhaseLayout->addWidget(Label_LineWidth_mag, 0, 3, Qt::AlignCenter);
+  magnitudePhaseLayout->addWidget(Label_Remove_mag, 0, 4, Qt::AlignCenter);
+
+  // Set Smith tab
+  QLabel * Label_Name_Smith = new QLabel("<b>Name</b>");
+  QLabel * Label_Color_Smith = new QLabel("<b>Color</b>");
+  QLabel * Label_LineStyle_Smith = new QLabel("<b>Line Style</b>");
+  QLabel * Label_LineWidth_Smith = new QLabel("<b>Width</b>");
+  QLabel * Label_Remove_Smith = new QLabel("<b>Remove</b>");
+
+  smithLayout->addWidget(Label_Name_Smith, 0, 0, Qt::AlignCenter);
+  smithLayout->addWidget(Label_Color_Smith, 0, 1, Qt::AlignCenter);
+  smithLayout->addWidget(Label_LineStyle_Smith, 0, 2, Qt::AlignCenter);
+  smithLayout->addWidget(Label_LineWidth_Smith, 0, 3, Qt::AlignCenter);
+  smithLayout->addWidget(Label_Remove_Smith, 0, 4, Qt::AlignCenter);
+
+  Traces_VBox->addWidget(TraceSelection_Widget);
+  Traces_VBox->addWidget(traceTabs);
+
   // Trace management
   // Titles
   TracesList_Widget = new QWidget(); // Panel with the trace settings
@@ -367,12 +414,7 @@ Qucs_S_SPAR_Viewer::Qucs_S_SPAR_Viewer()
   TracesGrid->addWidget(Label_LineWidth, 0, 3, Qt::AlignCenter);
   TracesGrid->addWidget(Label_Remove, 0, 4, Qt::AlignCenter);
 
-  QScrollArea *scrollArea_Traces = new QScrollArea();
-  scrollArea_Traces->setWidget(TracesList_Widget);
-  scrollArea_Traces->setWidgetResizable(true);
 
-  Traces_VBox->addWidget(TraceSelection_Widget);
-  Traces_VBox->addWidget(scrollArea_Traces);
 
   // Markers dock
   QWidget * MarkersGroup = new QWidget();
@@ -869,8 +911,8 @@ void Qucs_S_SPAR_Viewer::addFiles(QStringList fileNames)
 
     // Default behavior: If there's no more data loaded and a single S2P file is selected, then automatically plot S21, S11 and S22
     if ((fileNames.length() == 1) && (fileNames.first().toLower().endsWith(".s2p")) && (datasets.size() == 1)){
-        this->addTrace(filename, QStringLiteral("S21_dB"), Qt::red);
-        this->addTrace(filename, QStringLiteral("S11_dB"), Qt::blue);
+      this->addTrace(filename, QStringLiteral("S21_dB"), Qt::red);
+        this->addTrace(filename, QStringLiteral("S11_dB"), Qt::darkBlue);
         this->addTrace(filename, QStringLiteral("S22_dB"), Qt::darkGreen);
 
         this->addTrace(filename, QStringLiteral("S11_Smith"), Qt::darkBlue);
@@ -1233,13 +1275,20 @@ void Qucs_S_SPAR_Viewer::addTrace(QString selected_dataset, QString selected_tra
     return;
   }
 
+  bool isSmithTrace = selected_trace.endsWith("Smith");
+  bool isMagnitudePhaseTrace = selected_trace.endsWith("dB") || selected_trace.endsWith("ang");
+
+         // Get the appropriate layout based on the trace type
+  QGridLayout *targetLayout = isSmithTrace ? smithLayout : magnitudePhaseLayout;
+
+
          // Add the trace to the list of displayed list and create the widgets associated to the trace properties
 
          // Label
   QLabel *new_trace_label = new QLabel(trace_name);
   new_trace_label->setObjectName(QStringLiteral("Trace_Name_") + trace_name);
   List_TraceNames.append(new_trace_label);
-  this->TracesGrid->addWidget(new_trace_label, n_trace, 0);
+  targetLayout->addWidget(new_trace_label, n_trace, 0);
 
          // Color picker
   QPushButton *new_trace_color = new QPushButton();
@@ -1249,7 +1298,7 @@ void Qucs_S_SPAR_Viewer::addTrace(QString selected_dataset, QString selected_tra
   new_trace_color->setStyleSheet(styleSheet);
   new_trace_color->setAttribute(Qt::WA_TranslucentBackground); // Needed for Windows buttons to behave as they should
   List_Trace_Color.append(new_trace_color);
-  this->TracesGrid->addWidget(new_trace_color, n_trace, 1);
+  targetLayout->addWidget(new_trace_color, n_trace, 1);
 
          // Line Style
   QComboBox *new_trace_linestyle = new QComboBox();
@@ -1263,7 +1312,7 @@ void Qucs_S_SPAR_Viewer::addTrace(QString selected_dataset, QString selected_tra
   new_trace_linestyle->setCurrentIndex(index);
   connect(new_trace_linestyle, SIGNAL(currentIndexChanged(int)), SLOT(changeTraceLineStyle()));
   List_Trace_LineStyle.append(new_trace_linestyle);
-  this->TracesGrid->addWidget(new_trace_linestyle, n_trace, 2);
+  targetLayout->addWidget(new_trace_linestyle, n_trace, 2);
 
          // Capture the pen style to correctly render the trace
   Qt::PenStyle pen_style;
@@ -1285,7 +1334,7 @@ void Qucs_S_SPAR_Viewer::addTrace(QString selected_dataset, QString selected_tra
   new_trace_width->setValue(trace_width);
   connect(new_trace_width, SIGNAL(valueChanged(int)), SLOT(changeTraceWidth()));
   List_TraceWidth.append(new_trace_width);
-  this->TracesGrid->addWidget(new_trace_width, n_trace, 3);
+  targetLayout->addWidget(new_trace_width, n_trace, 3);
 
          // Remove button
   QToolButton *new_trace_removebutton = new QToolButton();
@@ -1302,7 +1351,7 @@ void Qucs_S_SPAR_Viewer::addTrace(QString selected_dataset, QString selected_tra
         )");
   connect(new_trace_removebutton, SIGNAL(clicked()), SLOT(removeTrace()));
   List_Button_DeleteTrace.append(new_trace_removebutton);
-  this->TracesGrid->addWidget(new_trace_removebutton, n_trace, 4);
+  targetLayout->addWidget(new_trace_removebutton, n_trace, 4);
 
          // Create the series for the trace
   QLineSeries* series = new QLineSeries();

@@ -137,6 +137,10 @@ protected:
   QList<QComboBox *> List_Trace_Type;
   QList<QToolButton*> List_Button_DeleteTrace;
 
+  QTabWidget *traceTabs;
+  QWidget *magnitudePhaseTab, *smithTab;
+  QGridLayout *magnitudePhaseLayout, *smithLayout;
+
   // Axis settings widgets
   QDockWidget *dockAxisSettings;
   QComboBox *QCombobox_x_axis_units;
