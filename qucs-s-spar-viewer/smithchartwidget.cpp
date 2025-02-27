@@ -305,3 +305,15 @@ void SmithChartWidget::setTracePen(const QString& traceName, const QPen& pen) {
     update(); // Trigger a repaint
   }
 }
+
+// Gives the traces displayed in the widget (i.e. name and properties). It clears the traces map by dropping frequency, data and Z0 data
+QMap<QString, QPen> SmithChartWidget::getTracesInfo() const {
+
+  QMap<QString, QPen> penMap;
+  for (auto it = traces.constBegin(); it != traces.constEnd(); ++it) {
+    penMap.insert(it.key(), it.value().pen);
+  }
+
+  return penMap;
+
+}

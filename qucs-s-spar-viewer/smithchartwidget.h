@@ -30,6 +30,7 @@ public:
   double characteristicImpedance() const { return z0; }
   QPen getTracePen(const QString& traceName) const;
   void setTracePen(const QString& traceName, const QPen& pen);
+  QMap<QString, QPen> getTracesInfo() const;
 
 signals:
   void impedanceSelected(const std::complex<double>& impedance);

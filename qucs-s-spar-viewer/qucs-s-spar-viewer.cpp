@@ -1701,7 +1701,6 @@ void Qucs_S_SPAR_Viewer::update_X_axis()
     // Add the axis to the chart
     chart->addAxis(xAxis, Qt::AlignBottom);
     chart->legend()->hide();
-
 }
 
 // This is the handler that updates the y-axis when the y-axis QSpinBoxes change their value
@@ -1789,7 +1788,7 @@ void Qucs_S_SPAR_Viewer::update_Y2_axis()
 void Qucs_S_SPAR_Viewer::updateTraces()
 {
   updateTraces_Magnitude_Phase_Plot();
- // updateTraces_Smith_Chart();
+  updateTraces_Smith_Chart();
 }
 
 void Qucs_S_SPAR_Viewer::updateTraces_Smith_Chart(){
@@ -1799,10 +1798,72 @@ void Qucs_S_SPAR_Viewer::updateTraces_Smith_Chart(){
   double x_axis_min = QSpinBox_x_axis_min->value()/freq_scale;
   double x_axis_max = QSpinBox_x_axis_max->value()/freq_scale;
 
-  // Remove all series and add them again according to the new user settings.
-  smithChart->clearTraces(); // Remove all the traces in the widget
+  // Get the names of the traces displayed in the Smith chart
+  QMap<QString, QPen> tracesInfo = smithChart->getTracesInfo();
+
+  // Remove all series
+  smithChart->clearTraces();
 
   // Go through the list of Smith Chart traces and add them
+
+  for (auto it = tracesInfo.constBegin(); it != tracesInfo.constEnd(); ++it) {
+
+    const QString &trace_name = it.key();
+    const QPen &pen = it.value();
+
+    qDebug() << "Trace name:" << trace_name;
+
+    // The trace name has the following format: dataset.trace. The code below separates these fields
+    QStringList trace_name_parts = {
+        trace_name.section('.', 0, -2),
+        trace_name.section('.', -1)
+    };
+
+    QString data_file = trace_name_parts[0];
+    QString trace_file = trace_name_parts[1];
+
+    // Check the limits of the data in the dataset in order to see if the new settings given by the user
+    // exceed the limits of the available data
+    qreal minX_trace, maxX_trace, minY_trace, maxY_trace;
+    QString dummy_trace = trace_file + QString("_re"); // It just need a trace for getting the frequency limits
+    getMinMaxValues(data_file, dummy_trace, minX_trace, maxX_trace, minY_trace, maxY_trace);
+
+           // Find the closest indices to the minimum and the maximum given by the user
+    int minIndex = findClosestIndex(datasets[data_file]["frequency"], x_axis_min);
+    int maxIndex = findClosestIndex(datasets[data_file]["frequency"], x_axis_max);
+
+    QList<double> freq_trimmed = datasets[data_file]["frequency"].mid(minIndex, maxIndex - minIndex + 1);
+    std::transform(freq_trimmed.begin(), freq_trimmed.end(), freq_trimmed.begin(),
+                   [freq_scale](double value) { return value * freq_scale; });
+
+    QList<double> sii_re = datasets[data_file][trace_file + QString("_re")].mid(minIndex, maxIndex - minIndex + 1);
+    QList<double> sii_im = datasets[data_file][trace_file + QString("_im")].mid(minIndex, maxIndex - minIndex + 1);
+
+    double Z0 = datasets[data_file]["Z0"].first();
+    QList<std::complex<double>> impedances;
+
+    for (int i = 0; i < freq_trimmed.size(); i++) {
+      std::complex<double> sii(sii_re[i], sii_im[i]);
+      std::complex<double> gamma = sii; // Reflection coefficient
+      std::complex<double> impedance = Z0 * (1.0 + gamma) / (1.0 - gamma); // Convert to impedance
+      impedances.push_back(impedance);
+    }
+
+
+    // Add trace
+    SmithChartWidget::Trace new_trace;
+    new_trace.impedances = impedances;
+    new_trace.frequencies = freq_trimmed;
+    new_trace.pen = pen;
+    new_trace.Z0 = Z0;
+
+    smithChart->addTrace(trace_name, new_trace);
+
+
+  }
+
+
+
 
 
 }
