@@ -2923,6 +2923,9 @@ void Qucs_S_SPAR_Viewer::lock_unlock_axis_settings(bool toogle)
     QSpinBox_y_axis_min->setEnabled(true);
     QSpinBox_y_axis_max->setEnabled(true);
     QSpinBox_y_axis_div->setEnabled(true);
+    QSpinBox_y2_axis_min->setEnabled(true);
+    QSpinBox_y2_axis_max->setEnabled(true);
+    QSpinBox_y2_axis_div->setEnabled(true);
   }
   else{
     Lock_axis_settings_Button->setText("Unlock Axes");
@@ -2934,6 +2937,9 @@ void Qucs_S_SPAR_Viewer::lock_unlock_axis_settings(bool toogle)
     QSpinBox_y_axis_min->setDisabled(true);
     QSpinBox_y_axis_max->setDisabled(true);
     QSpinBox_y_axis_div->setDisabled(true);
+    QSpinBox_y2_axis_min->setDisabled(true);
+    QSpinBox_y2_axis_max->setDisabled(true);
+    QSpinBox_y2_axis_div->setDisabled(true);
   }
 }
 
