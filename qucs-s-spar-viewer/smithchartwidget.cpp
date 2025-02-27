@@ -14,8 +14,8 @@ SmithChartWidget::~SmithChartWidget()
 }
 
 
-void SmithChartWidget::addTrace(const Trace& trace) {
-  traces.append(trace);
+void SmithChartWidget::addTrace(const QString& name, const Trace& trace) {
+  traces[name] = trace;
   update(); // Trigger a repaint
 }
 
@@ -54,10 +54,12 @@ void SmithChartWidget::mousePressEvent(QMouseEvent *event) {
 
   std::complex<double> reflectionCoefficient = widgetToSmithChart(lastMousePos);
 
-  for (const auto& trace : traces) {
+         // Iterate through all traces
+  for (auto it = traces.constBegin(); it != traces.constEnd(); ++it) {
+    const Trace& trace = it.value();
     std::complex<double> normalizedImpedance = (1.0 + reflectionCoefficient) / (1.0 - reflectionCoefficient);
     std::complex<double> impedance = normalizedImpedance * trace.Z0;
-    emit impedanceSelected(impedance); // Emit the signal
+    emit impedanceSelected(impedance);
   }
 }
 
@@ -217,19 +219,21 @@ void SmithChartWidget::plotImpedanceData(QPainter *painter) {
   QPointF center(width() / 2.0, height() / 2.0);
   double radius = qMin(width(), height()) / 2.0 - 10;
 
-  for (const auto& trace : traces) {
-    painter->setPen(trace.pen); // Use the trace's pen (color, line width, style)
+         // Iterate through the map of traces
+  for (auto it = traces.constBegin(); it != traces.constEnd(); ++it) {
+    const Trace& trace = it.value();
+    painter->setPen(trace.pen);
 
            // Check if there are at least two points to draw a line
     if (trace.impedances.size() < 2) {
-      continue; // Skip traces with fewer than two points
+      continue;
     }
 
            // Convert the first impedance point to widget coordinates
     std::complex<double> gammaPrev = (trace.impedances[0] - trace.Z0) / (trace.impedances[0] + trace.Z0);
     QPointF prevPoint(center.x() + radius * gammaPrev.real(), center.y() - radius * gammaPrev.imag());
 
-           // Iterate through the remaining points and draw lines between consecutive points
+           // Iterate through the remaining points and draw lines
     for (int i = 1; i < trace.impedances.size(); ++i) {
       std::complex<double> gamma = (trace.impedances[i] - trace.Z0) / (trace.impedances[i] + trace.Z0);
       QPointF currentPoint(center.x() + radius * gamma.real(), center.y() - radius * gamma.imag());
@@ -285,4 +289,19 @@ std::complex<double> SmithChartWidget::widgetToSmithChart(const QPointF& widgetP
 void SmithChartWidget::clearTraces() {
   traces.clear(); // Remove all traces
   update(); // Trigger a repaint to reflect the changes
+}
+
+QPen SmithChartWidget::getTracePen(const QString& traceName) const {
+  if (traces.contains(traceName)) {
+    return traces[traceName].pen;
+  }
+  // Return a default pen if the trace doesn't exist
+  return QPen();
+}
+
+void SmithChartWidget::setTracePen(const QString& traceName, const QPen& pen) {
+  if (traces.contains(traceName)) {
+    traces[traceName].pen = pen;
+    update(); // Trigger a repaint
+  }
 }

@@ -1414,7 +1414,9 @@ void Qucs_S_SPAR_Viewer::addTrace(QString selected_dataset, QString selected_tra
 
       SmithChartTraces.append(new_trace);
 
-      smithChart->addTrace(new_trace);
+      trace_dataset.chop(1);
+      QString TraceName = selected_dataset + QString(".") + trace_dataset;
+      smithChart->addTrace(TraceName, new_trace);
 
     }
   }
@@ -1486,16 +1488,33 @@ void Qucs_S_SPAR_Viewer::changeTraceColor()
                     QLabel* label = List_TraceNames.at(index_to_change_color);
                     QString trace_name = label->text();
 
-                    // Change the color of the series named based on its name
-                    const auto seriesList = chart->series();
-                    for (QAbstractSeries *s : seriesList) {
-                        QLineSeries *lineSeries = qobject_cast<QLineSeries*>(s);
-                        if (lineSeries && lineSeries->name() == trace_name) {
-                            QPen pen = lineSeries->pen();
-                            pen.setColor(color);
-                            lineSeries->setPen(pen);
-                            break;
-                        }
+                    if (trace_name.endsWith("_Smith")) {
+                      // Smith Chart widget
+
+                      // Extract the base trace name (remove the "_Smith" suffix)
+                      QString traceName = trace_name.left(trace_name.length() - 6);
+
+                      QPen currentPen = smithChart->getTracePen(traceName);
+
+                      // Update the color while preserving color and style
+                      currentPen.setColor(color);
+
+                      // Set the modified pen back to the trace
+                      smithChart->setTracePen(traceName, currentPen);
+
+                    } else {
+                      // Magnitude / Phase QChart
+                      // Change the color of the series named based on its name
+                      const auto seriesList = chart->series();
+                      for (QAbstractSeries *s : seriesList) {
+                          QLineSeries *lineSeries = qobject_cast<QLineSeries*>(s);
+                          if (lineSeries && lineSeries->name() == trace_name) {
+                              QPen pen = lineSeries->pen();
+                              pen.setColor(color);
+                              lineSeries->setPen(pen);
+                              break;
+                          }
+                      }
                     }
                 }
             }
@@ -1520,61 +1539,98 @@ void Qucs_S_SPAR_Viewer::changeTraceLineStyle()
     QLabel* label = List_TraceNames.at(index_to_change_linestyle);
     QString trace_name = label->text();
 
-    for (QAbstractSeries *s : seriesList) {
-        QLineSeries *lineSeries = qobject_cast<QLineSeries*>(s);
-        if (lineSeries && lineSeries->name() == trace_name) {
-            QPen pen = lineSeries->pen();
-            switch (combo->currentIndex()) {
-                case 0: // Solid
-                    pen.setStyle(Qt::SolidLine);
-                    break;
-                case 1: // Dashed
-                    pen.setStyle(Qt::DashLine);
-                    break;
-                case 2: // Dotted
-                    pen.setStyle(Qt::DotLine);
-                    break;
-                case 3: // Dash Dot
-                    pen.setStyle(Qt::DashDotLine);
-                    break;
-                case 4: // Dash Dot Dot Line
-                    pen.setStyle(Qt::DashDotDotLine);
-                    break;
-            }
-            lineSeries->setPen(pen);
-            break;
-        }
+    // New trace line style
+    enum Qt::PenStyle PenStyle;
+    switch (combo->currentIndex()) {
+      case 0: // Solid
+        PenStyle = Qt::SolidLine;
+        break;
+      case 1: // Dashed
+        PenStyle = Qt::DashLine;
+        break;
+      case 2: // Dotted
+        PenStyle = Qt::DotLine;
+        break;
+      case 3: // Dash Dot
+        PenStyle = Qt::DashDotLine;
+        break;
+      case 4: // Dash Dot Dot Line
+        PenStyle = Qt::DashDotDotLine;
+        break;
+    }
+
+    if (trace_name.endsWith("_Smith")) {
+      // Smith Chart widget
+
+             // Extract the base trace name (remove the "_Smith" suffix)
+      QString traceName = trace_name.left(trace_name.length() - 6);
+
+      QPen currentPen = smithChart->getTracePen(traceName);
+
+             // Update the color while preserving color and style
+      currentPen.setStyle(PenStyle);
+
+             // Set the modified pen back to the trace
+      smithChart->setTracePen(traceName, currentPen);
+
+    } else {
+      // Magnitude / Phase QChart
+      for (QAbstractSeries *s : seriesList) {
+          QLineSeries *lineSeries = qobject_cast<QLineSeries*>(s);
+          if (lineSeries && lineSeries->name() == trace_name) {
+              QPen pen = lineSeries->pen();
+              pen.setStyle(PenStyle);
+              lineSeries->setPen(pen);
+              break;
+          }
+      }
     }
 }
 
 // This is the handler that is triggered when the user hits the button to change the line width of a given trace
 void Qucs_S_SPAR_Viewer::changeTraceWidth()
 {
-    QSpinBox *spinbox = qobject_cast<QSpinBox*>(sender());
-    const auto seriesList = chart->series();
+  QSpinBox *spinbox = qobject_cast<QSpinBox*>(sender());
+  const auto seriesList = chart->series();
+  QString ID = spinbox->objectName();
 
-    QString ID = spinbox->objectName();
-
-    int index_to_change_linestyle = -1;
-    for (int i = 0; i < List_TraceWidth.size(); i++) {
-        if (List_TraceWidth.at(i)->objectName() == ID) {
-            index_to_change_linestyle = i;
-            break;
-        }
+  int index_to_change_linestyle = -1;
+  for (int i = 0; i < List_TraceWidth.size(); i++) {
+    if (List_TraceWidth.at(i)->objectName() == ID) {
+      index_to_change_linestyle = i;
+      break;
     }
+  }
 
-    QLabel* label = List_TraceNames.at(index_to_change_linestyle);
-    QString trace_name = label->text();
+  int TraceWidth = spinbox->value();
+  QLabel* label = List_TraceNames.at(index_to_change_linestyle);
+  QString trace_name = label->text();
 
+  // Check if this is a Smith Chart trace (ends with "_Smith")
+  if (trace_name.endsWith("_Smith")) {
+    // Extract the base trace name (remove the "_Smith" suffix)
+    QString traceName = trace_name.left(trace_name.length() - 6);
+
+    QPen currentPen = smithChart->getTracePen(traceName);
+
+    // Update the width while preserving color and style
+    currentPen.setWidth(TraceWidth);
+
+    // Set the modified pen back to the trace
+    smithChart->setTracePen(traceName, currentPen);
+
+  } else {
+    // Magnitude / Phase QChart series
     for (QAbstractSeries *s : seriesList) {
-        QLineSeries *lineSeries = qobject_cast<QLineSeries*>(s);
-        if (lineSeries && lineSeries->name() == trace_name) {
-            QPen pen = lineSeries->pen();
-            pen.setWidth(spinbox->value());
-            lineSeries->setPen(pen);
-            break;
-        }
+      QLineSeries *lineSeries = qobject_cast<QLineSeries*>(s);
+      if (lineSeries && lineSeries->name() == trace_name) {
+        QPen pen = lineSeries->pen();
+        pen.setWidth(TraceWidth);
+        lineSeries->setPen(pen);
+        break;
+      }
     }
+  }
 }
 
 void Qucs_S_SPAR_Viewer::updatePlot()

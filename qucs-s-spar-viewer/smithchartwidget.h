@@ -4,7 +4,7 @@
 #include <QWidget>
 #include <QPainter>
 #include <QMouseEvent>
-#include <QList>
+#include <QMap>
 #include <complex>
 #include <QPen>
 
@@ -24,13 +24,15 @@ public:
   SmithChartWidget(QWidget *parent = nullptr);
   ~SmithChartWidget() override;
 
-  void addTrace(const Trace& trace);
-  void clearTraces(); // New method to remove all traces
+  void addTrace(const QString& name, const Trace& trace);  // Updated
+  void clearTraces();
   void setCharacteristicImpedance(double z0);
   double characteristicImpedance() const { return z0; }
+  QPen getTracePen(const QString& traceName) const;
+  void setTracePen(const QString& traceName, const QPen& pen);
 
 signals:
-  void impedanceSelected(const std::complex<double>& impedance); // Signal for impedance selection
+  void impedanceSelected(const std::complex<double>& impedance);
 
 protected:
   void paintEvent(QPaintEvent *event) override;
@@ -46,7 +48,7 @@ private:
   void calculateArcPoints(const QRectF& arcRect, double startAngle, double sweepAngle, QPointF& startPoint, QPointF& endPoint);
 
 private:
-  QList<Trace> traces;
+  QMap<QString, Trace> traces;  // Changed from QList to QMap
   double z0; // Characteristic impedance
   QPointF lastMousePos;
 
