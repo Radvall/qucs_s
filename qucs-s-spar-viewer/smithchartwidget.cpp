@@ -44,6 +44,9 @@ void SmithChartWidget::paintEvent(QPaintEvent *event)
          // 2. Plot the impedance data
   plotImpedanceData(&painter);
 
+  // 3. Draw markers
+  drawMarkers(&painter);
+
          //Restore transformation matrix
   painter.restore();
 }
@@ -78,7 +81,7 @@ void SmithChartWidget::drawSmithChartGrid(QPainter *painter) {
          // Draw the real axis
   painter->drawLine(center - QPointF(radius, 0), center + QPointF(radius, 0));
 
-  // Draw constant resistance circles
+         // Draw constant resistance circles
   QVector<double> resistances = {0.2, 0.5, 1.0, 2.0, 5.0};
   painter->setPen(QPen(Qt::gray, 1));
   for (double r : resistances) {
@@ -87,7 +90,7 @@ void SmithChartWidget::drawSmithChartGrid(QPainter *painter) {
     QPointF circleCenter(center.x() + x, center.y());
     painter->drawEllipse(circleCenter, y, y);
 
-    //Paint label
+           //Paint label
     QPointF label_position(center.x() + x - y, center.y()-5);
     painter->setPen(QPen(Qt::black, 2));
     painter->drawText(label_position, QString::number(r));
@@ -249,6 +252,139 @@ void SmithChartWidget::plotImpedanceData(QPainter *painter) {
   painter->restore();
 }
 
+void SmithChartWidget::drawMarkers(QPainter *painter) {
+  if (markers.isEmpty() || traces.isEmpty()) {
+    return;
+  }
+
+  painter->save();
+  QPointF center(width() / 2.0, height() / 2.0);
+  double radius = qMin(width(), height()) / 2.0 - 10;
+
+         // Font configuration for marker labels
+  QFont markerFont = painter->font();
+  markerFont.setBold(true);
+  painter->setFont(markerFont);
+
+         // Iterate through each trace
+  for (auto traceIt = traces.constBegin(); traceIt != traces.constEnd(); ++traceIt) {
+    const QString& traceName = traceIt.key();
+    const Trace& trace = traceIt.value();
+
+           // Skip traces with no frequency data
+    if (trace.frequencies.isEmpty() || trace.impedances.isEmpty()) {
+      continue;
+    }
+
+           // Draw markers for this trace
+    for (auto markerIt = markers.constBegin(); markerIt != markers.constEnd(); ++markerIt) {
+      const QString& markerId = markerIt.key();
+      const Marker& marker = markerIt.value();
+      double markerFreq = marker.frequency;
+
+             // Check if marker frequency is within the trace frequency range
+      if (markerFreq < trace.frequencies.first() || markerFreq > trace.frequencies.last()) {
+        continue;
+      }
+
+             // Interpolate impedance at marker frequency
+      std::complex impedance = interpolateImpedance(trace.frequencies, trace.impedances, markerFreq);
+
+             // Convert to reflection coefficient and then to widget coordinates
+      std::complex gamma = (impedance - trace.Z0) / (impedance + trace.Z0);
+      QPointF markerPoint(center.x() + radius * gamma.real(), center.y() - radius * gamma.imag());
+
+             // Draw marker point
+      painter->setPen(marker.pen);
+      painter->setBrush(marker.pen.color());
+      painter->drawEllipse(markerPoint, 4, 4);
+
+             // Determine frequency unit and scaling
+      QString freqUnit = "Hz";
+      double freqValue = markerFreq;
+
+      if (markerFreq >= 1e9) {
+        freqUnit = "GHz";
+        freqValue = markerFreq / 1e9;
+      } else if (markerFreq >= 1e6) {
+        freqUnit = "MHz";
+        freqValue = markerFreq / 1e6;
+      } else if (markerFreq >= 1e3) {
+        freqUnit = "kHz";
+        freqValue = markerFreq / 1e3;
+      }
+
+      // Create label with marker ID, impedance value, and frequency
+      QString label = QString("%1 [%2]: %3 %4\n%5%6j%7Ω")
+                          .arg(markerId) // %1
+                          .arg(traceName) // %2
+                          .arg(freqValue, 0, 'g', 3)  // %3 Use 'g' for compact representation
+                          .arg(freqUnit) // %4
+                          .arg(impedance.real(), 0, 'f', 2) // %5
+                          .arg(impedance.imag() >= 0 ? "+" : "") // %6
+                          .arg(impedance.imag(), 0, 'f', 2); // %7
+
+      // Draw label with background
+      QFontMetrics fm(markerFont);
+      QRect textRect = fm.boundingRect(QRect(0, 0, 300, 0), Qt::TextWordWrap, label);
+      textRect.moveTo(markerPoint.x() + 8, markerPoint.y() - textRect.height() / 2);
+      textRect.adjust(-6, -6, 6, 6);  // Increase padding
+
+      painter->setPen(Qt::black);
+      painter->setBrush(QColor(255, 255, 255, 200));
+      painter->drawRect(textRect);
+      painter->drawText(textRect.adjusted(6, 6, -6, -6), Qt::TextWordWrap | Qt::AlignLeft | Qt::AlignVCenter, label);
+    }
+  }
+  painter->restore();
+}
+
+
+std::complex<double> SmithChartWidget::interpolateImpedance(const QList<double>& frequencies,
+                                                            const QList<std::complex<double>>& impedances,
+                                                            double targetFreq) {
+  // If exact match, return it
+  for (int i = 0; i < frequencies.size(); i++) {
+    if (qFuzzyCompare(frequencies[i], targetFreq)) {
+      return impedances[i];
+    }
+  }
+
+  // Find the two closest frequencies for interpolation
+  int lowerIndex = -1;
+
+  for (int i = 0; i < frequencies.size(); i++) {
+    if (frequencies[i] <= targetFreq) {
+      lowerIndex = i;
+    } else {
+      break;
+    }
+  }
+
+  // Check if target frequency is outside the range
+  if (lowerIndex == -1) {
+    return impedances.first(); // Return first point if below range
+  }
+  if (lowerIndex == frequencies.size() - 1) {
+    return impedances.last(); // Return last point if above range
+  }
+
+  // Perform linear interpolation
+  int upperIndex = lowerIndex + 1;
+  double lowerFreq = frequencies[lowerIndex];
+  double upperFreq = frequencies[upperIndex];
+  std::complex<double> lowerZ = impedances[lowerIndex];
+  std::complex<double> upperZ = impedances[upperIndex];
+
+  double t = (targetFreq - lowerFreq) / (upperFreq - lowerFreq);
+
+  // Linear interpolation for both real and imaginary parts
+  double realPart = lowerZ.real() + t * (upperZ.real() - lowerZ.real());
+  double imagPart = lowerZ.imag() + t * (upperZ.imag() - lowerZ.imag());
+
+  return std::complex<double>(realPart, imagPart);
+}
+
 QPointF SmithChartWidget::smithChartToWidget(const std::complex<double>& reflectionCoefficient)
 {
   double gammaReal = reflectionCoefficient.real();
@@ -324,4 +460,69 @@ void SmithChartWidget::removeTrace(const QString& traceName) {
     traces.remove(traceName);
     update(); // Trigger a repaint to reflect the changes
   }
+}
+
+// Add a marker with a string ID at the specified frequency
+bool SmithChartWidget::addMarker(const QString& markerId, double frequency, const QPen& pen) {
+  // Check if marker ID already exists
+  if (markers.contains(markerId)) {
+    return false;
+  }
+
+  // Check if any trace contains this frequency
+  bool frequencyInRange = false;
+  for (auto it = traces.constBegin(); it != traces.constEnd(); ++it) {
+    const Trace& trace = it.value();
+    if (!trace.frequencies.isEmpty() &&
+        frequency >= trace.frequencies.first() &&
+        frequency <= trace.frequencies.last()) {
+      frequencyInRange = true;
+      break;
+    }
+  }
+
+  if (!frequencyInRange) {
+    return false; // Frequency is not within the range of any trace
+  }
+
+  // Create a new marker
+  Marker marker;
+  marker.id = markerId;
+  marker.frequency = frequency;
+  marker.pen = pen;
+
+  // Add to markers map
+  markers.insert(markerId, marker);
+
+  // Trigger repaint
+  update();
+  return true;
+}
+
+// Remove a marker given its ID
+bool SmithChartWidget::removeMarker(const QString& markerId) {
+  if (!markers.contains(markerId)) {
+    return false;
+  }
+
+  markers.remove(markerId);
+  update();
+  return true;
+}
+
+// Remove all markers
+void SmithChartWidget::clearMarkers() {
+  markers.clear();
+  update();
+}
+
+// Get map of all marker IDs and their frequencies
+QMap<QString, double> SmithChartWidget::getMarkers() const {
+  QMap<QString, double> markerFrequencies;
+
+  for (auto it = markers.constBegin(); it != markers.constEnd(); ++it) {
+    markerFrequencies.insert(it.key(), it.value().frequency);
+  }
+
+  return markerFrequencies;
 }

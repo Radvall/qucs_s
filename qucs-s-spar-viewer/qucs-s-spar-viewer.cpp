@@ -1850,8 +1850,6 @@ void Qucs_S_SPAR_Viewer::updateTraces_Smith_Chart(){
     int maxIndex = findClosestIndex(datasets[data_file]["frequency"], x_axis_max);
 
     QList<double> freq_trimmed = datasets[data_file]["frequency"].mid(minIndex, maxIndex - minIndex + 1);
-    std::transform(freq_trimmed.begin(), freq_trimmed.end(), freq_trimmed.begin(),
-                   [freq_scale](double value) { return value * freq_scale; });
 
     QList<double> sii_re = datasets[data_file][trace_file + QString("_re")].mid(minIndex, maxIndex - minIndex + 1);
     QList<double> sii_im = datasets[data_file][trace_file + QString("_im")].mid(minIndex, maxIndex - minIndex + 1);
@@ -1875,14 +1873,24 @@ void Qucs_S_SPAR_Viewer::updateTraces_Smith_Chart(){
     new_trace.Z0 = Z0;
 
     smithChart->addTrace(trace_name, new_trace);
-
-
   }
 
+  // Clear markers
+  smithChart->clearMarkers();
+  // Add marker traces from the marker table
+  for (int r = 0; r<tableMarkers->rowCount(); r++){//Marker
 
+    if (tableMarkers->item(r,0) == nullptr) break; // Check if there are data attached to the table
 
+    QString text = tableMarkers->item(r,0)->text();
+    QStringList parts = text.split(' ');
+    QString freq = parts[0];
+    QString freq_scale = parts[1];
+    double x = freq.toDouble()/getFreqScale(freq_scale);
 
-
+    QString marker_ID = QStringLiteral("Mkr%1").arg(r+1);
+    smithChart->addMarker(marker_ID, x);
+  }
 }
 
 void Qucs_S_SPAR_Viewer::updateTraces_Magnitude_Phase_Plot(){
@@ -2019,7 +2027,7 @@ void Qucs_S_SPAR_Viewer::updateTraces_Magnitude_Phase_Plot(){
 
   }
 
-         // Add marker traces. One per trace
+  // Add marker traces. One per trace
   for (int c = 1; c<tableMarkers->columnCount(); c++){//Traces
     QScatterSeries *marker_series = new QScatterSeries();
     marker_series->setMarkerShape(QScatterSeries::MarkerShapeCircle);
@@ -2043,7 +2051,7 @@ void Qucs_S_SPAR_Viewer::updateTraces_Magnitude_Phase_Plot(){
     seriesList.append(marker_series);
   }
 
-         // Add the marker vertical bar
+  // Add the marker vertical bar
   int n_rows = tableMarkers->rowCount();
   int n_cols = tableMarkers->columnCount();
   if (n_cols > 1){
