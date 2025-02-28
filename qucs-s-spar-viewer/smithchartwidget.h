@@ -24,7 +24,8 @@ public:
   SmithChartWidget(QWidget *parent = nullptr);
   ~SmithChartWidget() override;
 
-  void addTrace(const QString& name, const Trace& trace);  // Updated
+  void addTrace(const QString& name, const Trace& trace);
+  void removeTrace(const QString&);
   void clearTraces();
   void setCharacteristicImpedance(double z0);
   double characteristicImpedance() const { return z0; }

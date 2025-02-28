@@ -317,3 +317,11 @@ QMap<QString, QPen> SmithChartWidget::getTracesInfo() const {
   return penMap;
 
 }
+
+// Remove a trace given its name
+void SmithChartWidget::removeTrace(const QString& traceName) {
+  if (traces.contains(traceName)) {
+    traces.remove(traceName);
+    update(); // Trigger a repaint to reflect the changes
+  }
+}

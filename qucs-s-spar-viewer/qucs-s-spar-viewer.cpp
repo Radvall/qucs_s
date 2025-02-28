@@ -1093,53 +1093,70 @@ void Qucs_S_SPAR_Viewer::removeTrace(QList<int> indices_to_delete)
 
 void Qucs_S_SPAR_Viewer::removeTrace(int index_to_delete)
 {
-    // Delete the label
+    // First get the trace name
     QLabel* labelToRemove = List_TraceNames.at(index_to_delete);
     QString trace_name = labelToRemove->text();
-    TracesGrid->removeWidget(labelToRemove);
+
+    // First find the layout where the widgets must be removed
+    bool isSmithTrace = trace_name.endsWith("Smith");
+    bool isMagnitudePhaseTrace = trace_name.endsWith("dB") || trace_name.endsWith("ang");
+
+    // Get the appropriate layout based on the trace type
+    QGridLayout *targetLayout = isSmithTrace ? smithLayout : magnitudePhaseLayout;
+
+    // Delete the label
+    targetLayout->removeWidget(labelToRemove);
     List_TraceNames.removeAt(index_to_delete);
     delete labelToRemove;
 
     // Delete the color button
     QPushButton* ColorButtonToRemove = List_Trace_Color.at(index_to_delete);
-    TracesGrid->removeWidget(ColorButtonToRemove);
+    targetLayout->removeWidget(ColorButtonToRemove);
     List_Trace_Color.removeAt(index_to_delete);
     delete ColorButtonToRemove;
 
     // Delete the linestyle combo
     QComboBox* ComboToRemove = List_Trace_LineStyle.at(index_to_delete);
-    TracesGrid->removeWidget(ComboToRemove);
+    targetLayout->removeWidget(ComboToRemove);
     List_Trace_LineStyle.removeAt(index_to_delete);
     delete ComboToRemove;
 
     // Delete the width spinbox
     QSpinBox * SpinToRemove = List_TraceWidth.at(index_to_delete);
-    TracesGrid->removeWidget(SpinToRemove);
+    targetLayout->removeWidget(SpinToRemove);
     List_TraceWidth.removeAt(index_to_delete);
     delete SpinToRemove;
 
     // Delete the "delete" button
     QToolButton* ButtonToRemove = List_Button_DeleteTrace.at(index_to_delete);
-    TracesGrid->removeWidget(ButtonToRemove);
+    targetLayout->removeWidget(ButtonToRemove);
     List_Button_DeleteTrace.removeAt(index_to_delete);
     delete ButtonToRemove;
 
     // Remove the trace from the QMap
     trace_list.removeAll(trace_name);
 
-    // Update graphs in QChart plot
-    removeSeriesByName(chart, trace_name);
+    // Update the corresponding chart widget
+    if (isSmithTrace){
+      // Remove from the Smith Chart widget
+      trace_name.chop(6); // Remove the "_Smith" suffix
+      smithChart->removeTrace(trace_name);
+      return;
+    } else {
+      // Magnitude and phase plot
+      removeSeriesByName(chart, trace_name);
 
-    // Update the chart limits.
-    this->f_max = -1;
-    this->f_min = 1e30;
+      // Update the chart limits.
+      this->f_max = -1;
+      this->f_min = 1e30;
 
-    QStringList files = datasets.keys();
-    for (int i = 0; i < files.size(); i++){
+      QStringList files = datasets.keys();
+      for (int i = 0; i < files.size(); i++){
         adjust_x_axis_to_file(files[i]);
-    }
+      }
 
-    updateGridLayout(TracesGrid);
+      updateGridLayout(TracesGrid);
+    }
 }
 
 
