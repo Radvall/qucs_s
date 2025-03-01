@@ -1006,8 +1006,6 @@ void Qucs_S_SPAR_Viewer::addFiles(QStringList fileNames)
                 QColor trace_color = QColor(QRandomGenerator::global()->bounded(256), QRandomGenerator::global()->bounded(256), QRandomGenerator::global()->bounded(256));
                 this->addTrace(filename, QStringLiteral("S21_dB"), trace_color);
                 adjust_y_axis_to_trace(filename, "S21_dB");
-
-                this->addTrace(filename, QStringLiteral("S11_Smith"), Qt::darkBlue);
             }
             // Update the frequency setting to fit the last s2p file
             adjust_x_axis_to_file(filename);
