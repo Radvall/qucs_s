@@ -156,6 +156,12 @@ protected:
   QPushButton *Button_add_trace;
   QTableWidget *Traces_Widget;
 
+  // Scrollable trace areas
+  void setupScrollableLayout();
+  void setupScrollAreaForLayout(QGridLayout* &layout, QWidget* parentTab, const QString &objectName);
+  QScrollArea *magnitudePhaseScrollArea;
+  QScrollArea *smithScrollArea;
+
   // Datasets
   QMap<QString, QMap<QString, QList<double>>> datasets;
 

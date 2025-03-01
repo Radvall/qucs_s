@@ -395,6 +395,8 @@ Qucs_S_SPAR_Viewer::Qucs_S_SPAR_Viewer()
   smithLayout->addWidget(Label_LineWidth_Smith, 0, 3, Qt::AlignCenter);
   smithLayout->addWidget(Label_Remove_Smith, 0, 4, Qt::AlignCenter);
 
+  setupScrollableLayout();
+
   Traces_VBox->addWidget(TraceSelection_Widget);
   Traces_VBox->addWidget(traceTabs);
 
@@ -603,6 +605,68 @@ Qucs_S_SPAR_Viewer::Qucs_S_SPAR_Viewer()
 
   setAcceptDrops(true);//Enable drag and drop feature to open files
   loadRecentFiles();// Load "Recent Files" list
+}
+
+void Qucs_S_SPAR_Viewer::setupScrollAreaForLayout(QGridLayout* &layout, QWidget* parentTab, const QString &objectName)
+{
+  // Save the original layout and its widgets
+  QGridLayout* originalLayout = layout;
+  QList<QWidget*> headerWidgets;
+
+  // Save header row (assuming row 0 is the header)
+  for (int col = 0; col < 5; col++) {
+    QLayoutItem* item = originalLayout->itemAtPosition(0, col);
+    if (item && item->widget()) {
+      QWidget* widget = item->widget();
+      headerWidgets.append(widget);
+      originalLayout->removeWidget(widget);
+    }
+  }
+
+  // Delete the original layout (but not its widgets)
+  delete originalLayout;
+
+  // Create a scroll area
+  QScrollArea* scrollArea = new QScrollArea(parentTab);
+  scrollArea->setObjectName(objectName);
+  scrollArea->setWidgetResizable(true);
+  scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+  scrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+
+  // Create a widget to hold the new layout
+  QWidget* container = new QWidget();
+
+  // Create a new grid layout for the container
+  layout = new QGridLayout(container);
+
+  // Restore header widgets to the new layout
+  for (int col = 0; col < headerWidgets.size(); col++) {
+    if (col < headerWidgets.size()) {
+      layout->addWidget(headerWidgets[col], 0, col);
+    }
+  }
+
+  // Set the widget to the scroll area
+  scrollArea->setWidget(container);
+
+  // Create a new layout for the tab to hold the scroll area
+  QVBoxLayout* tabLayout = new QVBoxLayout(parentTab);
+  tabLayout->addWidget(scrollArea);
+  tabLayout->setContentsMargins(0, 0, 0, 0);
+
+  // Store the scroll area reference for later access
+  if (objectName == "magnitudePhaseScrollArea") {
+    magnitudePhaseScrollArea = scrollArea;
+  } else if (objectName == "smithScrollArea") {
+    smithScrollArea = scrollArea;
+  }
+}
+
+void Qucs_S_SPAR_Viewer::setupScrollableLayout()
+{
+  // Create scroll areas for both layouts
+  setupScrollAreaForLayout(magnitudePhaseLayout, magnitudePhaseTab, "magnitudePhaseScrollArea");
+  setupScrollAreaForLayout(smithLayout, smithTab, "smithScrollArea");
 }
 
 Qucs_S_SPAR_Viewer::~Qucs_S_SPAR_Viewer()
