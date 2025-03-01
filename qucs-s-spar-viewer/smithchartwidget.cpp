@@ -1,21 +1,110 @@
+/*
+ * SmithChartWidget - A Qt widget for displaying Smith charts
+ *
+ * Copyright (C) 2025 Andrés Martínez Mera
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ *
+ * Created with assistance from Claude AI (Anthropic, 2025)
+ */
+
 #include "smithchartwidget.h"
 #include <QDebug>
 #include <QToolTip>
 
-SmithChartWidget::SmithChartWidget(QWidget *parent) : QWidget(parent), z0(50.0), scaleFactor(1.0), panX(0.0), panY(0.0)
+SmithChartWidget::SmithChartWidget(QWidget *parent)
+    : QWidget(parent), z0(50.0), scaleFactor(1.0), panX(0.0), panY(0.0)
 {
   // Default characteristic impedance
   setAttribute(Qt::WA_Hover);
   setMouseTracking(true);
+
+  // Create a horizontal layout for the Z0 selector
+  QHBoxLayout *z0Layout = new QHBoxLayout();
+  z0Layout->setContentsMargins(5, 5, 5, 0); // Small margins
+  z0Layout->setAlignment(Qt::AlignLeft | Qt::AlignTop); // Align to top left
+
+  // Create the label
+  QLabel *z0Label = new QLabel("Z<sub>0</sub>", this);
+
+  // Create the Z0 combo box
+  m_Z0ComboBox = new QComboBox(this);
+  m_Z0ComboBox->addItem("50 Ω", 50.0);
+  m_Z0ComboBox->addItem("75 Ω", 75.0);
+
+  // Make the combo box smaller
+  m_Z0ComboBox->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+  m_Z0ComboBox->setFixedWidth(80); // Set a fixed width
+
+  // Set default value to 50 Ohm
+  m_Z0ComboBox->setCurrentIndex(0);
+  z0 = 50.0;
+
+  // Add widgets to the Z0 layout
+  z0Layout->addWidget(z0Label);
+  z0Layout->addWidget(m_Z0ComboBox);
+  z0Layout->addStretch(); // This pushes everything to the left
+
+  // Create the main layout for the widget
+  QVBoxLayout *mainLayout = new QVBoxLayout(this);
+  mainLayout->setContentsMargins(0, 0, 0, 0); // Minimize margins for more chart space
+
+  // Add the Z0 layout at the top
+  mainLayout->addLayout(z0Layout);
+
+  // Add a spacer that takes most of the vertical space
+  mainLayout->addStretch();
+
+  // Connect the signal
+  connect(m_Z0ComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged),
+          this, &SmithChartWidget::onZ0Changed);
+
+  setLayout(mainLayout);
 }
 
 SmithChartWidget::~SmithChartWidget()
 {
 }
 
+void SmithChartWidget::onZ0Changed(int index)
+{
+  // Get the selected Z0 value from the combo box
+  z0 = m_Z0ComboBox->itemData(index).toDouble();
 
-void SmithChartWidget::addTrace(const QString& name, const Trace& trace) {
+  // Update the chart
+  update();
+}
+
+void SmithChartWidget::addTrace(const QString& name, const Trace& trace)
+{
   traces[name] = trace;
+
+  // Check if this trace's Z0 is already in the combo box
+  bool found = false;
+  for (int i = 0; i < m_Z0ComboBox->count(); i++) {
+    if (qFuzzyCompare(m_Z0ComboBox->itemData(i).toDouble(), trace.Z0)) {
+      found = true;
+      break;
+    }
+  }
+
+  // If not found, add it as an option
+  if (!found) {
+    QString itemText = QString("%1 Ohm").arg(trace.Z0);
+    m_Z0ComboBox->addItem(itemText, trace.Z0);
+  }
+
   update(); // Trigger a repaint
 }
 
@@ -81,7 +170,7 @@ void SmithChartWidget::drawSmithChartGrid(QPainter *painter) {
          // Draw the real axis
   painter->drawLine(center - QPointF(radius, 0), center + QPointF(radius, 0));
 
-         // Draw constant resistance circles
+         // Draw constant resistance circles - use the current z0 for labels
   QVector<double> resistances = {0.2, 0.5, 1.0, 2.0, 5.0};
   painter->setPen(QPen(Qt::gray, 1));
   for (double r : resistances) {
@@ -90,14 +179,14 @@ void SmithChartWidget::drawSmithChartGrid(QPainter *painter) {
     QPointF circleCenter(center.x() + x, center.y());
     painter->drawEllipse(circleCenter, y, y);
 
-           //Paint label
+           //Paint label with actual impedance value based on Z0
     QPointF label_position(center.x() + x - y, center.y()-5);
     painter->setPen(QPen(Qt::black, 2));
-    painter->drawText(label_position, QString::number(r));
+    painter->drawText(label_position, QString::number(r * z0, 'f', 1));
     painter->setPen(QPen(Qt::gray, 1));
   }
 
-         // Draw constant reactance arcs
+         // Draw constant reactance arcs - use the current z0 for labels
   QVector<double> reactances = {0.2, 0.5, 1.0, 2.0, 5.0};
   for (double x : reactances) {
     drawReactanceArc(painter, center, radius, x);
@@ -106,6 +195,7 @@ void SmithChartWidget::drawSmithChartGrid(QPainter *painter) {
 
   painter->restore();
 }
+
 
 void SmithChartWidget::drawReactanceArc(QPainter *painter, const QPointF &center, double radius, double reactance) {
   painter->setPen(QPen(Qt::gray, 1));
@@ -179,7 +269,7 @@ void SmithChartWidget::drawReactanceArc(QPainter *painter, const QPointF &center
 
          // Draw labels
   painter->setPen(QPen(Qt::black, 2));
-  painter->drawText(labelPositionStart, QString::number(reactance));
+  painter->drawText(labelPositionStart, QString::number(reactance * z0, 'f', 1));
 
          // Calculate the direction from the center to the end point
   QPointF directionEnd = endPoint - center;
@@ -192,7 +282,7 @@ void SmithChartWidget::drawReactanceArc(QPainter *painter, const QPointF &center
   QPointF labelPositionEnd = center + directionEnd * (chartRadius * labelOffset);
 
          // Draw the reactance value near the end point
-  QString label = QString::number(reactance, 'g', 3);
+  QString label = QString::number(reactance * z0, 'f', 1);
   painter->drawText(labelPositionEnd, label);
 }
 

@@ -1,3 +1,24 @@
+/*
+ * SmithChartWidget - A Qt widget for displaying Smith charts
+ *
+ * Copyright (C) 2025 Andrés Martínez Mera
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ *
+ * Created with assistance from Claude AI (Anthropic, 2025)
+ */
+
 #ifndef SMITHCHARTWIDGET_H
 #define SMITHCHARTWIDGET_H
 
@@ -8,6 +29,9 @@
 #include <complex>
 #include <QPen>
 #include <QSet>
+#include <QComboBox>
+#include <QVBoxLayout>
+#include <QLabel>
 
 class Qucs_S_SPAR_Viewer; // Forward declaration
 
@@ -76,6 +100,14 @@ private:
   double scaleFactor;
   double panX;
   double panY;
+
+private slots:
+  void onZ0Changed(int index);
+
+private:
+  QComboBox *m_Z0ComboBox;
+  QVBoxLayout *m_layout;
+
 };
 
 #endif // SMITHCHARTWIDGET_H
