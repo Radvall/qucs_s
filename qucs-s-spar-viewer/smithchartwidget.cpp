@@ -63,8 +63,16 @@ SmithChartWidget::SmithChartWidget(QWidget *parent)
   z0Layout->addStretch(); // This pushes everything to the left
 
          // Create checkbox for admittance chart
-  m_ShowAdmittanceChartCheckBox = new QCheckBox("Admittance Chart", this);
+  m_ShowAdmittanceChartCheckBox = new QCheckBox("Y Chart", this);
   m_ShowAdmittanceChartCheckBox->setChecked(false);
+
+  // Create checkbox for constant curves display
+  m_ShowConstantCurvesCheckBox = new QCheckBox("Z Chart", this);
+  m_ShowConstantCurvesCheckBox->setChecked(true); // Checked by default
+  m_showConstantCurves = true; // Initialize to true
+
+  connect(m_ShowConstantCurvesCheckBox, &QCheckBox::stateChanged,
+          this, &SmithChartWidget::onShowConstantCurvesChanged);
 
          // Create the main layout for the widget
   QVBoxLayout *mainLayout = new QVBoxLayout(this);
@@ -75,6 +83,9 @@ SmithChartWidget::SmithChartWidget(QWidget *parent)
 
   // Add the admittance chart checkbox below the Z0 selector
   mainLayout->addWidget(m_ShowAdmittanceChartCheckBox);
+
+  // Add the checkbox below the admittance chart checkbox
+  mainLayout->addWidget(m_ShowConstantCurvesCheckBox);
 
          // Add a spacer that takes most of the vertical space
   mainLayout->addStretch();
@@ -171,42 +182,44 @@ void SmithChartWidget::mousePressEvent(QMouseEvent *event) {
 }
 
 void SmithChartWidget::drawSmithChartGrid(QPainter *painter) {
-  painter->save();
-  painter->setRenderHint(QPainter::Antialiasing, true);
+    painter->save();
+    painter->setRenderHint(QPainter::Antialiasing, true);
 
-         // Calculate the center and radius
-  QPointF center(width() / 2.0, height() / 2.0);
-  double radius = qMin(width(), height()) / 2.0 - 10;
+           // Calculate the center and radius
+    QPointF center(width() / 2.0, height() / 2.0);
+    double radius = qMin(width(), height()) / 2.0 - 10;
 
-         // Draw the outer circle (|Γ| = 1)
-  painter->setPen(QPen(Qt::black, 2));
-  painter->drawEllipse(center, radius, radius);
-
-         // Draw the real axis
-  painter->drawLine(center - QPointF(radius, 0), center + QPointF(radius, 0));
-
-         // Draw constant resistance circles - use the current z0 for labels
-  QVector<double> resistances = {0.2, 0.5, 1.0, 2.0, 5.0};
-  painter->setPen(QPen(Qt::gray, 1));
-  for (double r : resistances) {
-    double x = radius * r / (1 + r);
-    double y = radius / (1 + r);
-    QPointF circleCenter(center.x() + x, center.y());
-    painter->drawEllipse(circleCenter, y, y);
-
-           //Paint label with actual impedance value based on Z0
-    QPointF label_position(center.x() + x - y, center.y()-5);
+           // Draw the outer circle (|Γ| = 1)
     painter->setPen(QPen(Qt::black, 2));
-    painter->drawText(label_position, QString::number(r * z0, 'f', 1));
-    painter->setPen(QPen(Qt::gray, 1));
-  }
+    painter->drawEllipse(center, radius, radius);
 
-         // Draw constant reactance arcs - use the current z0 for labels
-  QVector<double> reactances = {0.2, 0.5, 1.0, 2.0, 5.0};
-  for (double x : reactances) {
-    drawReactanceArc(painter, center, radius, x);
-    drawReactanceArc(painter, center, radius, -x);
-  }
+           // Draw the real axis
+    painter->drawLine(center - QPointF(radius, 0), center + QPointF(radius, 0));
+
+           // Draw constant resistance circles - use the current z0 for labels
+    if (m_showConstantCurves) {
+      QVector<double> resistances = {0.2, 0.5, 1.0, 2.0, 5.0};
+      painter->setPen(QPen(Qt::gray, 1));
+      for (double r : resistances) {
+        double x = radius * r / (1 + r);
+        double y = radius / (1 + r);
+        QPointF circleCenter(center.x() + x, center.y());
+        painter->drawEllipse(circleCenter, y, y);
+
+               //Paint label with actual impedance value based on Z0
+        QPointF label_position(center.x() + x - y, center.y()-5);
+        painter->setPen(QPen(Qt::black, 2));
+        painter->drawText(label_position, QString::number(r * z0, 'f', 1));
+        painter->setPen(QPen(Qt::gray, 1));
+      }
+
+             // Draw constant reactance arcs - use the current z0 for labels
+      QVector<double> reactances = {0.2, 0.5, 1.0, 2.0, 5.0};
+      for (double x : reactances) {
+        drawReactanceArc(painter, center, radius, x);
+        drawReactanceArc(painter, center, radius, -x);
+      }
+    }
 
          // Draw the admittance chart if enabled
   if (m_showAdmittanceChart) {
@@ -760,5 +773,11 @@ QMap<QString, double> SmithChartWidget::getMarkers() const {
 void SmithChartWidget::onShowAdmittanceChartChanged(int state)
 {
   m_showAdmittanceChart = (state == Qt::Checked);
+  update(); // Trigger a repaint
+}
+
+void SmithChartWidget::onShowConstantCurvesChanged(int state)
+{
+  m_showConstantCurves = (state == Qt::Checked);
   update(); // Trigger a repaint
 }

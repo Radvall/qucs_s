@@ -106,11 +106,14 @@ private:
 
 private slots:
   void onZ0Changed(int index);
-  void onShowAdmittanceChartChanged(int state);
+  void onShowAdmittanceChartChanged(int);
+  void onShowConstantCurvesChanged(int);
 
 private:
   QComboBox *m_Z0ComboBox;
   QCheckBox *m_ShowAdmittanceChartCheckBox; // Checkbox for admittance chart
+  QCheckBox *m_ShowConstantCurvesCheckBox; // Checkbox for reactance/resistance curves
+  bool m_showConstantCurves; // Flag for curve display
   bool m_showAdmittanceChart; // Flag for admittance chart display
   QVBoxLayout *m_layout;
 
