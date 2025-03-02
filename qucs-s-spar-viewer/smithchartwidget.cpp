@@ -24,51 +24,60 @@
 #include <QToolTip>
 
 SmithChartWidget::SmithChartWidget(QWidget *parent)
-    : QWidget(parent), z0(50.0), scaleFactor(1.0), panX(0.0), panY(0.0)
+    : QWidget(parent), z0(50.0), scaleFactor(1.0), panX(0.0), panY(0.0), m_showAdmittanceChart(false)
 {
   // Default characteristic impedance
   setAttribute(Qt::WA_Hover);
   setMouseTracking(true);
 
-  // Create a horizontal layout for the Z0 selector
+         // Create a horizontal layout for the Z0 selector
   QHBoxLayout *z0Layout = new QHBoxLayout();
   z0Layout->setContentsMargins(5, 5, 5, 0); // Small margins
   z0Layout->setAlignment(Qt::AlignLeft | Qt::AlignTop); // Align to top left
 
-  // Create the label
+         // Create the label
   QLabel *z0Label = new QLabel("Z<sub>0</sub>", this);
 
-  // Create the Z0 combo box
+         // Create the Z0 combo box
   m_Z0ComboBox = new QComboBox(this);
   m_Z0ComboBox->addItem("50 Ω", 50.0);
   m_Z0ComboBox->addItem("75 Ω", 75.0);
 
-  // Make the combo box smaller
+         // Make the combo box smaller
   m_Z0ComboBox->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
   m_Z0ComboBox->setFixedWidth(80); // Set a fixed width
 
-  // Set default value to 50 Ohm
+         // Set default value to 50 Ohm
   m_Z0ComboBox->setCurrentIndex(0);
   z0 = 50.0;
 
-  // Add widgets to the Z0 layout
+         // Add widgets to the Z0 layout
   z0Layout->addWidget(z0Label);
   z0Layout->addWidget(m_Z0ComboBox);
   z0Layout->addStretch(); // This pushes everything to the left
 
-  // Create the main layout for the widget
+         // Create checkbox for admittance chart
+  m_ShowAdmittanceChartCheckBox = new QCheckBox("Admittance Chart", this);
+  m_ShowAdmittanceChartCheckBox->setChecked(false);
+
+         // Create the main layout for the widget
   QVBoxLayout *mainLayout = new QVBoxLayout(this);
   mainLayout->setContentsMargins(0, 0, 0, 0); // Minimize margins for more chart space
 
-  // Add the Z0 layout at the top
+         // Add the Z0 layout at the top
   mainLayout->addLayout(z0Layout);
 
-  // Add a spacer that takes most of the vertical space
+  // Add the admittance chart checkbox below the Z0 selector
+  mainLayout->addWidget(m_ShowAdmittanceChartCheckBox);
+
+         // Add a spacer that takes most of the vertical space
   mainLayout->addStretch();
 
-  // Connect the signal
+         // Connect the signals
   connect(m_Z0ComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged),
           this, &SmithChartWidget::onZ0Changed);
+  connect(m_ShowAdmittanceChartCheckBox, &QCheckBox::stateChanged,
+          this, &SmithChartWidget::onShowAdmittanceChartChanged);
 
   setLayout(mainLayout);
 }
@@ -193,9 +202,40 @@ void SmithChartWidget::drawSmithChartGrid(QPainter *painter) {
     drawReactanceArc(painter, center, radius, -x);
   }
 
+         // Draw the admittance chart if enabled
+  if (m_showAdmittanceChart) {
+    // Use red pen for admittance chart
+    QPen admittancePen(Qt::red, 1);
+    painter->setPen(admittancePen);
+
+           // Draw constant conductance circles (same math as resistance, just with
+           // different colors and on the other side of the chart)
+    QVector<double> conductances = {0.2, 0.5, 1.0, 2.0, 5.0};
+    for (double g : conductances) {
+      double x = -radius * g / (1 + g);  // Note the negative sign to mirror
+      double y = radius / (1 + g);
+      QPointF circleCenter(center.x() + x, center.y());
+      painter->drawEllipse(circleCenter, y, y);
+
+             // Paint label with actual admittance value based on Y0 = 1/Z0
+      QPointF label_position(center.x() + x + y/2, center.y()-5);
+      painter->setPen(QPen(Qt::red, 2));
+      painter->drawText(label_position, QString::number(g / z0, 'f', 3));
+      painter->setPen(admittancePen);
+    }
+
+           // Draw constant susceptance arcs
+    QVector<double> susceptances = {0.2, 0.5, 1.0, 2.0, 5.0};
+    for (double b : susceptances) {
+      // For admittance, we just negate the reactance to get susceptance arcs
+      // drawReactanceArc already handles positive/negative values
+      drawSusceptanceArc(painter, center, radius, b);
+      drawSusceptanceArc(painter, center, radius, -b);
+    }
+  }
+
   painter->restore();
 }
-
 
 void SmithChartWidget::drawReactanceArc(QPainter *painter, const QPointF &center, double radius, double reactance) {
   painter->setPen(QPen(Qt::gray, 1));
@@ -283,6 +323,97 @@ void SmithChartWidget::drawReactanceArc(QPainter *painter, const QPointF &center
 
          // Draw the reactance value near the end point
   QString label = QString::number(reactance * z0, 'f', 1);
+  painter->drawText(labelPositionEnd, label);
+}
+
+void SmithChartWidget::drawSusceptanceArc(QPainter *painter, const QPointF &center, double radius, double susceptance) {
+  QPen admittancePen(Qt::red, 1);
+  painter->setPen(admittancePen);
+
+  double b = susceptance;
+  double chartRadius = radius;
+
+         // Center coordinates in normalized form
+  double normalizedCenterX = -1.0;  // Negative for admittance chart
+  double normalizedCenterY = 1.0 / b;
+
+         // Circle radius in normalized form
+  double normalizedRadius = 1.0 / std::abs(b);
+
+         // Convert to widget coordinates
+  double centerX = center.x() + chartRadius * normalizedCenterX;
+  double centerY = center.y() - chartRadius * normalizedCenterY;
+  double arcRadius = chartRadius * normalizedRadius;
+
+  QRectF arcRect(
+      centerX - arcRadius,
+      centerY - arcRadius,
+      2 * arcRadius,
+      2 * arcRadius
+      );
+
+         // Calculate intersection with unit circle
+  double d2 = normalizedCenterX * normalizedCenterX + normalizedCenterY * normalizedCenterY;
+  double d = std::sqrt(d2);
+
+         // Calculate central angle using cosine law
+  double cos_theta = (d2 + normalizedRadius * normalizedRadius - 1.0) / (2.0 * d * normalizedRadius);
+  double theta = std::acos(cos_theta);
+
+         // Convert to degrees and calculate the arc angles
+  double base_angle = std::atan2(normalizedCenterY, normalizedCenterX) * 180.0 / M_PI;
+  double theta_deg = theta * 180.0 / M_PI;
+
+         // Calculate start and sweep angles
+  double startAngle, sweepAngle;
+  if (b > 0) {
+    startAngle = (base_angle - theta_deg) - 180;
+    sweepAngle = 2 * theta_deg;
+  } else {
+    startAngle = (base_angle + theta_deg) - 180;
+    sweepAngle = -2 * theta_deg;
+  }
+
+         // Draw the arc (Qt uses 16th of a degree)
+  painter->drawArc(arcRect, startAngle * 16, sweepAngle * 16);
+
+         // Variables to store the starting and ending points
+  QPointF startPoint, endPoint;
+
+         // Calculate the points
+  calculateArcPoints(arcRect, startAngle, sweepAngle, startPoint, endPoint);
+
+         // Draw points at start and end
+  painter->setPen(QPen(Qt::red, 4));
+  painter->drawPoint(startPoint);
+
+         // Calculate the direction from the center to the start point
+  QPointF directionStart = startPoint - center;
+  double directionLengthStart = std::sqrt(directionStart.x() * directionStart.x() + directionStart.y() * directionStart.y());
+
+         // Normalize the direction vector
+  directionStart /= directionLengthStart;
+
+         // Move the label outside the unit circle
+  double labelOffset = 1.02; // Scale factor to place the label outside the unit circle
+  QPointF labelPositionStart = center + directionStart * (chartRadius * labelOffset);
+
+         // Draw labels
+  painter->setPen(QPen(Qt::red, 2));
+  painter->drawText(labelPositionStart, QString::number(susceptance / z0, 'f', 3));
+
+         // Calculate the direction from the center to the end point
+  QPointF directionEnd = endPoint - center;
+  double directionLengthEnd = std::sqrt(directionEnd.x() * directionEnd.x() + directionEnd.y() * directionEnd.y());
+
+         // Normalize the direction vector
+  directionEnd /= directionLengthEnd;
+
+         // Move the label outside the unit circle
+  QPointF labelPositionEnd = center + directionEnd * (chartRadius * labelOffset);
+
+         // Draw the susceptance value near the end point
+  QString label = QString::number(susceptance / z0, 'f', 3);
   painter->drawText(labelPositionEnd, label);
 }
 
@@ -615,4 +746,11 @@ QMap<QString, double> SmithChartWidget::getMarkers() const {
   }
 
   return markerFrequencies;
+}
+
+
+void SmithChartWidget::onShowAdmittanceChartChanged(int state)
+{
+  m_showAdmittanceChart = (state == Qt::Checked);
+  update(); // Trigger a repaint
 }

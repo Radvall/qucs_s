@@ -32,6 +32,7 @@
 #include <QComboBox>
 #include <QVBoxLayout>
 #include <QLabel>
+#include <QCheckBox>
 
 class Qucs_S_SPAR_Viewer; // Forward declaration
 
@@ -80,7 +81,9 @@ protected:
 private:
   void drawSmithChartGrid(QPainter *painter);
   void drawReactanceArc(QPainter *painter, const QPointF &center, double radius, double reactance);
+  void drawSusceptanceArc(QPainter *painter, const QPointF &center, double radius, double susceptance);
   void plotImpedanceData(QPainter *painter);
+
   void drawMarkers(QPainter *painter);
   QPointF smithChartToWidget(const std::complex<double>& reflectionCoefficient);
   std::complex<double> widgetToSmithChart(const QPointF& widgetPoint);
@@ -103,9 +106,12 @@ private:
 
 private slots:
   void onZ0Changed(int index);
+  void onShowAdmittanceChartChanged(int state);
 
 private:
   QComboBox *m_Z0ComboBox;
+  QCheckBox *m_ShowAdmittanceChartCheckBox; // Checkbox for admittance chart
+  bool m_showAdmittanceChart; // Flag for admittance chart display
   QVBoxLayout *m_layout;
 
 };
