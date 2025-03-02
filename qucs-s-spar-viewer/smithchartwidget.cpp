@@ -30,6 +30,12 @@ SmithChartWidget::SmithChartWidget(QWidget *parent)
   setAttribute(Qt::WA_Hover);
   setMouseTracking(true);
 
+  // Set white background
+  setAutoFillBackground(true);
+  QPalette pal = palette();
+  pal.setColor(QPalette::Window, Qt::white);
+  setPalette(pal);
+
          // Create a horizontal layout for the Z0 selector
   QHBoxLayout *z0Layout = new QHBoxLayout();
   z0Layout->setContentsMargins(5, 5, 5, 0); // Small margins
