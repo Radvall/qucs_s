@@ -317,17 +317,18 @@ void SmithChartWidget::drawReactanceArc(QPainter *painter, const QPointF &center
   painter->setPen(QPen(Qt::black, 2));
   painter->drawText(labelPositionStart, QString::number(reactance * z0, 'f', 1));
 
-         // Calculate the direction from the center to the end point
+  // Calculate the direction from the center to the end point
   QPointF directionEnd = endPoint - center;
   double directionLengthEnd = std::sqrt(directionEnd.x() * directionEnd.x() + directionEnd.y() * directionEnd.y());
 
-         // Normalize the direction vector
+  // Normalize the direction vector
   directionEnd /= directionLengthEnd;
 
-         // Move the label outside the unit circle
+  // Move the label further OUTSIDE the unit circle
+  labelOffset = 1.12; // Increased from 1.05 to 1.12 for more distance from circle
   QPointF labelPositionEnd = center + directionEnd * (chartRadius * labelOffset);
 
-         // Draw the reactance value near the end point
+  // Draw the reactance value near the end point
   QString label = QString::number(reactance * z0, 'f', 1);
   painter->drawText(labelPositionEnd, label);
 }
@@ -408,17 +409,18 @@ void SmithChartWidget::drawSusceptanceArc(QPainter *painter, const QPointF &cent
   painter->setPen(QPen(Qt::red, 2));
   painter->drawText(labelPositionStart, QString::number(susceptance / z0, 'f', 3));
 
-         // Calculate the direction from the center to the end point
+  // Calculate the direction from the center to the end point
   QPointF directionEnd = endPoint - center;
   double directionLengthEnd = std::sqrt(directionEnd.x() * directionEnd.x() + directionEnd.y() * directionEnd.y());
 
-         // Normalize the direction vector
+  // Normalize the direction vector
   directionEnd /= directionLengthEnd;
 
-         // Move the label outside the unit circle
+  // Move the label INSIDE the unit circle
+  labelOffset = 0.95; // Scale factor to place the label inside the unit circle
   QPointF labelPositionEnd = center + directionEnd * (chartRadius * labelOffset);
 
-         // Draw the susceptance value near the end point
+  // Draw the susceptance value near the end point
   QString label = QString::number(susceptance / z0, 'f', 3);
   painter->drawText(labelPositionEnd, label);
 }
