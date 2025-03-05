@@ -153,13 +153,9 @@ Qucs_S_SPAR_Viewer::Qucs_S_SPAR_Viewer()
   vLayout_Files->setStretch(1, 1);
 
   // Chart settings
-  chart = new QChart;
-  chart->createDefaultAxes();
-  QChartView *chartView = new QChartView(chart);
-  chartView->setRenderHint(QPainter::Antialiasing);
-    setCentralWidget(nullptr);
+  m_rectangularPlotWidget = new RectangularPlotWidget(this);
   dockChart = new QDockWidget("Magnitude / Phase", this);
-  dockChart->setWidget(chartView);
+  dockChart->setWidget(m_rectangularPlotWidget);
   dockChart->setAllowedAreas(Qt::AllDockWidgetAreas);
   addDockWidget(Qt::LeftDockWidgetArea, dockChart);
 
@@ -1458,10 +1454,7 @@ void Qucs_S_SPAR_Viewer::addTrace(QString selected_dataset, QString selected_tra
     }
 
     // Add the series to the chart
-    chart->addSeries(series);
-
-    // Update the plot
-    updatePlot();
+    m_rectangularPlotWidget->addSeries(series);
 
   } else {
     if (selected_trace.contains("Smith")){
@@ -1580,6 +1573,7 @@ void Qucs_S_SPAR_Viewer::changeTraceColor()
 
                       // Set the modified pen back to the trace
                       smithChart->setTracePen(traceName, currentPen);
+
 
                     } else {
                       // Magnitude / Phase QChart
@@ -1956,6 +1950,10 @@ void Qucs_S_SPAR_Viewer::updateTraces_Smith_Chart(){
 }
 
 void Qucs_S_SPAR_Viewer::updateTraces_Magnitude_Phase_Plot(){
+  return;
+
+  // TO REMOVE THE CODE BELOW
+
   // Get the series
   QList<QAbstractSeries *> seriesList = chart->series();
 

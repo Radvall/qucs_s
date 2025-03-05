@@ -3,6 +3,7 @@
 
 #include "codeeditor.h"
 #include "smithchartwidget.h"
+#include "rectangularplotwidget.h"
 
 #include <QMainWindow>
 #include <QLabel>
@@ -184,6 +185,9 @@ protected:
   QList<QColor> default_colors;
   QList<QGraphicsItem*> textLabels;
   bool removeSeriesByName(QChart*, const QString&);
+
+  // Rectangular plot
+  RectangularPlotWidget *m_rectangularPlotWidget;
 
   // Smith Chart
   SmithChartWidget *smithChart;
