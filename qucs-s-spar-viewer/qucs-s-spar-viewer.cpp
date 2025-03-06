@@ -168,6 +168,7 @@ Qucs_S_SPAR_Viewer::Qucs_S_SPAR_Viewer()
   addDockWidget(Qt::LeftDockWidgetArea, dockSmithChart);
 
 
+
   // These are two maximum markers to find the lowest and the highest frequency in the data samples.
   // They are used to prevent the user from zooming out too much
   f_min = 1e20;
@@ -1453,8 +1454,17 @@ void Qucs_S_SPAR_Viewer::addTrace(QString selected_dataset, QString selected_tra
       series->attachAxis(yAxis); // Attach to left y-axis (magnitude)
     }
 
-    // Add the series to the chart
-    m_rectangularPlotWidget->addSeries(series);
+    QList<double> trace_data = datasets[selected_dataset][selected_trace];
+    QList<double> frequencies = datasets[selected_dataset]["frequency"];
+    double Z0 = datasets[selected_dataset]["Z0"].first();
+
+    // Add the trace to the chart
+    RectangularPlotWidget::Trace new_trace;
+    new_trace.trace = trace_data;
+    new_trace.frequencies = frequencies;
+    new_trace.pen = pen;
+    new_trace.Z0 = Z0;
+    m_rectangularPlotWidget->addTrace(trace_name, new_trace);
 
   } else {
     if (selected_trace.contains("Smith")){
@@ -1576,18 +1586,10 @@ void Qucs_S_SPAR_Viewer::changeTraceColor()
 
 
                     } else {
-                      // Magnitude / Phase QChart
-                      // Change the color of the series named based on its name
-                      const auto seriesList = chart->series();
-                      for (QAbstractSeries *s : seriesList) {
-                          QLineSeries *lineSeries = qobject_cast<QLineSeries*>(s);
-                          if (lineSeries && lineSeries->name() == trace_name) {
-                              QPen pen = lineSeries->pen();
-                              pen.setColor(color);
-                              lineSeries->setPen(pen);
-                              break;
-                          }
-                      }
+                      // Magnitude / Phase chart
+                      QPen currentPen = m_rectangularPlotWidget->getTracePen(trace_name);
+                      currentPen.setColor(color);
+                      m_rectangularPlotWidget->setTracePen(trace_name, currentPen);
                     }
                 }
             }
@@ -1597,8 +1599,6 @@ void Qucs_S_SPAR_Viewer::changeTraceColor()
 void Qucs_S_SPAR_Viewer::changeTraceLineStyle()
 {
     QComboBox *combo = qobject_cast<QComboBox*>(sender());
-    const auto seriesList = chart->series();
-
     QString ID = combo->objectName();
 
     int index_to_change_linestyle = -1;
@@ -1632,39 +1632,33 @@ void Qucs_S_SPAR_Viewer::changeTraceLineStyle()
         break;
     }
 
+
+    // Get the QPen of the trace from the corresponding display widget and update the width
+
     if (trace_name.endsWith("_Smith")) {
-      // Smith Chart widget
+      // Smith Chart
 
-             // Extract the base trace name (remove the "_Smith" suffix)
+      // Extract the base trace name (remove the "_Smith" suffix)
       QString traceName = trace_name.left(trace_name.length() - 6);
-
       QPen currentPen = smithChart->getTracePen(traceName);
 
-             // Update the color while preserving color and style
+       // Update the color while preserving color and style
       currentPen.setStyle(PenStyle);
 
-             // Set the modified pen back to the trace
+      // Set the modified pen back to the trace
       smithChart->setTracePen(traceName, currentPen);
 
     } else {
-      // Magnitude / Phase QChart
-      for (QAbstractSeries *s : seriesList) {
-          QLineSeries *lineSeries = qobject_cast<QLineSeries*>(s);
-          if (lineSeries && lineSeries->name() == trace_name) {
-              QPen pen = lineSeries->pen();
-              pen.setStyle(PenStyle);
-              lineSeries->setPen(pen);
-              break;
-          }
-      }
+      // Magnitude / Phase chart
+      QPen currentPen = m_rectangularPlotWidget->getTracePen(trace_name);
+      currentPen.setStyle(PenStyle);
+      m_rectangularPlotWidget->setTracePen(trace_name, currentPen);
     }
 }
 
 // This is the handler that is triggered when the user hits the button to change the line width of a given trace
-void Qucs_S_SPAR_Viewer::changeTraceWidth()
-{
+void Qucs_S_SPAR_Viewer::changeTraceWidth() {
   QSpinBox *spinbox = qobject_cast<QSpinBox*>(sender());
-  const auto seriesList = chart->series();
   QString ID = spinbox->objectName();
 
   int index_to_change_linestyle = -1;
@@ -1676,38 +1670,29 @@ void Qucs_S_SPAR_Viewer::changeTraceWidth()
   }
 
   int TraceWidth = spinbox->value();
+
+  // Get the trace name
   QLabel* label = List_TraceNames.at(index_to_change_linestyle);
   QString trace_name = label->text();
 
-  // Check if this is a Smith Chart trace (ends with "_Smith")
+  // Get the QPen of the trace from the corresponding display widget and update the width
   if (trace_name.endsWith("_Smith")) {
-    // Extract the base trace name (remove the "_Smith" suffix)
+    // Smith Chart
     QString traceName = trace_name.left(trace_name.length() - 6);
-
     QPen currentPen = smithChart->getTracePen(traceName);
-
-    // Update the width while preserving color and style
     currentPen.setWidth(TraceWidth);
-
-    // Set the modified pen back to the trace
     smithChart->setTracePen(traceName, currentPen);
-
   } else {
-    // Magnitude / Phase QChart series
-    for (QAbstractSeries *s : seriesList) {
-      QLineSeries *lineSeries = qobject_cast<QLineSeries*>(s);
-      if (lineSeries && lineSeries->name() == trace_name) {
-        QPen pen = lineSeries->pen();
-        pen.setWidth(TraceWidth);
-        lineSeries->setPen(pen);
-        break;
-      }
-    }
+    // Magnitude / Phase chart
+    QPen currentPen = m_rectangularPlotWidget->getTracePen(trace_name);
+    currentPen.setWidth(TraceWidth);
+    m_rectangularPlotWidget->setTracePen(trace_name, currentPen);
   }
 }
 
 void Qucs_S_SPAR_Viewer::updatePlot()
 {
+  return;
   if (lock_axis == false) {
     // Update axes
     update_X_axis();

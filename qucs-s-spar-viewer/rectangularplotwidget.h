@@ -19,10 +19,11 @@ class RectangularPlotWidget : public QWidget
 
 public:
   struct Trace {
-    QList<std::complex<double>> impedances;
+    QList<double> trace;
     QList<double> frequencies;
     QPen pen;
     double Z0;
+    int y_axis;
   };
 
   struct Marker {
@@ -46,27 +47,41 @@ public:
   void clearMarkers();
   QMap<QString, double> getMarkers() const;
 
-  QChart *chart() const { return m_chart; }
+  QChart *chart() const { return ChartWidget; }
 
 private slots:
   void updateXAxis();
+  void updateYAxis();  // New slot for left y-axis
+  void updateY2Axis(); // New slot for right y-axis
   void changeFreqUnits();
 
 private:
-  QChart *m_chart;
-  QChartView *m_chartView;
-  QValueAxis *m_xAxis;
-  QValueAxis *m_yAxis;
-  QValueAxis *m_y2Axis;
+  QChart *ChartWidget;
+  QChartView *chartView;
+  QValueAxis *xAxis;
+  QValueAxis *yAxis;
+  QValueAxis *y2Axis;
 
-  QDoubleSpinBox *m_xAxisMin;
-  QDoubleSpinBox *m_xAxisMax;
-  QDoubleSpinBox *m_xAxisDiv;
-  QComboBox *m_xAxisUnits;
+  QDoubleSpinBox *xAxisMin;
+  QDoubleSpinBox *xAxisMax;
+  QDoubleSpinBox *xAxisDiv;
+  QComboBox *xAxisUnits;
 
-  QStringList m_frequencyUnits;
-  double m_fMin;
-  double m_fMax;
+         // New controls for left y-axis
+  QDoubleSpinBox *yAxisMin;
+  QDoubleSpinBox *yAxisMax;
+  QDoubleSpinBox *yAxisDiv;
+  QLabel *yAxisUnits;
+
+         // New controls for right y-axis
+  QDoubleSpinBox *y2AxisMin;
+  QDoubleSpinBox *y2AxisMax;
+  QDoubleSpinBox *y2AxisDiv;
+  QLabel *y2AxisUnits;
+
+  QStringList frequencyUnits;
+  double fMin;
+  double fMax;
 
   QMap<QString, Trace> traces;
   QMap<QString, Marker> markers;
