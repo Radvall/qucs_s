@@ -53,53 +53,7 @@ Qucs_S_SPAR_Viewer::Qucs_S_SPAR_Viewer()
   setWindowIcon(QPixmap(":/bitmaps/big.qucs.xpm"));
   setWindowTitle("Qucs S-parameter Viewer " PACKAGE_VERSION);
 
-  QMenu *fileMenu = new QMenu(tr("&File"));
-
-  QAction *fileQuit = new QAction(tr("&Quit"), this);
-  fileQuit->setShortcut(QKeySequence::Quit);
-  connect(fileQuit, SIGNAL(triggered(bool)), SLOT(slotQuit()));
-
-  QAction *fileOpenSession = new QAction(tr("&Open session file"), this);
-  fileOpenSession->setShortcut(QKeySequence::Open);
-  connect(fileOpenSession, SIGNAL(triggered(bool)), SLOT(slotLoadSession()));
-
-  QAction *fileSaveAsSession = new QAction(tr("&Save session as ..."), this);
-  fileSaveAsSession->setShortcut(QKeySequence::SaveAs);
-  connect(fileSaveAsSession, SIGNAL(triggered(bool)), SLOT(slotSaveAs()));
-
-  QAction *fileSaveSession = new QAction(tr("&Save session"), this);
-  fileSaveSession->setShortcut(QKeySequence::Save);
-  connect(fileSaveSession, SIGNAL(triggered(bool)), SLOT(slotSave()));
-
-  fileMenu->addAction(fileOpenSession);
-  fileMenu->addAction(fileSaveSession);
-  fileMenu->addAction(fileSaveAsSession);
-
-  recentFilesMenu = fileMenu->addMenu("Recent Files");
-  connect(recentFilesMenu, &QMenu::aboutToShow, this, &Qucs_S_SPAR_Viewer::updateRecentFilesMenu);
-
-  fileMenu->addAction(fileQuit);
-
-  QMenu *helpMenu = new QMenu(tr("&Help"));
-
-  QAction *helpHelp = new QAction(tr("&Help"), this);
-  helpHelp->setShortcut(Qt::Key_F1);
-  helpMenu->addAction(helpHelp);
-  connect(helpHelp, SIGNAL(triggered(bool)), SLOT(slotHelpIntro()));
-
-  QAction *helpAbout = new QAction(tr("&About"), this);
-  helpMenu->addAction(helpAbout);
-  connect(helpAbout, SIGNAL(triggered(bool)), SLOT(slotHelpAbout()));
-
-  helpMenu->addSeparator();
-
-  QAction * helpAboutQt = new QAction(tr("About Qt..."), this);
-  helpMenu->addAction(helpAboutQt);
-  connect(helpAboutQt, SIGNAL(triggered(bool)), SLOT(slotHelpAboutQt()));
-
-  menuBar()->addMenu(fileMenu);
-  menuBar()->addSeparator();
-  menuBar()->addMenu(helpMenu);
+  CreateMenuBar();
 
   // Set frequency units
   frequency_units << "Hz" << "kHz" << "MHz" << "GHz";
@@ -173,131 +127,11 @@ Qucs_S_SPAR_Viewer::Qucs_S_SPAR_Viewer()
   // They are used to prevent the user from zooming out too much
   f_min = 1e20;
   f_max = -1;
-  y_min = 1e4;
-  y_max = -1e4;
 
   // Load default colors
   default_colors.append(QColor(Qt::red));
   default_colors.append(QColor(Qt::blue));
   default_colors.append(QColor(Qt::darkGreen));
-
-  // Right panel
-  QWidget * SettingsGroup = new QWidget();
-  QGridLayout * SettingsGrid = new QGridLayout(SettingsGroup);
-  SettingsGrid->setSpacing(5);
-  SettingsGrid->setColumnMinimumWidth(3, 20);
-
-  // First row (min, max, div)
-  QLabel *axis_min = new QLabel("<b>min</b>");
-  SettingsGrid->addWidget(axis_min, 0, 1, Qt::AlignCenter);
-
-  QLabel *axis_max = new QLabel("<b>max</b>");
-  SettingsGrid->addWidget(axis_max, 0, 2, Qt::AlignCenter);
-
-  QLabel *axis_div = new QLabel("<b>div</b>");
-  SettingsGrid->addWidget(axis_div, 0, 3, Qt::AlignCenter);
-
-  // x-axis
-  QLabel *x_axis = new QLabel("<b>x-axis</b>");
-  SettingsGrid->addWidget(x_axis, 1, 0);
-
-  QSpinBox_x_axis_min = new QDoubleSpinBox();
-  QSpinBox_x_axis_min->setMinimum(0.1);
-  QSpinBox_x_axis_min->setMaximum(1000000);
-  QSpinBox_x_axis_min->setValue(0);
-  QSpinBox_x_axis_min->setDecimals(1);
-  QSpinBox_x_axis_min->setSingleStep(0.1);
-  connect(QSpinBox_x_axis_min, SIGNAL(valueChanged(double)), SLOT(updatePlot()));
-  SettingsGrid->addWidget(QSpinBox_x_axis_min, 1, 1);
-
-  QSpinBox_x_axis_max = new QDoubleSpinBox();
-  QSpinBox_x_axis_max->setMinimum(0.1);
-  QSpinBox_x_axis_max->setMaximum(1000000);
-  QSpinBox_x_axis_max->setValue(1000);
-  QSpinBox_x_axis_max->setDecimals(1);
-  QSpinBox_x_axis_max->setSingleStep(0.1);
-  connect(QSpinBox_x_axis_max, SIGNAL(valueChanged(double)), SLOT(updatePlot()));
-  SettingsGrid->addWidget(QSpinBox_x_axis_max, 1, 2);
-
-  QSpinBox_x_axis_div = new QDoubleSpinBox();
-  QSpinBox_x_axis_div->setMinimum(0.1);
-  QSpinBox_x_axis_div->setMaximum(1000000);
-  QSpinBox_x_axis_div->setValue(100); // Default value
-  QSpinBox_x_axis_div->setSingleStep(1);
-  connect(QSpinBox_x_axis_div, SIGNAL(valueChanged(double)), SLOT(updatePlot()));
-  SettingsGrid->addWidget(QSpinBox_x_axis_div, 1, 3);
-
-  QCombobox_x_axis_units = new QComboBox();
-  QCombobox_x_axis_units->addItems(frequency_units);
-  QCombobox_x_axis_units->setCurrentIndex(2);
-  connect(QCombobox_x_axis_units, SIGNAL(currentIndexChanged(int)), SLOT(changeFreqUnits()));
-  SettingsGrid->addWidget(QCombobox_x_axis_units, 1, 4);
-
-  // y-axis
-  QLabel *y_axis = new QLabel("<b>y-axis</b>");
-  SettingsGrid->addWidget(y_axis, 2, 0);
-
-  QSpinBox_y_axis_min = new QDoubleSpinBox();
-  QSpinBox_y_axis_min->setMinimum(-150);
-  QSpinBox_y_axis_min->setValue(-50);
-  QSpinBox_y_axis_min->setDecimals(1);
-  connect(QSpinBox_y_axis_min, SIGNAL(valueChanged(double)), SLOT(updatePlot()));
-  SettingsGrid->addWidget(QSpinBox_y_axis_min, 2, 1);
-
-  QSpinBox_y_axis_max = new QDoubleSpinBox();
-  QSpinBox_y_axis_max->setMinimum(-150);
-  QSpinBox_y_axis_max->setValue(0);
-  QSpinBox_y_axis_max->setDecimals(1);
-  connect(QSpinBox_y_axis_max, SIGNAL(valueChanged(double)), SLOT(updatePlot()));
-  SettingsGrid->addWidget(QSpinBox_y_axis_max, 2, 2);
-
-  QSpinBox_y_axis_div = new QDoubleSpinBox();
-  QSpinBox_y_axis_div->setMinimum(0.1);
-  QSpinBox_y_axis_div->setMaximum(1000000);
-  QSpinBox_y_axis_div->setValue(10); // Default value
-  QSpinBox_y_axis_div->setSingleStep(0.1);
-  connect(QSpinBox_y_axis_div, SIGNAL(valueChanged(double)), SLOT(updatePlot()));
-  SettingsGrid->addWidget(QSpinBox_y_axis_div, 2, 3);
-
-  QLabel *y_axis_unit_label = new QLabel("<b>dB</b>");
-  SettingsGrid->addWidget(y_axis_unit_label, 2, 4);
-
-  // Right y-axis settings
-  QLabel *y2_axis = new QLabel("<b>y2-axis</b>");
-  SettingsGrid->addWidget(y2_axis, 3, 0);
-
-  QSpinBox_y2_axis_min = new QDoubleSpinBox();
-  QSpinBox_y2_axis_min->setMinimum(-180); // Phase ranges from -180 to 180 degrees
-  QSpinBox_y2_axis_min->setMaximum(180);
-  QSpinBox_y2_axis_min->setValue(-180);
-  SettingsGrid->addWidget(QSpinBox_y2_axis_min, 3, 1);
-
-  QSpinBox_y2_axis_max = new QDoubleSpinBox();
-  QSpinBox_y2_axis_max->setMinimum(-180);
-  QSpinBox_y2_axis_max->setMaximum(180);
-  QSpinBox_y2_axis_max->setValue(180);
-  SettingsGrid->addWidget(QSpinBox_y2_axis_max, 3, 2);
-
-  QSpinBox_y2_axis_div = new QDoubleSpinBox();
-  QSpinBox_y2_axis_div->setMinimum(1);
-  QSpinBox_y2_axis_div->setMaximum(90);
-  QSpinBox_y2_axis_div->setValue(45); // Default interval for phase
-  SettingsGrid->addWidget(QSpinBox_y2_axis_div, 3, 3);
-
-  QLabel *y2_axis_unit_label = new QLabel("<b>deg</b>");
-  SettingsGrid->addWidget(y2_axis_unit_label, 3, 4);
-
-  // Connect signals for right y-axis updates
-  connect(QSpinBox_y2_axis_min, SIGNAL(valueChanged(double)), SLOT(updatePlot()));
-  connect(QSpinBox_y2_axis_max, SIGNAL(valueChanged(double)), SLOT(updatePlot()));
-  connect(QSpinBox_y2_axis_div, SIGNAL(valueChanged(double)), SLOT(updatePlot()));
-
-  // Lock axis settings button
-  Lock_axis_settings_Button =  new QPushButton("Lock Axes");
-  connect(Lock_axis_settings_Button, SIGNAL(clicked(bool)), SLOT(lock_unlock_axis_settings()));
-  lock_axis = false;
-
-  SettingsGrid->addWidget(Lock_axis_settings_Button, 0, 4);
 
   QWidget * TracesGroup = new QWidget();
   QVBoxLayout *Traces_VBox = new QVBoxLayout(TracesGroup);
@@ -556,7 +390,6 @@ Qucs_S_SPAR_Viewer::Qucs_S_SPAR_Viewer()
   Notes_Widget = new CodeEditor();
 
   dockFiles = new QDockWidget("S-parameter files", this);
-  dockAxisSettings = new QDockWidget("Axis Settings", this);
   dockTracesList = new QDockWidget("Traces List", this);
   dockMarkers = new QDockWidget("Markers", this);
   dockLimits = new QDockWidget("Limits", this);
@@ -566,27 +399,23 @@ Qucs_S_SPAR_Viewer::Qucs_S_SPAR_Viewer()
   dockChart->setFeatures(dockChart->features() & ~QDockWidget::DockWidgetClosable);
   dockSmithChart->setFeatures(dockSmithChart->features() & ~QDockWidget::DockWidgetClosable);
   dockFiles->setFeatures(dockFiles->features() & ~QDockWidget::DockWidgetClosable);
-  dockAxisSettings->setFeatures(dockAxisSettings->features() & ~QDockWidget::DockWidgetClosable);
   dockTracesList->setFeatures(dockTracesList->features() & ~QDockWidget::DockWidgetClosable);
   dockMarkers->setFeatures(dockMarkers->features() & ~QDockWidget::DockWidgetClosable);
   dockLimits->setFeatures(dockLimits->features() & ~QDockWidget::DockWidgetClosable);
   dockNotes->setFeatures(dockLimits->features() & ~QDockWidget::DockWidgetClosable);
 
-  dockAxisSettings->setWidget(SettingsGroup);
-  dockTracesList->setWidget(TracesGroup);
   dockFiles->setWidget(FilesGroup);
+  dockTracesList->setWidget(TracesGroup);
   dockMarkers->setWidget(MarkersGroup);
   dockLimits->setWidget(LimitsGroup);
   dockNotes->setWidget(Notes_Widget);
 
-  addDockWidget(Qt::RightDockWidgetArea, dockAxisSettings);
   addDockWidget(Qt::RightDockWidgetArea, dockTracesList);
   addDockWidget(Qt::RightDockWidgetArea, dockFiles);
   addDockWidget(Qt::RightDockWidgetArea, dockMarkers);
   addDockWidget(Qt::RightDockWidgetArea, dockLimits);
   addDockWidget(Qt::RightDockWidgetArea, dockNotes);
 
-  splitDockWidget(dockTracesList, dockAxisSettings, Qt::Vertical);
   tabifyDockWidget(dockFiles, dockTracesList);
   tabifyDockWidget(dockTracesList, dockMarkers);
   tabifyDockWidget(dockMarkers, dockLimits);
@@ -596,12 +425,58 @@ Qucs_S_SPAR_Viewer::Qucs_S_SPAR_Viewer()
   dockChart->raise();
   setDockNestingEnabled(true);
 
-  // Set the height of the axis settings widget to its minimum. This makes the layout much clearer
-  int minHeight = dockAxisSettings->minimumSizeHint().height();
-  dockAxisSettings->setFixedHeight(minHeight);
-
   setAcceptDrops(true);//Enable drag and drop feature to open files
   loadRecentFiles();// Load "Recent Files" list
+}
+
+
+void Qucs_S_SPAR_Viewer::CreateMenuBar(){
+  QMenu *fileMenu = new QMenu(tr("&File"));
+
+  QAction *fileQuit = new QAction(tr("&Quit"), this);
+  fileQuit->setShortcut(QKeySequence::Quit);
+  connect(fileQuit, SIGNAL(triggered(bool)), SLOT(slotQuit()));
+
+  QAction *fileOpenSession = new QAction(tr("&Open session file"), this);
+  fileOpenSession->setShortcut(QKeySequence::Open);
+  connect(fileOpenSession, SIGNAL(triggered(bool)), SLOT(slotLoadSession()));
+
+  QAction *fileSaveAsSession = new QAction(tr("&Save session as ..."), this);
+  fileSaveAsSession->setShortcut(QKeySequence::SaveAs);
+  connect(fileSaveAsSession, SIGNAL(triggered(bool)), SLOT(slotSaveAs()));
+
+  QAction *fileSaveSession = new QAction(tr("&Save session"), this);
+  fileSaveSession->setShortcut(QKeySequence::Save);
+  connect(fileSaveSession, SIGNAL(triggered(bool)), SLOT(slotSave()));
+
+  recentFilesMenu = fileMenu->addMenu("Recent Files");
+  connect(recentFilesMenu, &QMenu::aboutToShow, this, &Qucs_S_SPAR_Viewer::updateRecentFilesMenu);
+
+  fileMenu->addAction(fileOpenSession);
+  fileMenu->addAction(fileSaveSession);
+  fileMenu->addAction(fileSaveAsSession);
+  fileMenu->addAction(fileQuit);
+
+  QMenu *helpMenu = new QMenu(tr("&Help"));
+
+  QAction *helpHelp = new QAction(tr("&Help"), this);
+  helpHelp->setShortcut(Qt::Key_F1);
+  helpMenu->addAction(helpHelp);
+  connect(helpHelp, SIGNAL(triggered(bool)), SLOT(slotHelpIntro()));
+
+  QAction *helpAbout = new QAction(tr("&About"), this);
+  helpMenu->addAction(helpAbout);
+  connect(helpAbout, SIGNAL(triggered(bool)), SLOT(slotHelpAbout()));
+
+  helpMenu->addSeparator();
+
+  QAction * helpAboutQt = new QAction(tr("About Qt..."), this);
+  helpMenu->addAction(helpAboutQt);
+  connect(helpAboutQt, SIGNAL(triggered(bool)), SLOT(slotHelpAboutQt()));
+
+  menuBar()->addMenu(fileMenu);
+  menuBar()->addSeparator();
+  menuBar()->addMenu(helpMenu);
 }
 
 void Qucs_S_SPAR_Viewer::setupScrollAreaForLayout(QGridLayout* &layout, QWidget* parentTab, const QString &objectName)
@@ -730,8 +605,6 @@ void Qucs_S_SPAR_Viewer::addFiles(QStringList fileNames)
         // Reset limits
         this->f_max = -1;
         this->f_min = 1e30;
-        this->y_min = 1e30;
-        this->y_max = -1e30;
     }
 
 
@@ -963,10 +836,6 @@ void Qucs_S_SPAR_Viewer::addFiles(QStringList fileNames)
     // Default behavior: If there's no more data loaded and a single S1P file is selected, then automatically plot S11
     if ((fileNames.length() == 1) && (fileNames.first().toLower().endsWith(".s1p")) && (datasets.size() == 1)){
         this->addTrace(filename, QStringLiteral("S11_dB"), Qt::red);
-
-        adjust_x_axis_to_file(filename);
-        adjust_y_axis_to_trace(filename, "S11_dB");
-
         this->addTrace(filename, QStringLiteral("S11_Smith"), Qt::darkBlue);
     }
 
@@ -978,11 +847,6 @@ void Qucs_S_SPAR_Viewer::addFiles(QStringList fileNames)
 
         this->addTrace(filename, QStringLiteral("S11_Smith"), Qt::darkBlue);
         this->addTrace(filename, QStringLiteral("S22_Smith"), Qt::darkGreen);
-
-
-        adjust_x_axis_to_file(filename);
-        adjust_y_axis_to_trace(filename, "S11_dB");
-        adjust_y_axis_to_trace(filename, "S21_dB");
     }
 
     // Default behaviour: When adding multiple S2P file, then show the S21 of all traces
@@ -1002,11 +866,7 @@ void Qucs_S_SPAR_Viewer::addFiles(QStringList fileNames)
                 // Pick a random color
                 QColor trace_color = QColor(QRandomGenerator::global()->bounded(256), QRandomGenerator::global()->bounded(256), QRandomGenerator::global()->bounded(256));
                 this->addTrace(filename, QStringLiteral("S21_dB"), trace_color);
-                adjust_y_axis_to_trace(filename, "S21_dB");
             }
-            // Update the frequency setting to fit the last s2p file
-            adjust_x_axis_to_file(filename);
-
         }
     }
 
@@ -1203,16 +1063,10 @@ void Qucs_S_SPAR_Viewer::removeTrace(int index_to_delete)
       return;
     } else {
       // Magnitude and phase plot
-      removeSeriesByName(chart, trace_name);
 
       // Update the chart limits.
       this->f_max = -1;
       this->f_min = 1e30;
-
-      QStringList files = datasets.keys();
-      for (int i = 0; i < files.size(); i++){
-        adjust_x_axis_to_file(files[i]);
-      }
 
       updateGridLayout(TracesGrid);
     }
@@ -1260,25 +1114,6 @@ void Qucs_S_SPAR_Viewer::convert_MA_RI_to_dB(double * S_1, double * S_2, double 
     *S_2 = S_ang;
     *S_3 = S_re;
     *S_4 = S_im;
-}
-
-// Gets the frequency scale unit from a String lke kHz, MHz, GHz
-double Qucs_S_SPAR_Viewer::getFreqScale()
-{
-    QString frequency_unit = QCombobox_x_axis_units->currentText();
-    double freq_scale=1;
-    if (frequency_unit == "kHz"){
-        freq_scale = 1e-3;
-    } else {
-        if (frequency_unit == "MHz"){
-            freq_scale = 1e-6;
-        } else {
-            if (frequency_unit == "GHz"){
-                freq_scale = 1e-9;
-            }
-        }
-    }
-    return freq_scale;
 }
 
 // Gets the frequency scale unit from a String lke kHz, MHz, GHz
@@ -1443,17 +1278,6 @@ void Qucs_S_SPAR_Viewer::addTrace(QString selected_dataset, QString selected_tra
 
   if (selected_trace.contains("dB") || selected_trace.contains("ang")){
     // Magnitude / Phase rectangular diagram
-    // Attach the series to the appropriate axis
-    if (selected_trace.endsWith("_ang")) {
-      // Attach phase traces to the right y-axis
-      series->attachAxis(xAxis); // Attach to x-axis (frequency)
-      series->attachAxis(y2Axis); // Attach to right y-axis (phase)
-    } else {
-      // Attach magnitude traces to the left y-axis
-      series->attachAxis(xAxis); // Attach to x-axis (frequency)
-      series->attachAxis(yAxis); // Attach to left y-axis (magnitude)
-    }
-
     QList<double> trace_data = datasets[selected_dataset][selected_trace];
     QList<double> frequencies = datasets[selected_dataset]["frequency"];
     double Z0 = datasets[selected_dataset]["Z0"].first();
@@ -1690,529 +1514,6 @@ void Qucs_S_SPAR_Viewer::changeTraceWidth() {
   }
 }
 
-void Qucs_S_SPAR_Viewer::updatePlot()
-{
-  return;
-  if (lock_axis == false) {
-    // Update axes
-    update_X_axis();
-    update_Y_axis();
-    update_Y2_axis();
-  }
-
-         // Trim the traces according to the new settings
-  updateTraces();
-  updateMarkerTable();
-
-         // Reattach all series to the correct axes
-  const auto seriesList = chart->series();
-  for (QAbstractSeries *series : seriesList) {
-    // Detach the series from all axes first
-    for (QAbstractAxis *axis : series->attachedAxes()) {
-      series->detachAxis(axis);
-    }
-    qDebug() << series->name();
-           // Reattach the series to the correct axes
-    if (series->name().endsWith("_ang")) {
-      // Attach phase traces to the right y-axis
-      series->attachAxis(xAxis); // Attach to x-axis (frequency)
-      series->attachAxis(y2Axis); // Attach to right y-axis (phase)
-    } else {
-      // Attach magnitude traces to the left y-axis
-      series->attachAxis(xAxis); // Attach to x-axis (frequency)
-      series->attachAxis(yAxis); // Attach to left y-axis (magnitude)
-    }
-  }
-
-   // Update the chart
-  chart->update();
-}
-
-// This is the handler that updates the x-axis when the x-axis QSpinBoxes change their value
-void Qucs_S_SPAR_Viewer::update_X_axis()
-{
-    // Get the user limits
-    double x_min = QSpinBox_x_axis_min->value();
-    double x_max = QSpinBox_x_axis_max->value();
-    double x_div = QSpinBox_x_axis_div->value();
-
-    // Update spinbox limits
-    disconnect(QSpinBox_x_axis_max, SIGNAL(valueChanged(double)), this, SLOT(updatePlot())); // Needed to avoid duplicating the call to the update function
-    disconnect(QSpinBox_x_axis_min, SIGNAL(valueChanged(double)), this, SLOT(updatePlot())); // Needed to avoid duplicating the call to the update function
-    QSpinBox_x_axis_min->setMaximum(x_max);
-    QSpinBox_x_axis_max->setMinimum(x_min);
-    connect(QSpinBox_x_axis_min, SIGNAL(valueChanged(double)), SLOT(updatePlot()));
-    connect(QSpinBox_x_axis_max, SIGNAL(valueChanged(double)), SLOT(updatePlot()));
-
-    // Remove the axis in order to build a new one later
-    if (xAxis != NULL) {
-        chart->removeAxis(xAxis);
-    }
-
-    // x-axis settings
-    xAxis = new QValueAxis();
-    xAxis->setRange(x_min, x_max);  // Set the range of the axis
-    xAxis->setTickInterval(x_div);  // Set the interval between ticks
-    xAxis->setTickCount(floor((x_max-x_min)/x_div)+1);
-    xAxis->setTitleText("frequency (" + QCombobox_x_axis_units->currentText() + ")");
-
-    // Add the axis to the chart
-    chart->addAxis(xAxis, Qt::AlignBottom);
-    chart->legend()->hide();
-}
-
-// This is the handler that updates the y-axis when the y-axis QSpinBoxes change their value
-void Qucs_S_SPAR_Viewer::update_Y_axis()
-{
-    // y-axis
-    double y_min = QSpinBox_y_axis_min->value();
-    double y_max = QSpinBox_y_axis_max->value();
-    double y_div = QSpinBox_y_axis_div->value();
-
-    // Update spinbox limits
-    disconnect(QSpinBox_y_axis_max, SIGNAL(valueChanged(double)), this, SLOT(updatePlot())); // Needed to avoid duplicating the call to the update function
-    disconnect(QSpinBox_y_axis_min, SIGNAL(valueChanged(double)), this, SLOT(updatePlot())); // Needed to avoid duplicating the call to the update function
-    QSpinBox_y_axis_min->setMaximum(y_max);
-    QSpinBox_y_axis_max->setMinimum(y_min);
-    connect(QSpinBox_y_axis_min, SIGNAL(valueChanged(double)), SLOT(updatePlot()));
-    connect(QSpinBox_y_axis_max, SIGNAL(valueChanged(double)), SLOT(updatePlot()));
-
-    if (yAxis != NULL){
-        chart->removeAxis(yAxis);
-    }
-
-    // y-axis settings
-    yAxis = new QValueAxis();
-    yAxis->setRange(y_min, y_max);  // Set the range of the axis
-    yAxis->setTickInterval(y_div);  // Set the interval between ticks
-    yAxis->setTickCount(floor((y_max-y_min)/y_div)+1);
-    yAxis->setTitleText("S (dB)");
-
-    // Add the axis to the chart
-    chart->addAxis(yAxis, Qt::AlignLeft);
-}
-
-
-void Qucs_S_SPAR_Viewer::update_Y2_axis()
-{
-  // y2-axis (phase)
-  double y2_min = QSpinBox_y2_axis_min->value();
-  double y2_max = QSpinBox_y2_axis_max->value();
-  double y2_div = QSpinBox_y2_axis_div->value();
-
-  // Remove the existing y2-axis if it exists
-  if (y2Axis != NULL) {
-    chart->removeAxis(y2Axis);
-  }
-
-  // Create a new y2-axis
-  y2Axis = new QValueAxis();
-  y2Axis->setRange(y2_min, y2_max);  // Set the range of the axis
-  y2Axis->setTitleText("Phase (deg)");
-
-  // Calculate the exact tick positions
-  QList<double> tickPositions;
-  for (double tick = y2_min; tick <= y2_max; tick += y2_div) {
-    tickPositions.append(tick);
-  }
-
-  // Set the tick positions explicitly
-  y2Axis->setTickCount(tickPositions.size());
-  y2Axis->setTickAnchor(y2_min);
-  y2Axis->setTickInterval(y2_div);
-
-         // Add the axis to the chart
-  chart->addAxis(y2Axis, Qt::AlignRight);
-
-         // Attach phase traces to the right y-axis
-  const auto seriesList = chart->series();
-  for (QAbstractSeries *series : seriesList) {
-    // qDebug() << series->name();
-    if (series->name().endsWith("_ang")) {
-      // Attach phase traces to the right y-axis
-      series->attachAxis(xAxis); // Attach to x-axis (frequency)
-      series->attachAxis(y2Axis); // Attach to right y-axis (phase)
-    } else {
-      // Attach magnitude traces to the left y-axis
-      series->attachAxis(xAxis); // Attach to x-axis (frequency)
-      series->attachAxis(yAxis); // Attach to left y-axis (magnitude)
-    }
-  }
-}
-
-
-// Each time the x-axis or the y-axis settings change, the traces need to be realigned with respect to
-// the new axis. Otherwise, the trace is show as it was with the initial axis settings, without any kind of rescaling
-void Qucs_S_SPAR_Viewer::updateTraces()
-{
-  updateTraces_Magnitude_Phase_Plot();
-  updateTraces_Smith_Chart();
-}
-
-void Qucs_S_SPAR_Viewer::updateTraces_Smith_Chart(){
-
-  // User settings
-  double freq_scale = getFreqScale();
-  double x_axis_min = QSpinBox_x_axis_min->value()/freq_scale;
-  double x_axis_max = QSpinBox_x_axis_max->value()/freq_scale;
-
-  // Get the names of the traces displayed in the Smith chart
-  QMap<QString, QPen> tracesInfo = smithChart->getTracesInfo();
-
-  // Remove all series
-  smithChart->clearTraces();
-
-  // Go through the list of Smith Chart traces and add them
-
-  for (auto it = tracesInfo.constBegin(); it != tracesInfo.constEnd(); ++it) {
-
-    const QString &trace_name = it.key();
-    const QPen &pen = it.value();
-
-    qDebug() << "Trace name:" << trace_name;
-
-    // The trace name has the following format: dataset.trace. The code below separates these fields
-    QStringList trace_name_parts = {
-        trace_name.section('.', 0, -2),
-        trace_name.section('.', -1)
-    };
-
-    QString data_file = trace_name_parts[0];
-    QString trace_file = trace_name_parts[1];
-
-    // Check the limits of the data in the dataset in order to see if the new settings given by the user
-    // exceed the limits of the available data
-    qreal minX_trace, maxX_trace, minY_trace, maxY_trace;
-    QString dummy_trace = trace_file + QString("_re"); // It just need a trace for getting the frequency limits
-    getMinMaxValues(data_file, dummy_trace, minX_trace, maxX_trace, minY_trace, maxY_trace);
-
-           // Find the closest indices to the minimum and the maximum given by the user
-    int minIndex = findClosestIndex(datasets[data_file]["frequency"], x_axis_min);
-    int maxIndex = findClosestIndex(datasets[data_file]["frequency"], x_axis_max);
-
-    QList<double> freq_trimmed = datasets[data_file]["frequency"].mid(minIndex, maxIndex - minIndex + 1);
-
-    QList<double> sii_re = datasets[data_file][trace_file + QString("_re")].mid(minIndex, maxIndex - minIndex + 1);
-    QList<double> sii_im = datasets[data_file][trace_file + QString("_im")].mid(minIndex, maxIndex - minIndex + 1);
-
-    double Z0 = datasets[data_file]["Z0"].first();
-    QList<std::complex<double>> impedances;
-
-    for (int i = 0; i < freq_trimmed.size(); i++) {
-      std::complex<double> sii(sii_re[i], sii_im[i]);
-      std::complex<double> gamma = sii; // Reflection coefficient
-      std::complex<double> impedance = Z0 * (1.0 + gamma) / (1.0 - gamma); // Convert to impedance
-      impedances.push_back(impedance);
-    }
-
-
-    // Add trace
-    SmithChartWidget::Trace new_trace;
-    new_trace.impedances = impedances;
-    new_trace.frequencies = freq_trimmed;
-    new_trace.pen = pen;
-    new_trace.Z0 = Z0;
-
-    smithChart->addTrace(trace_name, new_trace);
-  }
-
-  // Clear markers
-  smithChart->clearMarkers();
-  // Add marker traces from the marker table
-  for (int r = 0; r<tableMarkers->rowCount(); r++){//Marker
-
-    if (tableMarkers->item(r,0) == nullptr) break; // Check if there are data attached to the table
-
-    QString text = tableMarkers->item(r,0)->text();
-    QStringList parts = text.split(' ');
-    QString freq = parts[0];
-    QString freq_scale = parts[1];
-    double x = freq.toDouble()/getFreqScale(freq_scale);
-
-    QString marker_ID = QStringLiteral("Mkr%1").arg(r+1);
-    smithChart->addMarker(marker_ID, x);
-  }
-}
-
-void Qucs_S_SPAR_Viewer::updateTraces_Magnitude_Phase_Plot(){
-  return;
-
-  // TO REMOVE THE CODE BELOW
-
-  // Get the series
-  QList<QAbstractSeries *> seriesList = chart->series();
-
-         // Remove series from the chart
-  for (QAbstractSeries *series : qAsConst(seriesList)) {
-    chart->removeSeries(series);
-  }
-
-         // Remove all custom labels
-  for (QGraphicsItem* label : textLabels) {
-    chart->scene()->removeItem(label);
-    delete label;
-  }
-  textLabels.clear();
-
-  double freq_scale = getFreqScale();
-
-         // User settings
-  double x_axis_min = QSpinBox_x_axis_min->value()/freq_scale;
-  double x_axis_max = QSpinBox_x_axis_max->value()/freq_scale;
-
-  double y_axis_min = QSpinBox_y_axis_min->value();
-  double y_axis_max = QSpinBox_y_axis_max->value();
-
-  double y2_axis_min = QSpinBox_y2_axis_min->value();
-  double y2_axis_max = QSpinBox_y2_axis_max->value();
-
-         // Remove marker and limit traces
-         // Iterate through the series list
-  QList<QAbstractSeries *> seriesToRemove;
-  for (QAbstractSeries *series : qAsConst(seriesList)) {
-    //qDebug() << series->name();
-    if (series->name().startsWith("Mkr", Qt::CaseInsensitive)) {
-      seriesToRemove.append(series);
-    }
-    if (series->name().startsWith("Limit", Qt::CaseInsensitive)) {
-      seriesToRemove.append(series);
-    }
-  }
-  for (QAbstractSeries *series : qAsConst(seriesToRemove)) {
-    seriesList.removeOne(series);
-
-           // If the series is added to a chart, remove it from the chart as well
-    if (series->chart()) {
-      series->chart()->removeSeries(series);
-    }
-
-           // Delete the series object to free memory
-    delete series;
-  }
-
-         // Iterate over all the traces and, if needed:
-         // 1) Find if the data in the dataset can cover the new frequency span
-         // 2) If so, trim the trace according to the new limits
-         // 3) If not, add extra padding
-
-  for (QAbstractSeries *series : qAsConst(seriesList)) {
-    QString trace_name = series->name();
-    qreal minX_trace, maxX_trace, minY_trace, maxY_trace;
-
-    QStringList trace_name_parts = {
-        trace_name.section('.', 0, -2),
-        trace_name.section('.', -1)
-    };
-    QString data_file = trace_name_parts[0];
-    QString trace_file = trace_name_parts[1];
-
-    if (trace_file == QStringLiteral("|%1|").arg(QChar(0x0394))){
-      trace_file = "delta";
-    }
-    if (trace_file == QStringLiteral("%1%2").arg(QChar(0x03BC)).arg(QChar(0x209B))){
-      trace_file = "mu";
-    }
-    if (trace_file == QStringLiteral("%1%2").arg(QChar(0x03BC)).arg(QChar(0x209A))){
-      trace_file = "mu_p";
-    }
-
-           // Check if the trace is empty or not. If empty, it is because the user wants to see K, mu, mu_p, etc. and
-           // these traces are not calculated at the file load.
-    if (datasets[data_file][trace_file].isEmpty()){
-      calculate_Sparameter_trace(data_file, trace_file);
-    }
-
-           // Check the limits of the data in the dataset in order to see if the new settings given by the user
-           // exceed the limits of the available data
-    getMinMaxValues(data_file, trace_file, minX_trace, maxX_trace, minY_trace, maxY_trace);
-
-           // Find the closest indices to the minimum and the maximum given by the user
-    int minIndex = findClosestIndex(datasets[data_file]["frequency"], x_axis_min);
-    int maxIndex = findClosestIndex(datasets[data_file]["frequency"], x_axis_max);
-
-    QList<double> freq_trimmed = datasets[data_file]["frequency"].mid(minIndex, maxIndex - minIndex + 1);
-    std::transform(freq_trimmed.begin(), freq_trimmed.end(), freq_trimmed.begin(),
-                   [freq_scale](double value) { return value * freq_scale; });
-
-    QList<double> data_trimmed = datasets[data_file][trace_file].mid(minIndex, maxIndex - minIndex + 1);
-
-           // Get the series data
-    QXYSeries *xySeries = qobject_cast<QXYSeries*>(series);
-    xySeries->clear(); // Remove its data
-
-           // Select the proper y-axis clipping limits depending on wheter the trace is phase (right y-axis) or magnitude (left y-axis)
-    double y_min, y_max;
-    if (trace_file.contains("_ang")){
-      // Choose the right y-axis limits
-      y_min = y2_axis_min;
-      y_max = y2_axis_max;
-    } else {
-      // Choose the left y-axis limits
-      y_min = y_axis_min;
-      y_max = y_axis_max;
-    }
-
-           // Apply clipping if the data exceeds the lower/upper limits
-    for (int i = 0; i < freq_trimmed.size(); i++) {
-      double y_value = data_trimmed[i];
-
-             // Data exceeds the upper limit
-      if (y_value > y_max){
-        y_value = y_max;
-      }
-
-             // Data exceeds the lower limit
-      if (y_value < y_min){
-        y_value = y_min;
-      }
-
-             // Add (clipped) data to the series
-      xySeries->append(QPointF(freq_trimmed[i], y_value));
-    }
-
-  }
-
-  // Add marker traces. One per trace
-  for (int c = 1; c<tableMarkers->columnCount(); c++){//Traces
-    QScatterSeries *marker_series = new QScatterSeries();
-    marker_series->setMarkerShape(QScatterSeries::MarkerShapeCircle);
-    marker_series->setMarkerSize(10);
-    marker_series->setColor(Qt::black);
-
-    for (int r = 0; r<tableMarkers->rowCount(); r++){//Marker
-      QString y_val = tableMarkers->item(r,c)->text();
-      QString text = tableMarkers->item(r,0)->text();
-      QStringList parts = text.split(' ');
-      QString freq = parts[0];
-      QString freq_scale = parts[1];
-      double x = freq.toDouble()/getFreqScale(freq_scale);
-      x *= getFreqScale();// Normalize x with respect to the axis scale
-      double y = y_val.toDouble();
-      marker_series->append(x, y);
-    }
-    QString trace_name = tableMarkers->horizontalHeaderItem(c)->text();
-    QString marker_series_name = QStringLiteral("Mkr_%1").arg(trace_name);
-    marker_series->setName(marker_series_name);
-    seriesList.append(marker_series);
-  }
-
-  // Add the marker vertical bar
-  int n_rows = tableMarkers->rowCount();
-  int n_cols = tableMarkers->columnCount();
-  if (n_cols > 1){
-    for (int r = 0; r<n_rows; r++){//Marker
-      QString text = tableMarkers->item(r,0)->text();
-      QStringList parts = text.split(' ');
-      QString freq = parts[0];
-      QString freq_scale = parts[1];
-      double x = freq.toDouble()/getFreqScale(freq_scale);
-      x *= getFreqScale();// Normalize x with respect to the axis scale
-      QLineSeries *verticalLine = new QLineSeries();
-      verticalLine->append(x, y_axis_min);
-      verticalLine->append(x, y_axis_max);
-      verticalLine->setPen(QPen(Qt::black, 1, Qt::DashLine));
-
-      QString verticalLine_name = QStringLiteral("Mkr_%1").arg(r);
-      verticalLine->setName(verticalLine_name);
-
-      seriesList.append(verticalLine);
-
-      QGraphicsTextItem *textItem = new QGraphicsTextItem(chart);
-      QString freq_marker = tableMarkers->item(r,0)->text();
-      textItem->setPlainText(QStringLiteral("%1").arg(freq_marker));
-      textItem->setFont(QFont("Arial", 8));
-
-             // Get the axes
-      auto axes = chart->axes(Qt::Horizontal);
-      QValueAxis *xAxis = qobject_cast<QValueAxis*>(axes.first());
-      qreal xRatio = (x - xAxis->min()) / (xAxis->max() - xAxis->min());
-
-             // Calculate the position
-      QRectF plotArea = chart->plotArea();
-      qreal xPixel = plotArea.left() + xRatio * plotArea.width();
-
-             // Center the text horizontally
-      QFontMetrics fm(textItem->font());
-      int textWidth = fm.horizontalAdvance(textItem->toPlainText());
-      qreal textX = xPixel - textWidth / 2;
-
-             // Position above the chart area
-      qreal textY = plotArea.top() - fm.height() - 5; // 5 pixels above the plot area
-
-      textItem->setPos(textX, textY);
-      textLabels.append(textItem);
-    }
-  }
-
-         // Add limits
-  double limits_offset = Limits_Offset->value();
-  for (int i = 0; i < List_LimitNames.size(); i++){
-    // Start frequency
-    double fstart = List_Limit_Start_Freq[i]->value();
-    double fstart_scale = getFreqScale(List_Limit_Start_Freq_Scale[i]->currentText());
-    fstart = fstart / fstart_scale;// Hz
-    fstart *= getFreqScale();// Normalize x with respect to the axis scale
-
-           // Stop frequency
-    double fstop = List_Limit_Stop_Freq[i]->value();
-    double fstop_scale = getFreqScale(List_Limit_Stop_Freq_Scale[i]->currentText());
-    fstop = fstop / fstop_scale;// Hz
-    fstop *= getFreqScale();// Normalize x with respect to the axis scale
-
-           // Start value
-    double val_start = List_Limit_Start_Value[i]->value()+limits_offset;
-
-           // Stop value
-    double val_stop = List_Limit_Stop_Value[i]->value()+limits_offset;
-
-    QLineSeries *limitLine = new QLineSeries();
-    limitLine->append(fstart, val_start);
-    limitLine->append(fstop, val_stop);
-    limitLine->setPen(QPen(Qt::black, 2));
-
-    QString limitLine_name = QStringLiteral("Limit_%1").arg(i);
-    limitLine->setName(limitLine_name);
-
-    seriesList.append(limitLine);
-  }
-
-         // Add series again to the chart. Each series must be linked to an axis
-  for (QAbstractSeries *series : qAsConst(seriesList)) {
-    qDebug() << series->name();
-    if (series->name().endsWith("_ang")) {
-      // Attach phase traces to the right y-axis
-      series->attachAxis(xAxis); // Attach to x-axis (frequency)
-      series->attachAxis(y2Axis); // Attach to right y-axis (phase)
-    } else {
-      // Attach magnitude traces to the left y-axis
-      series->attachAxis(xAxis); // Attach to x-axis (frequency)
-      series->attachAxis(yAxis); // Attach to left y-axis (magnitude)
-    }
-    chart->addSeries(series);
-  }
-
-         // Reattach all series to the correct axes
-  for (QAbstractSeries *series : seriesList) {
-    // Detach the series from all axes first
-    for (QAbstractAxis *axis : series->attachedAxes()) {
-      series->detachAxis(axis);
-    }
-    qDebug() << series->name();
-                                // Reattach the series to the correct axes
-    if (series->name().endsWith("_ang")) {
-      // Attach phase traces to the right y-axis
-      series->attachAxis(xAxis); // Attach to x-axis (frequency)
-      series->attachAxis(y2Axis); // Attach to right y-axis (phase)
-    } else {
-      // Attach magnitude traces to the left y-axis
-      series->attachAxis(xAxis); // Attach to x-axis (frequency)
-      series->attachAxis(yAxis); // Attach to left y-axis (magnitude)
-    }
-  }
-
-         // Update the chart
-  chart->update();
-}
 
 // Given a trace, it gives the minimum and the maximum values at both axis.
 void Qucs_S_SPAR_Viewer::getMinMaxValues(QString filename, QString tracename, qreal& minX, qreal& maxX, qreal& minY, qreal& maxY) {
@@ -2252,195 +1553,6 @@ int Qucs_S_SPAR_Viewer::findClosestIndex(const QList<double>& list, double value
         }) - list.begin();
 }
 
-// Ensures that the frequency settings limits does not show numbers like 0.001 or 500000
-void Qucs_S_SPAR_Viewer::checkFreqSettingsLimits(QString filename, double& fmin, double& fmax){
-    QList<double> frequency = datasets[filename]["frequency"];
-
-    while (true) {
-        fmin = frequency.first();
-        fmax = frequency.last();
-
-        // Check frequency scale setting
-        double freq_scale = getFreqScale();
-
-        // Normalize the minimum and maximum frequencies
-        fmin *= freq_scale;
-        fmax *= freq_scale;
-
-        // Exit condition
-        if ((fmax > 1) && (fmax < 3000)){
-            break;
-        }
-
-        if (fmax > 3000){
-            // Downscale
-            int index = QCombobox_x_axis_units->currentIndex();
-            if (index < 3) {
-                disconnect(QCombobox_x_axis_units, SIGNAL(currentIndexChanged(int)), this, SLOT(updatePlot())); // Needed to avoid duplicating the call to the update function
-                disconnect(QSpinBox_x_axis_max, SIGNAL(valueChanged(int)), this, SLOT(updatePlot())); // Needed to avoid duplicating the call to the update function
-                disconnect(QSpinBox_x_axis_min, SIGNAL(valueChanged(int)), this, SLOT(updatePlot())); // Needed to avoid duplicating the call to the update function
-                QCombobox_x_axis_units->setCurrentIndex(index+1);
-                QSpinBox_x_axis_min->setValue(fmin);
-                QSpinBox_x_axis_max->setValue(fmax);
-                connect(QCombobox_x_axis_units, SIGNAL(currentIndexChanged(int)), SLOT(updatePlot()));
-                connect(QSpinBox_x_axis_min, SIGNAL(valueChanged(int)), SLOT(updatePlot()));
-                connect(QSpinBox_x_axis_max, SIGNAL(valueChanged(int)), SLOT(updatePlot()));
-
-            } else{
-                // It's not possible to downscale more. Break the loop
-                break;
-            }
-        }else{
-            // Upscale
-            int index = QCombobox_x_axis_units->currentIndex();
-            if (index > 0) {
-                disconnect(QCombobox_x_axis_units, SIGNAL(currentIndexChanged(int)), this, SLOT(updatePlot())); // Needed to avoid duplicating the call to the update function
-                disconnect(QSpinBox_x_axis_max, SIGNAL(valueChanged(int)), this, SLOT(updatePlot())); // Needed to avoid duplicating the call to the update function
-                disconnect(QSpinBox_x_axis_min, SIGNAL(valueChanged(int)), this, SLOT(updatePlot())); // Needed to avoid duplicating the call to the update function
-                QCombobox_x_axis_units->setCurrentIndex(index-1);
-                QSpinBox_x_axis_min->setValue(fmin);
-                QSpinBox_x_axis_max->setValue(fmax);
-                connect(QCombobox_x_axis_units, SIGNAL(currentIndexChanged(int)), SLOT(updatePlot()));
-                connect(QSpinBox_x_axis_min, SIGNAL(valueChanged(int)), SLOT(updatePlot()));
-                connect(QSpinBox_x_axis_max, SIGNAL(valueChanged(int)), SLOT(updatePlot()));
-
-            } else{
-                // It's not possible to upscale more. Break the loop
-                break;
-            }
-        }
-    }
-
-    return;
-}
-
-
-// Automatically adjust the y-axis depending on the y-axis values of the traces displayed
-void Qucs_S_SPAR_Viewer::adjust_y_axis_to_trace(QString filename, QString tracename){
-    qreal minX, maxX, minY, maxY;
-
-    if (tracename == QStringLiteral("|%1|").arg(QChar(0x0394))){
-        tracename = "delta";
-    }
-    if (tracename == QStringLiteral("%1%2").arg(QChar(0x03BC)).arg(QChar(0x209B))){
-        tracename = "mu";
-    }
-    if (tracename == QStringLiteral("%1%2").arg(QChar(0x03BC)).arg(QChar(0x209A))){
-        tracename = "mu_p";
-    }
-
-
-    getMinMaxValues(filename, tracename, minX, maxX, minY, maxY);
-
-    if (maxY > this->y_max) {
-        maxY = 5.0 * std::ceil(maxY / 5.0);
-        this->y_max = maxY;
-    }
-
-    if (minY < this->y_min) {
-        minY = 5.0 * std::floor(minY / 5.0);
-        this->y_min = minY;
-    }
-
-    //Adjust the y-axis div depending on the limits
-    double y_div = QSpinBox_y_axis_div->value();
-
-    if ((y_div > y_max-y_min) || ((y_max-y_min)/y_div > 10) || ((y_max-y_min)/y_div < 5)){
-        // No ticks or excesive ticks
-        double new_div = (y_max - y_min) / 10;
-        disconnect(QSpinBox_y_axis_div, SIGNAL(valueChanged(double)), this, SLOT(updatePlot()));
-        QSpinBox_y_axis_div->setValue(new_div);
-        connect(QSpinBox_y_axis_div, SIGNAL(valueChanged(double)), SLOT(updatePlot()));
-    }
-
-    disconnect(QSpinBox_y_axis_min, SIGNAL(valueChanged(double)), this, SLOT(updatePlot())); // Needed to avoid duplicating the call to the update function
-    disconnect(QSpinBox_y_axis_max, SIGNAL(valueChanged(double)), this, SLOT(updatePlot()));
-    QSpinBox_y_axis_min->setValue(y_min);
-    QSpinBox_y_axis_max->setValue(y_max);
-    connect(QSpinBox_y_axis_min, SIGNAL(valueChanged(double)), SLOT(updatePlot()));
-    connect(QSpinBox_y_axis_max, SIGNAL(valueChanged(double)), SLOT(updatePlot()));
-
-    updatePlot();
-}
-
-
-// Automatically adjust the x-axis depending on the range of the traces displayed
-void Qucs_S_SPAR_Viewer::adjust_x_axis_to_file(QString filename){
-    QList<double> frequency = datasets[filename]["frequency"];
-
-    double fmin = frequency.first();
-    double fmax = frequency.last();
-
-    if (fmin < this->f_min) this->f_min = fmin;
-    if (fmax > this->f_max) this->f_max = fmax;
-
-
-    while (true) {
-        fmin = this->f_min;
-        fmax = this->f_max;
-
-        // Check frequency scale setting
-        double freq_scale = getFreqScale();
-
-        // Normalize the minimum and maximum frequencies
-        fmin *= freq_scale;
-        fmax *= freq_scale;
-
-        // Exit condition
-        if ((fmax > 1) && (fmax < 3000)){
-            break;
-        }
-
-        if (fmax >= 3000){
-            // Downscale
-            int index = QCombobox_x_axis_units->currentIndex();
-            if (index < 3) {
-                disconnect(QCombobox_x_axis_units, SIGNAL(currentIndexChanged(int)), this, SLOT(updatePlot())); // Needed to avoid duplicating the call to the update function
-                QCombobox_x_axis_units->setCurrentIndex(index+1);
-                connect(QCombobox_x_axis_units, SIGNAL(currentIndexChanged(int)), SLOT(updatePlot()));
-            } else{
-                // It's not possible to downscale more. Break the loop
-                break;
-            }
-        }else{
-            // Upscale
-            int index = QCombobox_x_axis_units->currentIndex();
-            if (index > 0) {
-                disconnect(QCombobox_x_axis_units, SIGNAL(currentIndexChanged(int)), this, SLOT(updatePlot())); // Needed to avoid duplicating the call to the update function
-                QCombobox_x_axis_units->setCurrentIndex(index-1);
-                connect(QCombobox_x_axis_units, SIGNAL(currentIndexChanged(int)), SLOT(updatePlot()));
-
-
-            } else{
-                // It's not possible to upscale more. Break the loop
-                break;
-            }
-        }
-    }
-
-    // Disconnect handlers to avoid duplicating the call to the update function
-    disconnect(QSpinBox_x_axis_min, SIGNAL(valueChanged(double)), this, SLOT(updatePlot()));
-    disconnect(QSpinBox_x_axis_max, SIGNAL(valueChanged(double)), this, SLOT(updatePlot()));
-
-    // Round to 1 decimal place
-    fmin = round(fmin * 10.0) / 10.0;
-    fmax = round(fmax * 10.0) / 10.0;
-    QSpinBox_x_axis_min->setValue(fmin);
-    QSpinBox_x_axis_max->setValue(fmax);
-    QSpinBox_x_axis_max->setMinimum(fmin); // The upper limit cannot be lower than the lower limit
-    QSpinBox_x_axis_max->setMaximum(fmax); // The lower limit cannot be higher than the higher limit
-
-    // Update x-axis tick
-    adjust_x_axis_div();
-
-    // Connect the handlers again
-    connect(QSpinBox_x_axis_min, SIGNAL(valueChanged(double)), SLOT(updatePlot()));
-    connect(QSpinBox_x_axis_max, SIGNAL(valueChanged(double)), SLOT(updatePlot()));
-
-    updatePlot();
-
-}
-
 
 void Qucs_S_SPAR_Viewer::addMarker(double freq){
 
@@ -2456,14 +1568,14 @@ void Qucs_S_SPAR_Viewer::addMarker(double freq){
     double f_marker;
     if (freq == -1) {
       // There's no specific frequency argument, then pick the middle point
-      double f1 = QSpinBox_x_axis_min->value();
-      double f2 = QSpinBox_x_axis_max->value();
+      double f1 = m_rectangularPlotWidget->getXmin();
+      double f2 = m_rectangularPlotWidget->getXmin();
       f_marker = f1 + 0.5*(f2-f1);
     } else {
       f_marker= freq;
-      f_marker *= getFreqScale();// Scale according to the x-axis units
+      f_marker *= 1e-6;// Scale according to the x-axis units
     }
-    QString Freq_Marker_Scale = QCombobox_x_axis_units->currentText();
+    QString Freq_Marker_Scale = QString("MHz");
 
     int n_markers = List_MarkerNames.size();
     n_markers++;
@@ -2477,8 +1589,7 @@ void Qucs_S_SPAR_Viewer::addMarker(double freq){
     QString SpinBox_name = QStringLiteral("Mkr_SpinBox%1").arg(n_markers);
     QDoubleSpinBox * new_marker_Spinbox = new QDoubleSpinBox();
     new_marker_Spinbox->setObjectName(SpinBox_name);
-    new_marker_Spinbox->setMaximum(QSpinBox_x_axis_max->minimum());
-    new_marker_Spinbox->setMaximum(QSpinBox_x_axis_max->maximum());
+    new_marker_Spinbox->setMaximum(m_rectangularPlotWidget->getXmax());
     new_marker_Spinbox->setValue(f_marker);
     connect(new_marker_Spinbox, SIGNAL(valueChanged(double)), SLOT(updateMarkerTable()));
     List_MarkerFreq.append(new_marker_Spinbox);
@@ -2488,7 +1599,7 @@ void Qucs_S_SPAR_Viewer::addMarker(double freq){
     QComboBox * new_marker_Combo = new QComboBox();
     new_marker_Combo->setObjectName(Combobox_name);
     new_marker_Combo->addItems(frequency_units);
-    new_marker_Combo->setCurrentIndex(QCombobox_x_axis_units->currentIndex());
+    new_marker_Combo->setCurrentIndex(1);
     connect(new_marker_Combo, SIGNAL(currentIndexChanged(int)), SLOT(changeMarkerLimits()));
     List_MarkerScale.append(new_marker_Combo);
     this->MarkersGrid->addWidget(new_marker_Combo, n_markers, 2);
@@ -2529,12 +1640,11 @@ void Qucs_S_SPAR_Viewer::updateMarkerTable(){
         tableMarkers->clear();
         tableMarkers->setColumnCount(0);
         tableMarkers->setRowCount(0);
-        updateTraces();
         return;
     }
 
     //Ensure that the size of the table is correct
-    QList<QAbstractSeries *> seriesList = chart->series();
+    QList<QAbstractSeries *> seriesList; // TO DO: Get the name of all traces displayed
 
     // Update marker header
     QStringList headers;
@@ -2586,8 +1696,6 @@ void Qucs_S_SPAR_Viewer::updateMarkerTable(){
             tableMarkers->setItem(r, c, new_item);
         }
     }
-
-    updateTraces();//The markers need to be updated in the chart
 }
 
 // Find the closest x-axis value in a series given a x value (not necesarily in the grid)
@@ -2802,8 +1910,6 @@ void Qucs_S_SPAR_Viewer::removeLimit(int index_to_delete)
   List_Separators.removeAt(index_to_delete);
   delete SeparatorToRemove;
 
-  updateTraces();
-
   updateGridLayout(LimitsGrid);
   updateLimitNames();
 }
@@ -2814,71 +1920,6 @@ void Qucs_S_SPAR_Viewer::removeAllLimits()
   for (int i = 0; i < n_limits; i++) {
     removeLimit(n_limits-i-1);
   }
-}
-
-void Qucs_S_SPAR_Viewer::changeFreqUnits()
-{
-    // Adjust x-axis settings maximum depending on the units combo
-    double freq_scale = getFreqScale();
-    double fmax = this->f_max*freq_scale;
-    double fmin = this->f_min*freq_scale;
-
-    // Update fmax Spinbox
-    QSpinBox_x_axis_max->setMaximum(fmax);
-    QSpinBox_x_axis_max->setValue(fmax);
-    if (fmax > 1000){
-        // Step 1
-        QSpinBox_x_axis_max->setSingleStep(1);
-    } else {
-        if (fmax > 100){
-            // Step 0.1
-            QSpinBox_x_axis_max->setSingleStep(0.1);
-        } else {
-            // Step 0.01
-            QSpinBox_x_axis_max->setSingleStep(0.01);
-        }
-    }
-
-    // Update fmin Spinbox
-    QSpinBox_x_axis_min->setMaximum(fmin);
-    QSpinBox_x_axis_min->setValue(fmin);
-    if (fmin > 1000){
-        // Step 1
-        QSpinBox_x_axis_min->setSingleStep(1);
-    } else {
-        if (fmin > 100){
-            // Step 0.1
-            QSpinBox_x_axis_min->setSingleStep(0.1);
-        } else {
-            // Step 0.01
-            QSpinBox_x_axis_min->setSingleStep(0.01);
-        }
-    }
-
-    // Adjust div
-    adjust_x_axis_div();
-
-    updatePlot();
-}
-
-
-void Qucs_S_SPAR_Viewer::adjust_x_axis_div()
-{
-    double x_min = QSpinBox_x_axis_min->value();
-    double x_max = QSpinBox_x_axis_max->value();
-    double x_div = QSpinBox_x_axis_div->value();
-
-    if ((x_div > x_max-x_min) || ((x_max-x_min)/x_div > 15) || ((x_max-x_min)/x_div < 5) ){
-        double new_div = (x_max - x_min) / 5;
-        disconnect(QSpinBox_x_axis_div, SIGNAL(valueChanged(double)), this, SLOT(updatePlot()));
-        QSpinBox_x_axis_div->setValue(new_div);
-        connect(QSpinBox_x_axis_div, SIGNAL(valueChanged(double)), SLOT(updatePlot()));
-
-        //Update the step of the spinboxes
-        double step = QSpinBox_x_axis_div->value()/10;
-        QSpinBox_x_axis_min->setSingleStep(step);
-        QSpinBox_x_axis_max->setSingleStep(step);
-    }
 }
 
 // If the combobox associated to a marker changes, the limits of the marker must be updated too
@@ -2903,9 +1944,9 @@ void Qucs_S_SPAR_Viewer::changeMarkerLimits(QString ID)
     }
 
     // The lower and upper limits are given by the axis settings
-    double f_upper = QSpinBox_x_axis_max->value();
-    double f_lower = QSpinBox_x_axis_min->value();
-    double f_scale = getFreqScale();
+    double f_upper = m_rectangularPlotWidget->getXmax();
+    double f_lower = m_rectangularPlotWidget->getXmin();
+    double f_scale = 1e-6;
 
     f_upper /=f_scale;
     f_lower /=f_scale;
@@ -2976,44 +2017,6 @@ void Qucs_S_SPAR_Viewer::dropEvent(QDropEvent *event)
     }
 }
 
-
-void Qucs_S_SPAR_Viewer::lock_unlock_axis_settings(bool toogle)
-{
-  if (toogle == true) {
-    lock_axis = !lock_axis;
-  }
-
-  if (lock_axis == false){
-    Lock_axis_settings_Button->setText("Lock Axes");
-    //Frozen axes inputs
-    QSpinBox_x_axis_min->setEnabled(true);
-    QSpinBox_x_axis_max->setEnabled(true);
-    QSpinBox_x_axis_div->setEnabled(true);
-    QCombobox_x_axis_units->setEnabled(true);
-    QSpinBox_y_axis_min->setEnabled(true);
-    QSpinBox_y_axis_max->setEnabled(true);
-    QSpinBox_y_axis_div->setEnabled(true);
-    QSpinBox_y2_axis_min->setEnabled(true);
-    QSpinBox_y2_axis_max->setEnabled(true);
-    QSpinBox_y2_axis_div->setEnabled(true);
-  }
-  else{
-    Lock_axis_settings_Button->setText("Unlock Axes");
-    //Unfrozen axes inputs
-    QSpinBox_x_axis_min->setDisabled(true);
-    QSpinBox_x_axis_max->setDisabled(true);
-    QSpinBox_x_axis_div->setDisabled(true);
-    QCombobox_x_axis_units->setDisabled(true);
-    QSpinBox_y_axis_min->setDisabled(true);
-    QSpinBox_y_axis_max->setDisabled(true);
-    QSpinBox_y_axis_div->setDisabled(true);
-    QSpinBox_y2_axis_min->setDisabled(true);
-    QSpinBox_y2_axis_max->setDisabled(true);
-    QSpinBox_y2_axis_div->setDisabled(true);
-  }
-}
-
-
 void Qucs_S_SPAR_Viewer::addLimit(double f_limit1, QString f_limit1_unit, double f_limit2, QString f_limit2_unit, double y_limit1, double y_limit2, bool coupled)
 {
   // If there are no traces in the display, show a message and exit
@@ -3027,13 +2030,13 @@ void Qucs_S_SPAR_Viewer::addLimit(double f_limit1, QString f_limit1_unit, double
 
   if (f_limit1 == -1) {
     // There's no specific data passed. Then get it from the widgets
-    double f1 = QSpinBox_x_axis_min->value();
-    double f2 = QSpinBox_x_axis_max->value();
+    double f1 = m_rectangularPlotWidget->getXmin();
+    double f2 = m_rectangularPlotWidget->getXmax();
     f_limit1 = f1 + 0.25*(f2-f1);
     f_limit2 = f1 + 0.75*(f2-f1);
 
-    double y1 = QSpinBox_y_axis_min->value();
-    double y2 = QSpinBox_y_axis_max->value();
+    double y1 = m_rectangularPlotWidget->getYmin();
+    double y2 = m_rectangularPlotWidget->getYmax();
 
     y_limit1 = y1 + (y2-y1)/2;
     y_limit2 = y_limit1;
@@ -3055,9 +2058,9 @@ void Qucs_S_SPAR_Viewer::addLimit(double f_limit1, QString f_limit1_unit, double
   QString SpinBox_fstart_name = QStringLiteral("Lmt_Freq_Start_SpinBox_%1").arg(new_limit_name);
   QDoubleSpinBox * new_limit_fstart_Spinbox = new QDoubleSpinBox();
   new_limit_fstart_Spinbox->setObjectName(SpinBox_fstart_name);
-  new_limit_fstart_Spinbox->setMaximum(QSpinBox_x_axis_max->minimum());
-  new_limit_fstart_Spinbox->setMaximum(QSpinBox_x_axis_max->maximum());
-  new_limit_fstart_Spinbox->setSingleStep(QSpinBox_x_axis_div->value()/5);
+  new_limit_fstart_Spinbox->setMinimum(m_rectangularPlotWidget->getXmin());
+  new_limit_fstart_Spinbox->setMaximum(m_rectangularPlotWidget->getXmax());
+  new_limit_fstart_Spinbox->setSingleStep(m_rectangularPlotWidget->getXdiv()/5);
   new_limit_fstart_Spinbox->setValue(f_limit1);
   connect(new_limit_fstart_Spinbox, SIGNAL(valueChanged(double)), SLOT(updateTraces()));
   List_Limit_Start_Freq.append(new_limit_fstart_Spinbox);
@@ -3068,7 +2071,7 @@ void Qucs_S_SPAR_Viewer::addLimit(double f_limit1, QString f_limit1_unit, double
   new_start_limit_Combo->setObjectName(Combobox_start_name);
   new_start_limit_Combo->addItems(frequency_units);
   if (f_limit1_unit.isEmpty()){
-    new_start_limit_Combo->setCurrentIndex(QCombobox_x_axis_units->currentIndex());
+    new_start_limit_Combo->setCurrentIndex(1);
   } else {
     int index = new_start_limit_Combo->findText(f_limit1_unit);
     new_start_limit_Combo->setCurrentIndex(index);
@@ -3080,9 +2083,9 @@ void Qucs_S_SPAR_Viewer::addLimit(double f_limit1, QString f_limit1_unit, double
   QString SpinBox_fstop_name = QStringLiteral("Lmt_Freq_Stop_SpinBox_%1").arg(new_limit_name);
   QDoubleSpinBox * new_limit_fstop_Spinbox = new QDoubleSpinBox();
   new_limit_fstop_Spinbox->setObjectName(SpinBox_fstop_name);
-  new_limit_fstop_Spinbox->setMaximum(QSpinBox_x_axis_max->minimum());
-  new_limit_fstop_Spinbox->setMaximum(QSpinBox_x_axis_max->maximum());
-  new_limit_fstop_Spinbox->setSingleStep(QSpinBox_x_axis_div->value()/5);
+  new_limit_fstop_Spinbox->setMinimum(m_rectangularPlotWidget->getXmin());
+  new_limit_fstop_Spinbox->setMaximum(m_rectangularPlotWidget->getXmax());
+  new_limit_fstop_Spinbox->setSingleStep(m_rectangularPlotWidget->getXdiv()/5);
   new_limit_fstop_Spinbox->setValue(f_limit2);
   connect(new_limit_fstop_Spinbox, SIGNAL(valueChanged(double)), SLOT(updateTraces()));
   List_Limit_Stop_Freq.append(new_limit_fstop_Spinbox);
@@ -3093,7 +2096,7 @@ void Qucs_S_SPAR_Viewer::addLimit(double f_limit1, QString f_limit1_unit, double
   new_stop_limit_Combo->setObjectName(Combobox_stop_name);
   new_stop_limit_Combo->addItems(frequency_units);
   if (f_limit2_unit.isEmpty()){
-    new_stop_limit_Combo->setCurrentIndex(QCombobox_x_axis_units->currentIndex());
+    new_stop_limit_Combo->setCurrentIndex(1);
   } else {
     int index = new_stop_limit_Combo->findText(f_limit2_unit);
     new_stop_limit_Combo->setCurrentIndex(index);
@@ -3125,10 +2128,10 @@ void Qucs_S_SPAR_Viewer::addLimit(double f_limit1, QString f_limit1_unit, double
   QString SpinBox_val_start_name = QStringLiteral("Lmt_Val_Start_SpinBox_%1").arg(new_limit_name);
   QDoubleSpinBox * new_limit_val_start_Spinbox = new QDoubleSpinBox();
   new_limit_val_start_Spinbox->setObjectName(SpinBox_val_start_name);
-  new_limit_val_start_Spinbox->setMaximum(QSpinBox_y_axis_max->minimum());
-  new_limit_val_start_Spinbox->setMaximum(QSpinBox_y_axis_max->maximum());
+  new_limit_val_start_Spinbox->setMaximum(m_rectangularPlotWidget->getYmin());
+  new_limit_val_start_Spinbox->setMaximum(m_rectangularPlotWidget->getYmax());
   new_limit_val_start_Spinbox->setValue(y_limit1);
-  new_limit_val_start_Spinbox->setSingleStep(QSpinBox_y_axis_div->value()/5);
+  new_limit_val_start_Spinbox->setSingleStep(m_rectangularPlotWidget->getYdiv()/5);
   connect(new_limit_val_start_Spinbox, SIGNAL(valueChanged(double)), SLOT(updateLimits()));
   List_Limit_Start_Value.append(new_limit_val_start_Spinbox);
   this->LimitsGrid->addWidget(new_limit_val_start_Spinbox, limit_index+1, 1);
@@ -3147,10 +2150,9 @@ void Qucs_S_SPAR_Viewer::addLimit(double f_limit1, QString f_limit1_unit, double
   QString SpinBox_val_stop_name = QStringLiteral("Lmt_Val_Stop_SpinBox_%1").arg(new_limit_name);
   QDoubleSpinBox * new_limit_val_stop_Spinbox = new QDoubleSpinBox();
   new_limit_val_stop_Spinbox->setObjectName(SpinBox_val_stop_name);
-  new_limit_val_stop_Spinbox->setMaximum(QSpinBox_y_axis_max->minimum());
-  new_limit_val_stop_Spinbox->setMaximum(QSpinBox_y_axis_max->maximum());
+  new_limit_val_stop_Spinbox->setMaximum(m_rectangularPlotWidget->getYmax());
   new_limit_val_stop_Spinbox->setValue(y_limit2);
-  new_limit_val_stop_Spinbox->setSingleStep(QSpinBox_y_axis_div->value()/5);
+  new_limit_val_stop_Spinbox->setSingleStep(m_rectangularPlotWidget->getYdiv()/5);
   connect(new_limit_val_stop_Spinbox, SIGNAL(valueChanged(double)), SLOT(updateLimits()));
   List_Limit_Stop_Value.append(new_limit_val_stop_Spinbox);
   this->LimitsGrid->addWidget(new_limit_val_stop_Spinbox, limit_index+1, 3);
@@ -3170,7 +2172,6 @@ void Qucs_S_SPAR_Viewer::addLimit(double f_limit1, QString f_limit1_unit, double
   List_Separators.append(new_Separator);
   this->LimitsGrid->addWidget(new_Separator, limit_index+2, 0, 1, 6);
 
-  updateTraces();
 
 }
 
@@ -3222,7 +2223,6 @@ void Qucs_S_SPAR_Viewer::updateLimits()
       stop->setValue(val_start);
     }
   }
-  updateTraces();
 }
 
 
@@ -3372,13 +2372,13 @@ bool Qucs_S_SPAR_Viewer::save()
   // ----------------------------------------------------------------
   // Save the axes settings
   xmlWriter.writeStartElement("AXES");
-  xmlWriter.writeTextElement("x-axis-min", QString::number(QSpinBox_x_axis_min->value()));
-  xmlWriter.writeTextElement("x-axis-max", QString::number(QSpinBox_x_axis_max->value()));
-  xmlWriter.writeTextElement("x-axis-div", QString::number(QSpinBox_x_axis_div->value()));
-  xmlWriter.writeTextElement("x-axis-scale", QCombobox_x_axis_units->currentText());
-  xmlWriter.writeTextElement("y-axis-min", QString::number(QSpinBox_y_axis_min->value()));
-  xmlWriter.writeTextElement("y-axis-max", QString::number(QSpinBox_y_axis_max->value()));
-  xmlWriter.writeTextElement("y-axis-div", QString::number(QSpinBox_y_axis_div->value()));
+  xmlWriter.writeTextElement("x-axis-min", QString::number(m_rectangularPlotWidget->getXmin()));
+  xmlWriter.writeTextElement("x-axis-max", QString::number(m_rectangularPlotWidget->getXmax()));
+  xmlWriter.writeTextElement("x-axis-div", QString::number(m_rectangularPlotWidget->getXdiv()));
+  //xmlWriter.writeTextElement("x-axis-scale", QCombobox_x_axis_units->currentText());
+  xmlWriter.writeTextElement("y-axis-min", QString::number(m_rectangularPlotWidget->getYmin()));
+  xmlWriter.writeTextElement("y-axis-max", QString::number(m_rectangularPlotWidget->getYmax()));
+  xmlWriter.writeTextElement("y-axis-div", QString::number(m_rectangularPlotWidget->getYdiv()));
   xmlWriter.writeTextElement("lock_status", QString::number(lock_axis));
 
   xmlWriter.writeEndElement(); // Axes
@@ -3489,10 +2489,6 @@ void Qucs_S_SPAR_Viewer::loadSession(QString session_file)
   // Clear current dataset
   datasets.clear();
 
-  // Ensure that the axes settings are unlocked
-  lock_axis = true;
-  lock_unlock_axis_settings();
-
   while (!xml.atEnd() && !xml.hasError()) {
     // Read next element
     QXmlStreamReader::TokenType token = xml.readNext();
@@ -3514,23 +2510,6 @@ void Qucs_S_SPAR_Viewer::loadSession(QString session_file)
             }
           }
         }
-      } else if (xml.name().toString().contains("x-axis-min")) {
-        x_axis_min = xml.readElementText().toDouble();
-      } else if (xml.name().toString().contains("x-axis-max")) {
-        x_axis_max = xml.readElementText().toDouble();
-      } else if (xml.name().toString().contains("x-axis-div")) {
-        double x_axis_div = xml.readElementText().toDouble();
-        QSpinBox_x_axis_div->setValue(x_axis_div);
-      } else if (xml.name().toString().contains("x-axis-scale")) {
-        QString x_axis_scale = xml.readElementText();
-        index_x_axis_units = frequency_units.indexOf(x_axis_scale);
-      } else if (xml.name().toString().contains("y-axis-min")) {
-        y_axis_min = xml.readElementText().toDouble();
-      } else if (xml.name().toString().contains("y-axis-max")) {
-        y_axis_max = xml.readElementText().toDouble();
-      } else if (xml.name().toString().contains("y-axis-div")) {
-        double y_axis_div = xml.readElementText().toDouble();
-        QSpinBox_y_axis_div->setValue(y_axis_div);
       } else if (xml.name().toString().contains("lock_status")) {
         lock_axis_setting = xml.readElementText().toInt();
       } else if (xml.name() == QStringLiteral("Limit")) {
@@ -3646,36 +2625,6 @@ void Qucs_S_SPAR_Viewer::loadSession(QString session_file)
     };
     addTrace(parts[0], parts[1], trace_color.at(i), trace_width.at(i), trace_style.at(i));
   }
-
-  // Apply axis settings
-  // It's needed to disconnect the signals first in order to avoid unneeded calls to the slots
-  disconnect(QSpinBox_x_axis_min, SIGNAL(valueChanged(double)), this, SLOT(updatePlot()));
-  disconnect(QSpinBox_x_axis_max, SIGNAL(valueChanged(double)), this, SLOT(updatePlot()));
-  disconnect(QSpinBox_x_axis_div, SIGNAL(valueChanged(double)), this, SLOT(updatePlot()));
-  disconnect(QCombobox_x_axis_units, SIGNAL(currentIndexChanged(int)), this, SLOT(changeFreqUnits()));
-  disconnect(QSpinBox_y_axis_min, SIGNAL(valueChanged(double)), this, SLOT(updatePlot()));
-  disconnect(QSpinBox_y_axis_max, SIGNAL(valueChanged(double)), this, SLOT(updatePlot()));
-
-  QSpinBox_x_axis_min->setValue(x_axis_min);
-  QSpinBox_x_axis_max->setValue(x_axis_max);
-  QCombobox_x_axis_units->setCurrentIndex(index_x_axis_units);
-  QSpinBox_y_axis_min->setValue(y_axis_min);
-  QSpinBox_y_axis_max->setValue(y_axis_max);
-
-  connect(QSpinBox_x_axis_min, SIGNAL(valueChanged(double)), SLOT(updatePlot()));
-  connect(QSpinBox_x_axis_max, SIGNAL(valueChanged(double)), SLOT(updatePlot()));
-  connect(QSpinBox_x_axis_div, SIGNAL(valueChanged(double)), SLOT(updatePlot()));
-  connect(QCombobox_x_axis_units, SIGNAL(currentIndexChanged(int)), SLOT(changeFreqUnits()));
-  connect(QSpinBox_y_axis_min, SIGNAL(valueChanged(double)), SLOT(updatePlot()));
-  connect(QSpinBox_y_axis_max, SIGNAL(valueChanged(double)), SLOT(updatePlot()));
-
-  // Apply lock axes status
-  lock_axis = lock_axis_setting;
-  lock_unlock_axis_settings(false);//false means "don't change the state" inside the function
-
-  // Update chart frequency limits
-  this->f_min = x_axis_min*getFreqScale(QCombobox_x_axis_units->currentText());
-  this->f_max = x_axis_max*getFreqScale(QCombobox_x_axis_units->currentText());
 
   // Add markers
   for (int i = 0; i < Markers.size(); i++){

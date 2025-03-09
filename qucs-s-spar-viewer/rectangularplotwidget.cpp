@@ -425,3 +425,41 @@ QGridLayout* RectangularPlotWidget::setupAxisSettings()
 
   return axisLayout;
 }
+
+
+// These "get" functions are used by the main program to put markers and limits
+double RectangularPlotWidget::getYmin(){
+  return yAxisMin->value();
+}
+
+double RectangularPlotWidget::getYmax(){
+  return yAxisMax->value();
+}
+
+double RectangularPlotWidget::getYdiv(){
+  return yAxisDiv->value();
+}
+
+double RectangularPlotWidget::getY2min(){
+  return y2AxisMin->value();
+}
+
+double RectangularPlotWidget::getY2max(){
+  return y2AxisMax->value();
+}
+
+double RectangularPlotWidget::getY2div(){
+  return y2AxisDiv->value();
+}
+
+double RectangularPlotWidget::getXmin(){
+  return xAxisMin->value();
+}
+
+double RectangularPlotWidget::getXmax(){
+  return xAxisMax->value();
+}
+
+double RectangularPlotWidget::getXdiv(){
+  return xAxisDiv->value();
+}

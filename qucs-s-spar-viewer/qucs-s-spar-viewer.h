@@ -43,12 +43,6 @@ class Qucs_S_SPAR_Viewer : public QMainWindow
   Qucs_S_SPAR_Viewer();
   ~Qucs_S_SPAR_Viewer();
 
-protected:
-  void resizeEvent(QResizeEvent *event) override {
-    QMainWindow::resizeEvent(event);
-    updateTraces();
-  }
-
  private slots:
   void slotHelpIntro();
   void slotHelpAbout();
@@ -70,23 +64,13 @@ protected:
   void removeTrace(int);
   void removeTrace(QList<int>);
 
-  void updatePlot();
-  void updateTraces();
-  void updateTraces_Magnitude_Phase_Plot();
-  void updateTraces_Smith_Chart();
   void updateTracesCombo();
 
   void changeTraceColor();
   void changeTraceLineStyle();
   void changeTraceWidth();
-  void changeFreqUnits();
   void changeMarkerLimits();
   void changeMarkerLimits(QString);
-
-  void update_X_axis();
-  void update_Y_axis();
-  void update_Y2_axis();
-  void lock_unlock_axis_settings(bool toogle = true);
 
   void addMarker(double freq = -1);
   void removeMarker();
@@ -143,11 +127,6 @@ protected:
   QGridLayout *magnitudePhaseLayout, *smithLayout;
 
   // Axis settings widgets
-  QDockWidget *dockAxisSettings;
-  QComboBox *QCombobox_x_axis_units;
-  QDoubleSpinBox *QSpinBox_x_axis_min, *QSpinBox_x_axis_max, *QSpinBox_x_axis_div;
-  QDoubleSpinBox *QSpinBox_y_axis_min, *QSpinBox_y_axis_max, *QSpinBox_y_axis_div;
-  QDoubleSpinBox *QSpinBox_y2_axis_min, *QSpinBox_y2_axis_max, *QSpinBox_y2_axis_div;
   QPushButton *Lock_axis_settings_Button;
   bool lock_axis;
   QStringList frequency_units;
@@ -177,17 +156,15 @@ protected:
   QList<QString> trace_list;
   QMap<QString, QList<QString>> trace_properties;
 
-  // Chart
-  QChart *chart;
+  // Rectangular plot
+  RectangularPlotWidget *m_rectangularPlotWidget;
   QDockWidget *dockChart;
-  QValueAxis *xAxis, *yAxis, *y2Axis;
-  double f_min, f_max, y_min, y_max; // Minimum (maximum) values of the display
+  double f_min, f_max; // Minimum (maximum) values of the display
   QList<QColor> default_colors;
   QList<QGraphicsItem*> textLabels;
   bool removeSeriesByName(QChart*, const QString&);
 
-  // Rectangular plot
-  RectangularPlotWidget *m_rectangularPlotWidget;
+
 
   // Smith Chart
   SmithChartWidget *smithChart;
@@ -239,9 +216,11 @@ protected:
   void clearRecentFiles();
   void saveRecentFiles();
 
+  // Setup UI
+  void CreateMenuBar();
+
   // Utilities
   void convert_MA_RI_to_dB(double *, double *, double *, double *, QString);
-  double getFreqScale();
   double getFreqScale(QString);
   void getMinMaxValues(QString, QString, qreal&, qreal&, qreal&, qreal&);
   void checkFreqSettingsLimits(QString filename, double& fmin, double& fmax);

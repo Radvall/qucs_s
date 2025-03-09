@@ -42,6 +42,19 @@ public:
   void setTracePen(const QString& traceName, const QPen& pen);
   QMap<QString, QPen> getTracesInfo() const;
 
+  // Used to set markers and limits
+  double getYmax();
+  double getYmin();
+  double getYdiv();
+
+  double getY2max();
+  double getY2min();
+  double getY2div();
+
+  double getXmax();
+  double getXmin();
+  double getXdiv();
+
   bool addMarker(const QString& markerId, double frequency, const QPen& pen = QPen(Qt::red, 2));
   bool removeMarker(const QString& markerId);
   void clearMarkers();
