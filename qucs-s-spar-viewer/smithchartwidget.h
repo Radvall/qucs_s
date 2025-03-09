@@ -33,6 +33,7 @@
 #include <QVBoxLayout>
 #include <QLabel>
 #include <QCheckBox>
+#include <QDoubleSpinBox>
 
 class Qucs_S_SPAR_Viewer; // Forward declaration
 
@@ -116,6 +117,22 @@ private:
   bool m_showConstantCurves; // Flag for curve display
   bool m_showAdmittanceChart; // Flag for admittance chart display
   QVBoxLayout *m_layout;
+
+private:
+  // Frequency range controls
+  QDoubleSpinBox *m_minFreqSpinBox;
+  QDoubleSpinBox *m_maxFreqSpinBox;
+  QComboBox *m_freqUnitComboBox;
+  double m_minFreq;  // Minimum frequency in Hz
+  double m_maxFreq;  // Maximum frequency in Hz
+
+  // Add to private slots: section in smithchartwidget.h
+private slots:
+  void onMinFreqChanged(double value);
+  void onMaxFreqChanged(double value);
+  void onFreqUnitChanged(int index);
+  double getFrequencyMultiplier() const;
+  void updateFrequencyRange();
 
 };
 

@@ -30,16 +30,21 @@ SmithChartWidget::SmithChartWidget(QWidget *parent)
   setAttribute(Qt::WA_Hover);
   setMouseTracking(true);
 
-  // Set white background
+         // Set white background
   setAutoFillBackground(true);
   QPalette pal = palette();
   pal.setColor(QPalette::Window, Qt::white);
   setPalette(pal);
 
+         // Create a QVBoxLayout for controls at the top
+  QVBoxLayout *controlsLayout = new QVBoxLayout();
+  controlsLayout->setContentsMargins(5, 5, 5, 5);
+  controlsLayout->setSpacing(5);
+
          // Create a horizontal layout for the Z0 selector
   QHBoxLayout *z0Layout = new QHBoxLayout();
-  z0Layout->setContentsMargins(5, 5, 5, 0); // Small margins
-  z0Layout->setAlignment(Qt::AlignLeft | Qt::AlignTop); // Align to top left
+  z0Layout->setContentsMargins(0, 0, 0, 0); // Small margins
+  z0Layout->setAlignment(Qt::AlignLeft); // Align to left
 
          // Create the label
   QLabel *z0Label = new QLabel("Z<sub>0</sub>", this);
@@ -62,39 +67,110 @@ SmithChartWidget::SmithChartWidget(QWidget *parent)
   z0Layout->addWidget(m_Z0ComboBox);
   z0Layout->addStretch(); // This pushes everything to the left
 
+         // Add horizontal layout to controls layout
+  controlsLayout->addLayout(z0Layout);
+
+         // Create horizontal layout for checkboxes
+  QHBoxLayout *checkboxLayout = new QHBoxLayout();
+  checkboxLayout->setContentsMargins(0, 0, 0, 0);
+
          // Create checkbox for admittance chart
   m_ShowAdmittanceChartCheckBox = new QCheckBox("Y Chart", this);
   m_ShowAdmittanceChartCheckBox->setChecked(false);
 
-  // Create checkbox for constant curves display
+         // Create checkbox for constant curves display
   m_ShowConstantCurvesCheckBox = new QCheckBox("Z Chart", this);
   m_ShowConstantCurvesCheckBox->setChecked(true); // Checked by default
   m_showConstantCurves = true; // Initialize to true
 
-  connect(m_ShowConstantCurvesCheckBox, &QCheckBox::stateChanged,
-          this, &SmithChartWidget::onShowConstantCurvesChanged);
+         // Add checkboxes to their layout
+  checkboxLayout->addWidget(m_ShowAdmittanceChartCheckBox);
+  checkboxLayout->addWidget(m_ShowConstantCurvesCheckBox);
+  checkboxLayout->addStretch();
+
+         // Add checkbox layout to controls layout
+  controlsLayout->addLayout(checkboxLayout);
 
          // Create the main layout for the widget
   QVBoxLayout *mainLayout = new QVBoxLayout(this);
   mainLayout->setContentsMargins(0, 0, 0, 0); // Minimize margins for more chart space
 
-         // Add the Z0 layout at the top
-  mainLayout->addLayout(z0Layout);
+  // Add the controls layout at the top
+  mainLayout->addLayout(controlsLayout);
 
-  // Add the admittance chart checkbox below the Z0 selector
-  mainLayout->addWidget(m_ShowAdmittanceChartCheckBox);
+  // Add a widget to contain the chart (this is where your drawing will go)
+  QWidget *chartWidget = new QWidget(this);
+  chartWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+  mainLayout->addWidget(chartWidget, 1); // Give it a stretch factor of 1 to take available space
 
-  // Add the checkbox below the admittance chart checkbox
-  mainLayout->addWidget(m_ShowConstantCurvesCheckBox);
+  // Create frequency range controls layout
+  QGridLayout *freqRangeLayout = new QGridLayout();
+  freqRangeLayout->setContentsMargins(5, 5, 5, 5);
 
-         // Add a spacer that takes most of the vertical space
-  mainLayout->addStretch();
+  // Min frequency label and spinbox
+  QLabel *minFreqLabel = new QLabel("Min:", this);
+  m_minFreqSpinBox = new QDoubleSpinBox(this);
+  m_minFreqSpinBox->setDecimals(1);
+  m_minFreqSpinBox->setRange(0.0, 1000.0);
+  m_minFreqSpinBox->setValue(0.0);
+  m_minFreqSpinBox->setSingleStep(1);
+  m_minFreqSpinBox->setMaximumWidth(70);
+  connect(m_minFreqSpinBox, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
+          this, &SmithChartWidget::onMinFreqChanged);
+
+  // Max frequency label and spinbox
+  QLabel *maxFreqLabel = new QLabel("Max:", this);
+  m_maxFreqSpinBox = new QDoubleSpinBox(this);
+  m_maxFreqSpinBox->setDecimals(1);
+  m_maxFreqSpinBox->setRange(0.1, 1000.0);
+  m_maxFreqSpinBox->setValue(20.0);
+  m_maxFreqSpinBox->setSingleStep(1);
+  m_maxFreqSpinBox->setMaximumWidth(70);
+  connect(m_maxFreqSpinBox, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
+          this, &SmithChartWidget::onMaxFreqChanged);
+
+  // Min frequency label and spinbox
+  QLabel *FreqUnitsLabel = new QLabel("Units:", this);
+
+  // Frequency unit combobox
+  m_freqUnitComboBox = new QComboBox(this);
+  m_freqUnitComboBox->addItem("Hz");
+  m_freqUnitComboBox->addItem("kHz");
+  m_freqUnitComboBox->addItem("MHz");
+  m_freqUnitComboBox->addItem("GHz");
+  m_freqUnitComboBox->setCurrentIndex(2); // Default to MHz
+  connect(m_freqUnitComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged),
+          this, &SmithChartWidget::onFreqUnitChanged);
+
+  // Add widgets to the frequency range layout
+  freqRangeLayout->addWidget(minFreqLabel, 0, 0);
+  freqRangeLayout->addWidget(m_minFreqSpinBox, 0, 1);
+  freqRangeLayout->addWidget(maxFreqLabel, 1, 0);
+  freqRangeLayout->addWidget(m_maxFreqSpinBox, 1, 1);
+  freqRangeLayout->addWidget(FreqUnitsLabel, 2, 0);
+  freqRangeLayout->addWidget(m_freqUnitComboBox, 2, 1);
+
+  // Create a horizontal layout for the bottom section
+  QHBoxLayout *bottomLayout = new QHBoxLayout();
+
+  // Add the frequency range controls to the bottom layout (left-aligned)
+  QWidget *freqWidget = new QWidget(this);
+  freqWidget->setLayout(freqRangeLayout);
+  bottomLayout->addWidget(freqWidget);
+
+  // Add a spacer to push everything to the left
+  bottomLayout->addStretch(1);
+
+  // Add the bottom layout to the main layout
+  mainLayout->addLayout(bottomLayout);
 
          // Connect the signals
   connect(m_Z0ComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged),
           this, &SmithChartWidget::onZ0Changed);
   connect(m_ShowAdmittanceChartCheckBox, &QCheckBox::stateChanged,
           this, &SmithChartWidget::onShowAdmittanceChartChanged);
+  connect(m_ShowConstantCurvesCheckBox, &QCheckBox::stateChanged,
+          this, &SmithChartWidget::onShowConstantCurvesChanged);
 
   setLayout(mainLayout);
 }
@@ -116,7 +192,7 @@ void SmithChartWidget::addTrace(const QString& name, const Trace& trace)
 {
   traces[name] = trace;
 
-  // Check if this trace's Z0 is already in the combo box
+         // Check if this trace's Z0 is already in the combo box
   bool found = false;
   for (int i = 0; i < m_Z0ComboBox->count(); i++) {
     if (qFuzzyCompare(m_Z0ComboBox->itemData(i).toDouble(), trace.Z0)) {
@@ -125,11 +201,14 @@ void SmithChartWidget::addTrace(const QString& name, const Trace& trace)
     }
   }
 
-  // If not found, add it as an option
+         // If not found, add it as an option
   if (!found) {
-    QString itemText = QString("%1 Ohm").arg(trace.Z0);
+    QString itemText = QString("%1 Ω").arg(trace.Z0);
     m_Z0ComboBox->addItem(itemText, trace.Z0);
   }
+
+  // Update frequency range based on new trace data
+  updateFrequencyRange();
 
   update(); // Trigger a repaint
 }
@@ -457,7 +536,6 @@ void SmithChartWidget::calculateArcPoints(const QRectF& arcRect, double startAng
   endPoint.setY(cy - (arcRect.height() / 2.0) * std::sin(endRad)); // Subtract for Qt's coordinate system
 }
 
-
 void SmithChartWidget::plotImpedanceData(QPainter *painter) {
   painter->save();
 
@@ -470,18 +548,53 @@ void SmithChartWidget::plotImpedanceData(QPainter *painter) {
     painter->setPen(trace.pen);
 
            // Check if there are at least two points to draw a line
-    if (trace.impedances.size() < 2) {
+    if (trace.impedances.size() < 2 || trace.frequencies.size() < 2) {
       continue;
     }
 
-           // Convert the first impedance point to widget coordinates
-    std::complex<double> gammaPrev = (trace.impedances[0] - trace.Z0) / (trace.impedances[0] + trace.Z0);
-    QPointF prevPoint(center.x() + radius * gammaPrev.real(), center.y() - radius * gammaPrev.imag());
+           // Find the range of indices that falls within the frequency range
+    int startIdx = -1;
+    int endIdx = -1;
 
-           // Iterate through the remaining points and draw lines
-    for (int i = 1; i < trace.impedances.size(); ++i) {
-      std::complex<double> gamma = (trace.impedances[i] - trace.Z0) / (trace.impedances[i] + trace.Z0);
-      QPointF currentPoint(center.x() + radius * gamma.real(), center.y() - radius * gamma.imag());
+
+    double minFreq = m_minFreqSpinBox->value();
+    double maxFreq = m_maxFreqSpinBox->value();
+    double multiplier = getFrequencyMultiplier();
+    double min_freq_scaled = minFreq*multiplier;
+    double max_freq_scaled = maxFreq*multiplier;
+
+
+    for (int i = 0; i < trace.frequencies.size(); ++i) {
+      double freq = trace.frequencies[i];
+
+      // If frequency is within range
+      if (freq >= min_freq_scaled && freq <= max_freq_scaled) {
+        // If this is the first in-range point, set startIdx
+        if (startIdx == -1) {
+          startIdx = i;
+        }
+        // Always update endIdx to the latest in-range point
+        endIdx = i;
+      }
+    }
+
+    // If no points are in range, skip this trace
+    if (startIdx == -1 || endIdx == -1) {
+      continue;
+    }
+
+    // Convert the first in-range impedance point to widget coordinates
+    std::complex<double> gammaPrev = (trace.impedances[startIdx] - trace.Z0) /
+                                     (trace.impedances[startIdx] + trace.Z0);
+    QPointF prevPoint(center.x() + radius * gammaPrev.real(),
+                      center.y() - radius * gammaPrev.imag());
+
+           // Iterate through the remaining in-range points and draw lines
+    for (int i = startIdx + 1; i <= endIdx; ++i) {
+      std::complex<double> gamma = (trace.impedances[i] - trace.Z0) /
+                                   (trace.impedances[i] + trace.Z0);
+      QPointF currentPoint(center.x() + radius * gamma.real(),
+                           center.y() - radius * gamma.imag());
 
              // Draw a line between the previous point and the current point
       painter->drawLine(prevPoint, currentPoint);
@@ -493,6 +606,7 @@ void SmithChartWidget::plotImpedanceData(QPainter *painter) {
 
   painter->restore();
 }
+
 
 void SmithChartWidget::drawMarkers(QPainter *painter) {
   if (markers.isEmpty() || traces.isEmpty()) {
@@ -781,3 +895,136 @@ void SmithChartWidget::onShowConstantCurvesChanged(int state)
   m_showConstantCurves = (state == Qt::Checked);
   update(); // Trigger a repaint
 }
+
+
+void SmithChartWidget::onMinFreqChanged(double value)
+{
+  // Convert from displayed unit to Hz
+  double multiplier = getFrequencyMultiplier();
+  m_minFreq = value * multiplier;
+
+  // Make sure min is less than max
+  double minFreq = m_minFreqSpinBox->value();
+  double maxFreq = m_maxFreqSpinBox->value();
+
+  if (minFreq > maxFreq) {
+    m_minFreqSpinBox->blockSignals(true);
+    m_minFreqSpinBox->setValue(maxFreq);
+    m_minFreqSpinBox->blockSignals(false);
+  }
+
+  update(); // Redraw the chart with the new frequency range
+}
+
+void SmithChartWidget::onMaxFreqChanged(double value)
+{
+  // Convert from displayed unit to Hz
+  double multiplier = getFrequencyMultiplier();
+  m_maxFreq = value * multiplier;
+
+  // Make sure max is greater than min
+  double minFreq = m_minFreqSpinBox->value();
+  double maxFreq = m_maxFreqSpinBox->value();
+  if (maxFreq < minFreq) {
+    m_maxFreqSpinBox->blockSignals(true);
+    m_maxFreqSpinBox->setValue(minFreq);
+    m_maxFreqSpinBox->blockSignals(false);
+  }
+
+  update(); // Redraw the chart with the new frequency range
+}
+
+void SmithChartWidget::onFreqUnitChanged(int index)
+{
+  // Store the current values in Hz
+  double minFreq = m_minFreqSpinBox->value();
+  double maxFreq = m_maxFreqSpinBox->value();
+  double oldMinFreq = minFreq;
+  double oldMaxFreq = maxFreq;
+
+  // Update displayed values in the spinboxes
+  double multiplier = getFrequencyMultiplier();
+  m_minFreqSpinBox->blockSignals(true);
+  m_maxFreqSpinBox->blockSignals(true);
+
+  m_minFreqSpinBox->setValue(oldMinFreq / multiplier);
+  m_maxFreqSpinBox->setValue(oldMaxFreq / multiplier);
+
+  // Adjust spinbox ranges based on the selected unit
+  double maxRange;
+  switch (index) {
+  case 0: // Hz
+    maxRange = 1e12; // 1 THz in Hz
+    break;
+  case 1: // kHz
+    maxRange = 1e9; // 1 THz in kHz
+    break;
+  case 2: // MHz
+    maxRange = 1e6; // 1 THz in MHz
+    break;
+  case 3: // GHz
+    maxRange = 1e3; // 1 THz in GHz
+    break;
+  default:
+    maxRange = 1000.0;
+  }
+
+  m_minFreqSpinBox->setRange(0.0, maxRange);
+  m_maxFreqSpinBox->setRange(0.1, maxRange);
+
+  m_minFreqSpinBox->blockSignals(false);
+  m_maxFreqSpinBox->blockSignals(false);
+
+  update(); // Redraw the chart
+}
+
+double SmithChartWidget::getFrequencyMultiplier() const
+{
+  // Return multiplier to convert display units to Hz
+  int freq_index = m_freqUnitComboBox->currentIndex();
+  switch (freq_index) {
+  case 0: return 1.0;         // Hz
+  case 1: return 1e3;         // kHz
+  case 2: return 1e6;         // MHz
+  case 3: return 1e9;         // GHz
+  default: return 1.0;
+  }
+}
+
+void SmithChartWidget::updateFrequencyRange()
+{
+  // Find the minimum and maximum frequencies across all traces
+  bool foundAny = false;
+  double minFreq = std::numeric_limits<double>::max();
+  double maxFreq = std::numeric_limits<double>::min();
+
+  for (auto it = traces.constBegin(); it != traces.constEnd(); ++it) {
+    const Trace& trace = it.value();
+    if (!trace.frequencies.isEmpty()) {
+      minFreq = qMin(minFreq, trace.frequencies.first());
+      maxFreq = qMax(maxFreq, trace.frequencies.last());
+      foundAny = true;
+    }
+  }
+
+  // If we found any frequencies, update the range
+  if (foundAny) {
+    double multiplier = getFrequencyMultiplier();
+    double min_freq_scaled = minFreq/multiplier;
+    double max_freq_scaled = maxFreq/multiplier;
+
+    // Update the display values
+    m_minFreqSpinBox->blockSignals(true);
+    m_maxFreqSpinBox->blockSignals(true);
+
+    m_minFreqSpinBox->setValue(min_freq_scaled);
+    m_minFreqSpinBox->setMinimum(min_freq_scaled);
+
+    m_maxFreqSpinBox->setValue(max_freq_scaled);
+    m_maxFreqSpinBox->setMaximum(max_freq_scaled);
+
+    m_minFreqSpinBox->blockSignals(false);
+    m_maxFreqSpinBox->blockSignals(false);
+  }
+}
+
