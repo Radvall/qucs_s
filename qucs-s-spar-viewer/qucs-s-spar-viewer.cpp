@@ -49,6 +49,7 @@ Qucs_S_SPAR_Viewer::Qucs_S_SPAR_Viewer()
 {
   QWidget *centralWidget = new QWidget(this);
   setCentralWidget(centralWidget);
+  centralWidget->setMaximumWidth(0); // Minimize central widget size
 
   setWindowIcon(QPixmap(":/bitmaps/big.qucs.xpm"));
   setWindowTitle("Qucs S-parameter Viewer " PACKAGE_VERSION);
@@ -58,7 +59,135 @@ Qucs_S_SPAR_Viewer::Qucs_S_SPAR_Viewer()
   // Set frequency units
   frequency_units << "Hz" << "kHz" << "MHz" << "GHz";
 
-  // Left panel
+
+  // These are two maximum markers to find the lowest and the highest frequency in the data samples.
+  // They are used to prevent the user from zooming out too much
+  f_min = 1e20;
+  f_max = -1;
+
+  // Load default colors
+  default_colors.append(QColor(Qt::red));
+  default_colors.append(QColor(Qt::blue));
+  default_colors.append(QColor(Qt::darkGreen));
+
+
+  CreateDisplayWidgets();
+  CreateLeftPanel();
+
+  // Put the following widgets on the top to make them visible to the user
+  dockFiles->raise();
+  dockChart->raise();
+
+  setDockNestingEnabled(true);
+  setAcceptDrops(true);//Enable drag and drop feature to open files
+  loadRecentFiles();// Load "Recent Files" list
+}
+
+
+void Qucs_S_SPAR_Viewer::CreateMenuBar(){
+  QMenu *fileMenu = new QMenu(tr("&File"));
+
+  QAction *fileQuit = new QAction(tr("&Quit"), this);
+  fileQuit->setShortcut(QKeySequence::Quit);
+  connect(fileQuit, SIGNAL(triggered(bool)), SLOT(slotQuit()));
+
+  QAction *fileOpenSession = new QAction(tr("&Open session file"), this);
+  fileOpenSession->setShortcut(QKeySequence::Open);
+  connect(fileOpenSession, SIGNAL(triggered(bool)), SLOT(slotLoadSession()));
+
+  QAction *fileSaveAsSession = new QAction(tr("&Save session as ..."), this);
+  fileSaveAsSession->setShortcut(QKeySequence::SaveAs);
+  connect(fileSaveAsSession, SIGNAL(triggered(bool)), SLOT(slotSaveAs()));
+
+  QAction *fileSaveSession = new QAction(tr("&Save session"), this);
+  fileSaveSession->setShortcut(QKeySequence::Save);
+  connect(fileSaveSession, SIGNAL(triggered(bool)), SLOT(slotSave()));
+
+  recentFilesMenu = fileMenu->addMenu("Recent Files");
+  connect(recentFilesMenu, &QMenu::aboutToShow, this, &Qucs_S_SPAR_Viewer::updateRecentFilesMenu);
+
+  fileMenu->addAction(fileOpenSession);
+  fileMenu->addAction(fileSaveSession);
+  fileMenu->addAction(fileSaveAsSession);
+  fileMenu->addAction(fileQuit);
+
+  QMenu *helpMenu = new QMenu(tr("&Help"));
+
+  QAction *helpHelp = new QAction(tr("&Help"), this);
+  helpHelp->setShortcut(Qt::Key_F1);
+  helpMenu->addAction(helpHelp);
+  connect(helpHelp, SIGNAL(triggered(bool)), SLOT(slotHelpIntro()));
+
+  QAction *helpAbout = new QAction(tr("&About"), this);
+  helpMenu->addAction(helpAbout);
+  connect(helpAbout, SIGNAL(triggered(bool)), SLOT(slotHelpAbout()));
+
+  helpMenu->addSeparator();
+
+  QAction * helpAboutQt = new QAction(tr("About Qt..."), this);
+  helpMenu->addAction(helpAboutQt);
+  connect(helpAboutQt, SIGNAL(triggered(bool)), SLOT(slotHelpAboutQt()));
+
+  menuBar()->addMenu(fileMenu);
+  menuBar()->addSeparator();
+  menuBar()->addMenu(helpMenu);
+}
+
+
+// This function populates the left panel with the following widgets:
+// - Files manager
+// - Traces manager
+// - Markers maanger
+// - Limits manager
+// - Notebook
+
+void Qucs_S_SPAR_Viewer::CreateLeftPanel(){
+  // Create left panel widgets
+  setFileManagementDock();
+  setTraceManagementDock();
+  setMarkerManagementDock();
+  setLimitManagementDock();
+
+         // Notes
+  Notes_Widget = new CodeEditor();
+  dockNotes = new QDockWidget("Notes", this);
+  dockNotes->setWidget(Notes_Widget);
+
+         // Disable dock closing
+  dockFiles->setFeatures(dockFiles->features() & ~QDockWidget::DockWidgetClosable);
+  dockTracesList->setFeatures(dockTracesList->features() & ~QDockWidget::DockWidgetClosable);
+  dockMarkers->setFeatures(dockMarkers->features() & ~QDockWidget::DockWidgetClosable);
+  dockLimits->setFeatures(dockLimits->features() & ~QDockWidget::DockWidgetClosable);
+  dockNotes->setFeatures(dockNotes->features() & ~QDockWidget::DockWidgetClosable);
+
+         // Add all panel docks to the right area
+  addDockWidget(Qt::RightDockWidgetArea, dockFiles);
+  addDockWidget(Qt::RightDockWidgetArea, dockTracesList);
+  addDockWidget(Qt::RightDockWidgetArea, dockMarkers);
+  addDockWidget(Qt::RightDockWidgetArea, dockLimits);
+  addDockWidget(Qt::RightDockWidgetArea, dockNotes);
+
+         // Tabify the panel docks
+  tabifyDockWidget(dockFiles, dockTracesList);
+  tabifyDockWidget(dockTracesList, dockMarkers);
+  tabifyDockWidget(dockMarkers, dockLimits);
+  tabifyDockWidget(dockLimits, dockNotes);
+
+  // Remove the tabify between chart docks as it's already done in CreateDisplayWidgets
+  // tabifyDockWidget(dockChart, dockSmithChart);
+
+  // To prevent the gap between left and right dock areas, we need to resize the dock widgets
+  // This should be called after all dock widgets are set up, perhaps in a separate method
+  resizeDocks({dockChart, dockSmithChart}, {width()/2, width()/2}, Qt::Horizontal);
+  resizeDocks({dockFiles, dockTracesList, dockMarkers, dockLimits, dockNotes},
+              {width()/4, width()/4, width()/4, width()/4, width()/4}, Qt::Horizontal);
+}
+
+
+void Qucs_S_SPAR_Viewer::setFileManagementDock(){
+
+  dockFiles = new QDockWidget("S-parameter files", this);
+
   QScrollArea *scrollArea_Files = new QScrollArea();
   FileList_Widget = new QWidget();
   QWidget *FilesGroup = new QWidget();
@@ -106,32 +235,12 @@ Qucs_S_SPAR_Viewer::Qucs_S_SPAR_Viewer()
   vLayout_Files->setStretch(0, 3);
   vLayout_Files->setStretch(1, 1);
 
-  // Chart settings
-  m_rectangularPlotWidget = new RectangularPlotWidget(this);
-  dockChart = new QDockWidget("Magnitude / Phase", this);
-  dockChart->setWidget(m_rectangularPlotWidget);
-  dockChart->setAllowedAreas(Qt::AllDockWidgetAreas);
-  addDockWidget(Qt::LeftDockWidgetArea, dockChart);
+  dockFiles->setWidget(FilesGroup);
+}
 
-  // Smith Chart
-  smithChart = new SmithChartWidget(this);
-  smithChart->setMinimumSize(300, 300);
-  dockSmithChart = new QDockWidget("Smith Chart", this);
-  dockSmithChart->setWidget(smithChart);
-  dockSmithChart->setAllowedAreas(Qt::AllDockWidgetAreas);
-  addDockWidget(Qt::LeftDockWidgetArea, dockSmithChart);
+void Qucs_S_SPAR_Viewer::setTraceManagementDock(){
 
-
-
-  // These are two maximum markers to find the lowest and the highest frequency in the data samples.
-  // They are used to prevent the user from zooming out too much
-  f_min = 1e20;
-  f_max = -1;
-
-  // Load default colors
-  default_colors.append(QColor(Qt::red));
-  default_colors.append(QColor(Qt::blue));
-  default_colors.append(QColor(Qt::darkGreen));
+  dockTracesList = new QDockWidget("Traces List", this);
 
   QWidget * TracesGroup = new QWidget();
   QVBoxLayout *Traces_VBox = new QVBoxLayout(TracesGroup);
@@ -247,9 +356,13 @@ Qucs_S_SPAR_Viewer::Qucs_S_SPAR_Viewer()
   TracesGrid->addWidget(Label_LineWidth, 0, 3, Qt::AlignCenter);
   TracesGrid->addWidget(Label_Remove, 0, 4, Qt::AlignCenter);
 
+  dockTracesList->setWidget(TracesGroup);
+}
 
-
+void Qucs_S_SPAR_Viewer::setMarkerManagementDock(){
   // Markers dock
+  dockMarkers = new QDockWidget("Markers", this);
+
   QWidget * MarkersGroup = new QWidget();
   QVBoxLayout *Markers_VBox = new QVBoxLayout(MarkersGroup);
 
@@ -314,7 +427,13 @@ Qucs_S_SPAR_Viewer::Qucs_S_SPAR_Viewer()
   Markers_VBox->addWidget(scrollArea_Marker);
   Markers_VBox->addWidget(tableMarkers);
 
+  dockMarkers->setWidget(MarkersGroup);
+}
+
+void Qucs_S_SPAR_Viewer::setLimitManagementDock(){
   // Limits dock
+  dockLimits = new QDockWidget("Limits", this);
+
   QWidget * LimitsGroup = new QWidget();
   QVBoxLayout *Limits_VBox = new QVBoxLayout(LimitsGroup);
 
@@ -386,97 +505,34 @@ Qucs_S_SPAR_Viewer::Qucs_S_SPAR_Viewer()
   Limits_VBox->addWidget(LimitSettings);
   Limits_VBox->addWidget(scrollArea_Limits);
 
-  // Notes
-  Notes_Widget = new CodeEditor();
+  dockLimits->setWidget(LimitsGroup);
+}
 
-  dockFiles = new QDockWidget("S-parameter files", this);
-  dockTracesList = new QDockWidget("Traces List", this);
-  dockMarkers = new QDockWidget("Markers", this);
-  dockLimits = new QDockWidget("Limits", this);
-  dockNotes = new QDockWidget("Notes", this);
+
+
+
+void Qucs_S_SPAR_Viewer::CreateDisplayWidgets(){
+  // Chart settings
+  Magnitude_PhaseChart = new RectangularPlotWidget(this);
+  dockChart = new QDockWidget("Magnitude / Phase", this);
+  dockChart->setWidget(Magnitude_PhaseChart);
+  dockChart->setAllowedAreas(Qt::AllDockWidgetAreas);
+  addDockWidget(Qt::LeftDockWidgetArea, dockChart);
+
+         // Smith Chart
+  smithChart = new SmithChartWidget(this);
+  smithChart->setMinimumSize(300, 300);
+  dockSmithChart = new QDockWidget("Smith Chart", this);
+  dockSmithChart->setWidget(smithChart);
+  dockSmithChart->setAllowedAreas(Qt::AllDockWidgetAreas);
+  addDockWidget(Qt::LeftDockWidgetArea, dockSmithChart);
 
   // Disable dock closing
   dockChart->setFeatures(dockChart->features() & ~QDockWidget::DockWidgetClosable);
   dockSmithChart->setFeatures(dockSmithChart->features() & ~QDockWidget::DockWidgetClosable);
-  dockFiles->setFeatures(dockFiles->features() & ~QDockWidget::DockWidgetClosable);
-  dockTracesList->setFeatures(dockTracesList->features() & ~QDockWidget::DockWidgetClosable);
-  dockMarkers->setFeatures(dockMarkers->features() & ~QDockWidget::DockWidgetClosable);
-  dockLimits->setFeatures(dockLimits->features() & ~QDockWidget::DockWidgetClosable);
-  dockNotes->setFeatures(dockLimits->features() & ~QDockWidget::DockWidgetClosable);
 
-  dockFiles->setWidget(FilesGroup);
-  dockTracesList->setWidget(TracesGroup);
-  dockMarkers->setWidget(MarkersGroup);
-  dockLimits->setWidget(LimitsGroup);
-  dockNotes->setWidget(Notes_Widget);
-
-  addDockWidget(Qt::RightDockWidgetArea, dockTracesList);
-  addDockWidget(Qt::RightDockWidgetArea, dockFiles);
-  addDockWidget(Qt::RightDockWidgetArea, dockMarkers);
-  addDockWidget(Qt::RightDockWidgetArea, dockLimits);
-  addDockWidget(Qt::RightDockWidgetArea, dockNotes);
-
-  tabifyDockWidget(dockFiles, dockTracesList);
-  tabifyDockWidget(dockTracesList, dockMarkers);
-  tabifyDockWidget(dockMarkers, dockLimits);
-  tabifyDockWidget(dockMarkers, dockNotes);
+  // Tabify the chart docks
   tabifyDockWidget(dockChart, dockSmithChart);
-  dockFiles->raise();
-  dockChart->raise();
-  setDockNestingEnabled(true);
-
-  setAcceptDrops(true);//Enable drag and drop feature to open files
-  loadRecentFiles();// Load "Recent Files" list
-}
-
-
-void Qucs_S_SPAR_Viewer::CreateMenuBar(){
-  QMenu *fileMenu = new QMenu(tr("&File"));
-
-  QAction *fileQuit = new QAction(tr("&Quit"), this);
-  fileQuit->setShortcut(QKeySequence::Quit);
-  connect(fileQuit, SIGNAL(triggered(bool)), SLOT(slotQuit()));
-
-  QAction *fileOpenSession = new QAction(tr("&Open session file"), this);
-  fileOpenSession->setShortcut(QKeySequence::Open);
-  connect(fileOpenSession, SIGNAL(triggered(bool)), SLOT(slotLoadSession()));
-
-  QAction *fileSaveAsSession = new QAction(tr("&Save session as ..."), this);
-  fileSaveAsSession->setShortcut(QKeySequence::SaveAs);
-  connect(fileSaveAsSession, SIGNAL(triggered(bool)), SLOT(slotSaveAs()));
-
-  QAction *fileSaveSession = new QAction(tr("&Save session"), this);
-  fileSaveSession->setShortcut(QKeySequence::Save);
-  connect(fileSaveSession, SIGNAL(triggered(bool)), SLOT(slotSave()));
-
-  recentFilesMenu = fileMenu->addMenu("Recent Files");
-  connect(recentFilesMenu, &QMenu::aboutToShow, this, &Qucs_S_SPAR_Viewer::updateRecentFilesMenu);
-
-  fileMenu->addAction(fileOpenSession);
-  fileMenu->addAction(fileSaveSession);
-  fileMenu->addAction(fileSaveAsSession);
-  fileMenu->addAction(fileQuit);
-
-  QMenu *helpMenu = new QMenu(tr("&Help"));
-
-  QAction *helpHelp = new QAction(tr("&Help"), this);
-  helpHelp->setShortcut(Qt::Key_F1);
-  helpMenu->addAction(helpHelp);
-  connect(helpHelp, SIGNAL(triggered(bool)), SLOT(slotHelpIntro()));
-
-  QAction *helpAbout = new QAction(tr("&About"), this);
-  helpMenu->addAction(helpAbout);
-  connect(helpAbout, SIGNAL(triggered(bool)), SLOT(slotHelpAbout()));
-
-  helpMenu->addSeparator();
-
-  QAction * helpAboutQt = new QAction(tr("About Qt..."), this);
-  helpMenu->addAction(helpAboutQt);
-  connect(helpAboutQt, SIGNAL(triggered(bool)), SLOT(slotHelpAboutQt()));
-
-  menuBar()->addMenu(fileMenu);
-  menuBar()->addSeparator();
-  menuBar()->addMenu(helpMenu);
 }
 
 void Qucs_S_SPAR_Viewer::setupScrollAreaForLayout(QGridLayout* &layout, QWidget* parentTab, const QString &objectName)
@@ -1288,7 +1344,7 @@ void Qucs_S_SPAR_Viewer::addTrace(QString selected_dataset, QString selected_tra
     new_trace.frequencies = frequencies;
     new_trace.pen = pen;
     new_trace.Z0 = Z0;
-    m_rectangularPlotWidget->addTrace(trace_name, new_trace);
+    Magnitude_PhaseChart->addTrace(trace_name, new_trace);
 
   } else {
     if (selected_trace.contains("Smith")){
@@ -1411,9 +1467,9 @@ void Qucs_S_SPAR_Viewer::changeTraceColor()
 
                     } else {
                       // Magnitude / Phase chart
-                      QPen currentPen = m_rectangularPlotWidget->getTracePen(trace_name);
+                      QPen currentPen = Magnitude_PhaseChart->getTracePen(trace_name);
                       currentPen.setColor(color);
-                      m_rectangularPlotWidget->setTracePen(trace_name, currentPen);
+                      Magnitude_PhaseChart->setTracePen(trace_name, currentPen);
                     }
                 }
             }
@@ -1474,9 +1530,9 @@ void Qucs_S_SPAR_Viewer::changeTraceLineStyle()
 
     } else {
       // Magnitude / Phase chart
-      QPen currentPen = m_rectangularPlotWidget->getTracePen(trace_name);
+      QPen currentPen = Magnitude_PhaseChart->getTracePen(trace_name);
       currentPen.setStyle(PenStyle);
-      m_rectangularPlotWidget->setTracePen(trace_name, currentPen);
+      Magnitude_PhaseChart->setTracePen(trace_name, currentPen);
     }
 }
 
@@ -1508,9 +1564,9 @@ void Qucs_S_SPAR_Viewer::changeTraceWidth() {
     smithChart->setTracePen(traceName, currentPen);
   } else {
     // Magnitude / Phase chart
-    QPen currentPen = m_rectangularPlotWidget->getTracePen(trace_name);
+    QPen currentPen = Magnitude_PhaseChart->getTracePen(trace_name);
     currentPen.setWidth(TraceWidth);
-    m_rectangularPlotWidget->setTracePen(trace_name, currentPen);
+    Magnitude_PhaseChart->setTracePen(trace_name, currentPen);
   }
 }
 
@@ -1568,8 +1624,8 @@ void Qucs_S_SPAR_Viewer::addMarker(double freq){
     double f_marker;
     if (freq == -1) {
       // There's no specific frequency argument, then pick the middle point
-      double f1 = m_rectangularPlotWidget->getXmin();
-      double f2 = m_rectangularPlotWidget->getXmin();
+      double f1 = Magnitude_PhaseChart->getXmin();
+      double f2 = Magnitude_PhaseChart->getXmin();
       f_marker = f1 + 0.5*(f2-f1);
     } else {
       f_marker= freq;
@@ -1589,7 +1645,7 @@ void Qucs_S_SPAR_Viewer::addMarker(double freq){
     QString SpinBox_name = QStringLiteral("Mkr_SpinBox%1").arg(n_markers);
     QDoubleSpinBox * new_marker_Spinbox = new QDoubleSpinBox();
     new_marker_Spinbox->setObjectName(SpinBox_name);
-    new_marker_Spinbox->setMaximum(m_rectangularPlotWidget->getXmax());
+    new_marker_Spinbox->setMaximum(Magnitude_PhaseChart->getXmax());
     new_marker_Spinbox->setValue(f_marker);
     connect(new_marker_Spinbox, SIGNAL(valueChanged(double)), SLOT(updateMarkerTable()));
     List_MarkerFreq.append(new_marker_Spinbox);
@@ -1944,8 +2000,8 @@ void Qucs_S_SPAR_Viewer::changeMarkerLimits(QString ID)
     }
 
     // The lower and upper limits are given by the axis settings
-    double f_upper = m_rectangularPlotWidget->getXmax();
-    double f_lower = m_rectangularPlotWidget->getXmin();
+    double f_upper = Magnitude_PhaseChart->getXmax();
+    double f_lower = Magnitude_PhaseChart->getXmin();
     double f_scale = 1e-6;
 
     f_upper /=f_scale;
@@ -2030,13 +2086,13 @@ void Qucs_S_SPAR_Viewer::addLimit(double f_limit1, QString f_limit1_unit, double
 
   if (f_limit1 == -1) {
     // There's no specific data passed. Then get it from the widgets
-    double f1 = m_rectangularPlotWidget->getXmin();
-    double f2 = m_rectangularPlotWidget->getXmax();
+    double f1 = Magnitude_PhaseChart->getXmin();
+    double f2 = Magnitude_PhaseChart->getXmax();
     f_limit1 = f1 + 0.25*(f2-f1);
     f_limit2 = f1 + 0.75*(f2-f1);
 
-    double y1 = m_rectangularPlotWidget->getYmin();
-    double y2 = m_rectangularPlotWidget->getYmax();
+    double y1 = Magnitude_PhaseChart->getYmin();
+    double y2 = Magnitude_PhaseChart->getYmax();
 
     y_limit1 = y1 + (y2-y1)/2;
     y_limit2 = y_limit1;
@@ -2058,9 +2114,9 @@ void Qucs_S_SPAR_Viewer::addLimit(double f_limit1, QString f_limit1_unit, double
   QString SpinBox_fstart_name = QStringLiteral("Lmt_Freq_Start_SpinBox_%1").arg(new_limit_name);
   QDoubleSpinBox * new_limit_fstart_Spinbox = new QDoubleSpinBox();
   new_limit_fstart_Spinbox->setObjectName(SpinBox_fstart_name);
-  new_limit_fstart_Spinbox->setMinimum(m_rectangularPlotWidget->getXmin());
-  new_limit_fstart_Spinbox->setMaximum(m_rectangularPlotWidget->getXmax());
-  new_limit_fstart_Spinbox->setSingleStep(m_rectangularPlotWidget->getXdiv()/5);
+  new_limit_fstart_Spinbox->setMinimum(Magnitude_PhaseChart->getXmin());
+  new_limit_fstart_Spinbox->setMaximum(Magnitude_PhaseChart->getXmax());
+  new_limit_fstart_Spinbox->setSingleStep(Magnitude_PhaseChart->getXdiv()/5);
   new_limit_fstart_Spinbox->setValue(f_limit1);
   connect(new_limit_fstart_Spinbox, SIGNAL(valueChanged(double)), SLOT(updateTraces()));
   List_Limit_Start_Freq.append(new_limit_fstart_Spinbox);
@@ -2083,9 +2139,9 @@ void Qucs_S_SPAR_Viewer::addLimit(double f_limit1, QString f_limit1_unit, double
   QString SpinBox_fstop_name = QStringLiteral("Lmt_Freq_Stop_SpinBox_%1").arg(new_limit_name);
   QDoubleSpinBox * new_limit_fstop_Spinbox = new QDoubleSpinBox();
   new_limit_fstop_Spinbox->setObjectName(SpinBox_fstop_name);
-  new_limit_fstop_Spinbox->setMinimum(m_rectangularPlotWidget->getXmin());
-  new_limit_fstop_Spinbox->setMaximum(m_rectangularPlotWidget->getXmax());
-  new_limit_fstop_Spinbox->setSingleStep(m_rectangularPlotWidget->getXdiv()/5);
+  new_limit_fstop_Spinbox->setMinimum(Magnitude_PhaseChart->getXmin());
+  new_limit_fstop_Spinbox->setMaximum(Magnitude_PhaseChart->getXmax());
+  new_limit_fstop_Spinbox->setSingleStep(Magnitude_PhaseChart->getXdiv()/5);
   new_limit_fstop_Spinbox->setValue(f_limit2);
   connect(new_limit_fstop_Spinbox, SIGNAL(valueChanged(double)), SLOT(updateTraces()));
   List_Limit_Stop_Freq.append(new_limit_fstop_Spinbox);
@@ -2128,10 +2184,10 @@ void Qucs_S_SPAR_Viewer::addLimit(double f_limit1, QString f_limit1_unit, double
   QString SpinBox_val_start_name = QStringLiteral("Lmt_Val_Start_SpinBox_%1").arg(new_limit_name);
   QDoubleSpinBox * new_limit_val_start_Spinbox = new QDoubleSpinBox();
   new_limit_val_start_Spinbox->setObjectName(SpinBox_val_start_name);
-  new_limit_val_start_Spinbox->setMaximum(m_rectangularPlotWidget->getYmin());
-  new_limit_val_start_Spinbox->setMaximum(m_rectangularPlotWidget->getYmax());
+  new_limit_val_start_Spinbox->setMaximum(Magnitude_PhaseChart->getYmin());
+  new_limit_val_start_Spinbox->setMaximum(Magnitude_PhaseChart->getYmax());
   new_limit_val_start_Spinbox->setValue(y_limit1);
-  new_limit_val_start_Spinbox->setSingleStep(m_rectangularPlotWidget->getYdiv()/5);
+  new_limit_val_start_Spinbox->setSingleStep(Magnitude_PhaseChart->getYdiv()/5);
   connect(new_limit_val_start_Spinbox, SIGNAL(valueChanged(double)), SLOT(updateLimits()));
   List_Limit_Start_Value.append(new_limit_val_start_Spinbox);
   this->LimitsGrid->addWidget(new_limit_val_start_Spinbox, limit_index+1, 1);
@@ -2150,9 +2206,9 @@ void Qucs_S_SPAR_Viewer::addLimit(double f_limit1, QString f_limit1_unit, double
   QString SpinBox_val_stop_name = QStringLiteral("Lmt_Val_Stop_SpinBox_%1").arg(new_limit_name);
   QDoubleSpinBox * new_limit_val_stop_Spinbox = new QDoubleSpinBox();
   new_limit_val_stop_Spinbox->setObjectName(SpinBox_val_stop_name);
-  new_limit_val_stop_Spinbox->setMaximum(m_rectangularPlotWidget->getYmax());
+  new_limit_val_stop_Spinbox->setMaximum(Magnitude_PhaseChart->getYmax());
   new_limit_val_stop_Spinbox->setValue(y_limit2);
-  new_limit_val_stop_Spinbox->setSingleStep(m_rectangularPlotWidget->getYdiv()/5);
+  new_limit_val_stop_Spinbox->setSingleStep(Magnitude_PhaseChart->getYdiv()/5);
   connect(new_limit_val_stop_Spinbox, SIGNAL(valueChanged(double)), SLOT(updateLimits()));
   List_Limit_Stop_Value.append(new_limit_val_stop_Spinbox);
   this->LimitsGrid->addWidget(new_limit_val_stop_Spinbox, limit_index+1, 3);
@@ -2372,13 +2428,13 @@ bool Qucs_S_SPAR_Viewer::save()
   // ----------------------------------------------------------------
   // Save the axes settings
   xmlWriter.writeStartElement("AXES");
-  xmlWriter.writeTextElement("x-axis-min", QString::number(m_rectangularPlotWidget->getXmin()));
-  xmlWriter.writeTextElement("x-axis-max", QString::number(m_rectangularPlotWidget->getXmax()));
-  xmlWriter.writeTextElement("x-axis-div", QString::number(m_rectangularPlotWidget->getXdiv()));
+  xmlWriter.writeTextElement("x-axis-min", QString::number(Magnitude_PhaseChart->getXmin()));
+  xmlWriter.writeTextElement("x-axis-max", QString::number(Magnitude_PhaseChart->getXmax()));
+  xmlWriter.writeTextElement("x-axis-div", QString::number(Magnitude_PhaseChart->getXdiv()));
   //xmlWriter.writeTextElement("x-axis-scale", QCombobox_x_axis_units->currentText());
-  xmlWriter.writeTextElement("y-axis-min", QString::number(m_rectangularPlotWidget->getYmin()));
-  xmlWriter.writeTextElement("y-axis-max", QString::number(m_rectangularPlotWidget->getYmax()));
-  xmlWriter.writeTextElement("y-axis-div", QString::number(m_rectangularPlotWidget->getYdiv()));
+  xmlWriter.writeTextElement("y-axis-min", QString::number(Magnitude_PhaseChart->getYmin()));
+  xmlWriter.writeTextElement("y-axis-max", QString::number(Magnitude_PhaseChart->getYmax()));
+  xmlWriter.writeTextElement("y-axis-div", QString::number(Magnitude_PhaseChart->getYdiv()));
   xmlWriter.writeTextElement("lock_status", QString::number(lock_axis));
 
   xmlWriter.writeEndElement(); // Axes

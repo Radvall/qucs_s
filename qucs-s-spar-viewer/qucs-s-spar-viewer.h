@@ -157,7 +157,7 @@ class Qucs_S_SPAR_Viewer : public QMainWindow
   QMap<QString, QList<QString>> trace_properties;
 
   // Rectangular plot
-  RectangularPlotWidget *m_rectangularPlotWidget;
+  RectangularPlotWidget *Magnitude_PhaseChart;
   QDockWidget *dockChart;
   double f_min, f_max; // Minimum (maximum) values of the display
   QList<QColor> default_colors;
@@ -218,6 +218,13 @@ class Qucs_S_SPAR_Viewer : public QMainWindow
 
   // Setup UI
   void CreateMenuBar();
+  void CreateDisplayWidgets(); // Setup magnitude/phase and Smith charts
+
+  void CreateLeftPanel(); // Setup managing docks
+  void setFileManagementDock(); // Setup file managment dock
+  void setTraceManagementDock(); // Setup trace managment dock
+  void setMarkerManagementDock(); // Setup marker managment dock
+  void setLimitManagementDock(); // Setup marker managment dock
 
   // Utilities
   void convert_MA_RI_to_dB(double *, double *, double *, double *, QString);
