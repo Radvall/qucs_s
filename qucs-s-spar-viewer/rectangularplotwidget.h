@@ -12,6 +12,7 @@
 #include <QMap>
 #include <QPen>
 #include <complex>
+#include <limits>  // For std::numeric_limits
 
 class RectangularPlotWidget : public QWidget
 {
@@ -42,7 +43,7 @@ public:
   void setTracePen(const QString& traceName, const QPen& pen);
   QMap<QString, QPen> getTracesInfo() const;
 
-  // Used to set markers and limits
+         // Used to set markers and limits
   double getYmax();
   double getYmin();
   double getYdiv();
@@ -80,7 +81,7 @@ private:
   QDoubleSpinBox *xAxisDiv;
   QComboBox *xAxisUnits;
 
-         // New controls for left y-axis
+  // New controls for left y-axis
   QDoubleSpinBox *yAxisMin;
   QDoubleSpinBox *yAxisMax;
   QDoubleSpinBox *yAxisDiv;
@@ -101,6 +102,10 @@ private:
 
   QGridLayout* setupAxisSettings();
   void updatePlot();
+
+  // Helper methods for auto-scaling
+  int getYAxisTraceCount() const;
+  int getY2AxisTraceCount() const;
 };
 
 #endif // RECTANGULARPLOTWIDGET_H

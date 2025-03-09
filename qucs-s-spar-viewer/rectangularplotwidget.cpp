@@ -42,16 +42,16 @@ void RectangularPlotWidget::addTrace(const QString& name, const Trace& trace)
 {
   traces[name] = trace;
 
-  // Update frequency range if this trace has data
+         // Update frequency range if this trace has data
   if (!trace.frequencies.isEmpty()) {
     double traceMinFreq = trace.frequencies.first();
     double traceMaxFreq = trace.frequencies.last();
 
-    // Update global min/max frequency (stored in Hz)
+           // Update global min/max frequency (stored in Hz)
     if (traceMinFreq < fMin) fMin = traceMinFreq;
     if (traceMaxFreq > fMax) fMax = traceMaxFreq;
 
-    // Get current frequency scale factor based on selected units
+           // Get current frequency scale factor based on selected units
     double freqScale = 1.0;
     QString unit = xAxisUnits->currentText();
     if (unit == "kHz") {
@@ -62,12 +62,49 @@ void RectangularPlotWidget::addTrace(const QString& name, const Trace& trace)
       freqScale = 1e-9;  // Hz to GHz
     }
 
-    // Update the axis limits with the scaled frequency values
+           // Update the axis limits with the scaled frequency values
     xAxisMin->setValue(fMin * freqScale);
     xAxisMax->setValue(fMax * freqScale);
 
-    // Update the x-axis
+           // Update the x-axis
     updateXAxis();
+  }
+
+         // Adjust y-axis and y2-axis ranges based on trace data
+  if (!trace.trace.isEmpty()) {
+    // Find min and max values in the trace data
+    double traceMin = std::numeric_limits<double>::max();
+    double traceMax = std::numeric_limits<double>::lowest();
+
+    for (double value : trace.trace) {
+      if (value < traceMin) traceMin = value;
+      if (value > traceMax) traceMax = value;
+    }
+
+    // Add some padding (5% of range)
+    double padding = (traceMax - traceMin) * 0.05;
+    if (padding < 1.0) padding = 1.0; // Minimum padding
+
+    // Update appropriate y-axis based on the trace's y_axis value
+    if (trace.y_axis == 2) {
+      // Only adjust y2-axis if this is the first trace for y2 or if values exceed current range
+      if (traceMin < y2AxisMin->value() || traceMax > y2AxisMax->value() ||
+          (getY2AxisTraceCount() == 1 && traces.size() == 1)) {
+        y2AxisMin->setValue(floor((traceMin - padding) / 10) * 10); // Round to nearest 10 below
+        y2AxisMax->setValue(ceil((traceMax + padding) / 10) * 10);  // Round to nearest 10 above
+
+        updateY2Axis();
+      }
+    } else {
+      // Only adjust y-axis if this is the first trace or if values exceed current range
+      if (traceMin < yAxisMin->value() || traceMax > yAxisMax->value() ||
+          (getYAxisTraceCount() == 1 && traces.size() == 1)) {
+        yAxisMin->setValue(floor((traceMin - padding) / 5) * 5); // Round to nearest 5 below
+        yAxisMax->setValue(ceil((traceMax + padding) / 5) * 5);  // Round to nearest 5 above
+
+        updateYAxis();
+      }
+    }
   }
 
   updatePlot();
@@ -462,4 +499,29 @@ double RectangularPlotWidget::getXmax(){
 
 double RectangularPlotWidget::getXdiv(){
   return xAxisDiv->value();
+}
+
+
+// Count traces assigned to the primary y-axis
+int RectangularPlotWidget::getYAxisTraceCount() const
+{
+  int count = 0;
+  for (auto it = traces.constBegin(); it != traces.constEnd(); ++it) {
+    if (it.value().y_axis != 2) {
+      count++;
+    }
+  }
+  return count;
+}
+
+// Count traces assigned to the secondary y-axis
+int RectangularPlotWidget::getY2AxisTraceCount() const
+{
+  int count = 0;
+  for (auto it = traces.constBegin(); it != traces.constEnd(); ++it) {
+    if (it.value().y_axis == 2) {
+      count++;
+    }
+  }
+  return count;
 }
