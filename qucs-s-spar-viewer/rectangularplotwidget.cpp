@@ -40,12 +40,21 @@ RectangularPlotWidget::~RectangularPlotWidget()
 
 void RectangularPlotWidget::addTrace(const QString& name, const Trace& trace)
 {
-  traces[name] = trace;
+  // Create a local copy of the trace that we can modify
+  Trace traceCopy = trace;
+
+  // Check if the trace name ends with "_ang" and assign to y2-axis if it does
+  if (name.endsWith("_ang")) {
+    traceCopy.y_axis = 2; // Assign to y2-axis (right axis)
+  }
+
+  // Store the (potentially modified) trace in the map
+  traces[name] = traceCopy;
 
          // Update frequency range if this trace has data
-  if (!trace.frequencies.isEmpty()) {
-    double traceMinFreq = trace.frequencies.first();
-    double traceMaxFreq = trace.frequencies.last();
+  if (!traceCopy.frequencies.isEmpty()) {
+    double traceMinFreq = traceCopy.frequencies.first();
+    double traceMaxFreq = traceCopy.frequencies.last();
 
            // Update global min/max frequency (stored in Hz)
     if (traceMinFreq < fMin) fMin = traceMinFreq;
@@ -71,39 +80,37 @@ void RectangularPlotWidget::addTrace(const QString& name, const Trace& trace)
   }
 
          // Adjust y-axis and y2-axis ranges based on trace data
-  if (!trace.trace.isEmpty()) {
+  if (!traceCopy.trace.isEmpty()) {
     // Find min and max values in the trace data
     double traceMin = std::numeric_limits<double>::max();
     double traceMax = std::numeric_limits<double>::lowest();
 
-    for (double value : trace.trace) {
+    for (double value : traceCopy.trace) {
       if (value < traceMin) traceMin = value;
       if (value > traceMax) traceMax = value;
     }
 
-    // Add some padding (5% of range)
+           // Add some padding (5% of range)
     double padding = (traceMax - traceMin) * 0.05;
     if (padding < 1.0) padding = 1.0; // Minimum padding
 
-    // Update appropriate y-axis based on the trace's y_axis value
-    if (trace.y_axis == 2) {
+           // Update appropriate y-axis based on the trace's y_axis value
+    if (traceCopy.y_axis == 2) {
       // Only adjust y2-axis if this is the first trace for y2 or if values exceed current range
       if (traceMin < y2AxisMin->value() || traceMax > y2AxisMax->value() ||
           (getY2AxisTraceCount() == 1 && traces.size() == 1)) {
         y2AxisMin->setValue(floor((traceMin - padding) / 10) * 10); // Round to nearest 10 below
         y2AxisMax->setValue(ceil((traceMax + padding) / 10) * 10);  // Round to nearest 10 above
-
-        updateY2Axis();
       }
+      updateY2Axis();
     } else {
       // Only adjust y-axis if this is the first trace or if values exceed current range
       if (traceMin < yAxisMin->value() || traceMax > yAxisMax->value() ||
           (getYAxisTraceCount() == 1 && traces.size() == 1)) {
         yAxisMin->setValue(floor((traceMin - padding) / 5) * 5); // Round to nearest 5 below
         yAxisMax->setValue(ceil((traceMax + padding) / 5) * 5);  // Round to nearest 5 above
-
-        updateYAxis();
       }
+      updateYAxis();
     }
   }
 

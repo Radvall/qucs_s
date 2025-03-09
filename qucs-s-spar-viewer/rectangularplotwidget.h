@@ -65,8 +65,8 @@ public:
 
 private slots:
   void updateXAxis();
-  void updateYAxis();  // New slot for left y-axis
-  void updateY2Axis(); // New slot for right y-axis
+  void updateYAxis();
+  void updateY2Axis();
   void changeFreqUnits();
 
 private:
@@ -81,13 +81,13 @@ private:
   QDoubleSpinBox *xAxisDiv;
   QComboBox *xAxisUnits;
 
-  // New controls for left y-axis
+  // Controls for left y-axis
   QDoubleSpinBox *yAxisMin;
   QDoubleSpinBox *yAxisMax;
   QDoubleSpinBox *yAxisDiv;
   QLabel *yAxisUnits;
 
-         // New controls for right y-axis
+  // Controls for right y-axis
   QDoubleSpinBox *y2AxisMin;
   QDoubleSpinBox *y2AxisMax;
   QDoubleSpinBox *y2AxisDiv;
