@@ -35,6 +35,14 @@ struct tQucsSettings
 
 extern struct tQucsSettings QucsSettings;
 
+// Struct to hold all properties of a marker
+struct MarkerProperties {
+  QLabel* nameLabel;
+  QDoubleSpinBox* freqSpinBox;
+  QComboBox* scaleComboBox;
+  QToolButton* deleteButton;
+};
+
 
 class Qucs_S_SPAR_Viewer : public QMainWindow
 {
@@ -74,8 +82,9 @@ class Qucs_S_SPAR_Viewer : public QMainWindow
 
   void addMarker(double freq = -1);
   void removeMarker();
-  void removeMarker(int);
+  void removeMarker(const QString &);
   void removeAllMarkers();
+  int getNumberOfMarkers();
   void updateMarkerTable();
   void updateMarkerNames();
 
@@ -179,10 +188,10 @@ class Qucs_S_SPAR_Viewer : public QMainWindow
   QTableWidget *tableMarkers;
   QPushButton *Button_add_marker, *Button_Remove_All_Markers;
 
-  QList<QLabel *> List_MarkerNames;
-  QList<QDoubleSpinBox *> List_MarkerFreq;
-  QList<QComboBox *> List_MarkerScale;
-  QList<QToolButton*> List_Button_DeleteMarker;
+  QMap<QString, MarkerProperties> markerMap; // All marker widgets are here
+
+  double getMarkerFreq(QString);
+  bool getMarkerByPosition(int position, QString& outMarkerName, MarkerProperties& outProperties);
 
   // Limits
   QDockWidget *dockLimits;

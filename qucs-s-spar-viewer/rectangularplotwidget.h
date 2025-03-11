@@ -55,6 +55,8 @@ public:
   double getXmax();
   double getXmin();
   double getXdiv();
+  double getXscale();
+  int getFreqIndex();
 
   bool addMarker(const QString& markerId, double frequency, const QPen& pen = QPen(Qt::red, 2));
   bool removeMarker(const QString& markerId);

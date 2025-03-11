@@ -66,9 +66,10 @@ public:
   void setTracePen(const QString& traceName, const QPen& pen);
   QMap<QString, QPen> getTracesInfo() const;
 
-  // Modified marker functionality with string ID
   bool addMarker(const QString& markerId, double frequency, const QPen& pen = QPen(Qt::red, 2));
   bool removeMarker(const QString& markerId);
+  bool updateMarkerFrequency(const QString& markerId, double newFrequency);
+
   void clearMarkers();
   QMap<QString, double> getMarkers() const;
 

@@ -61,15 +61,7 @@ void RectangularPlotWidget::addTrace(const QString& name, const Trace& trace)
     if (traceMaxFreq > fMax) fMax = traceMaxFreq;
 
            // Get current frequency scale factor based on selected units
-    double freqScale = 1.0;
-    QString unit = xAxisUnits->currentText();
-    if (unit == "kHz") {
-      freqScale = 1e-3;  // Hz to kHz
-    } else if (unit == "MHz") {
-      freqScale = 1e-6;  // Hz to MHz
-    } else if (unit == "GHz") {
-      freqScale = 1e-9;  // Hz to GHz
-    }
+    double freqScale = getXscale();
 
            // Update the axis limits with the scaled frequency values
     xAxisMin->setValue(fMin * freqScale);
@@ -214,15 +206,7 @@ QMap<QString, double> RectangularPlotWidget::getMarkers() const
 void RectangularPlotWidget::updatePlot()
 {
   // Get the current scale factor based on selected units
-  double freqScale = 1.0;
-  QString unit = xAxisUnits->currentText();
-  if (unit == "kHz") {
-    freqScale = 1e-3;  // Hz to kHz
-  } else if (unit == "MHz") {
-    freqScale = 1e-6;  // Hz to MHz
-  } else if (unit == "GHz") {
-    freqScale = 1e-9;  // Hz to GHz
-  }
+  double freqScale = getXscale();
 
          // Remove all existing series from the chart
   QList<QAbstractSeries*> oldSeries = ChartWidget->series();
@@ -336,15 +320,7 @@ void RectangularPlotWidget::updateY2Axis()
 void RectangularPlotWidget::changeFreqUnits()
 {
   // Get the current scale factor based on selected units
-  double freqScale = 1.0;
-  QString unit = xAxisUnits->currentText();
-  if (unit == "kHz") {
-    freqScale = 1e-3;  // Hz to kHz
-  } else if (unit == "MHz") {
-    freqScale = 1e-6;  // Hz to MHz
-  } else if (unit == "GHz") {
-    freqScale = 1e-9;  // Hz to GHz
-  }
+  double freqScale = getXscale();
 
          // Block signals temporarily to avoid triggering updateXAxis() multiple times
   xAxisMin->blockSignals(true);
@@ -509,6 +485,7 @@ double RectangularPlotWidget::getXdiv(){
 }
 
 
+
 // Count traces assigned to the primary y-axis
 int RectangularPlotWidget::getYAxisTraceCount() const
 {
@@ -531,4 +508,24 @@ int RectangularPlotWidget::getY2AxisTraceCount() const
     }
   }
   return count;
+}
+
+
+// Returns a scale factor depending on the selection of the frequency units
+double RectangularPlotWidget::getXscale(){
+  QString unit = xAxisUnits->currentText();
+  double freqScale = 1;
+  if (unit == "kHz") {
+    freqScale = 1e-3;  // Hz to kHz
+  } else if (unit == "MHz") {
+    freqScale = 1e-6;  // Hz to MHz
+  } else if (unit == "GHz") {
+    freqScale = 1e-9;  // Hz to GHz
+  }
+  return freqScale;
+}
+
+// Gets the index of the frequency units combobox
+int RectangularPlotWidget::getFreqIndex(){
+  return xAxisUnits->currentIndex();
 }

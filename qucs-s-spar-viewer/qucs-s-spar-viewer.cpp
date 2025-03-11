@@ -1625,7 +1625,7 @@ void Qucs_S_SPAR_Viewer::addMarker(double freq){
     if (freq == -1) {
       // There's no specific frequency argument, then pick the middle point
       double f1 = Magnitude_PhaseChart->getXmin();
-      double f2 = Magnitude_PhaseChart->getXmin();
+      double f2 = Magnitude_PhaseChart->getXmax();
       f_marker = f1 + 0.5*(f2-f1);
     } else {
       f_marker= freq;
@@ -1633,31 +1633,35 @@ void Qucs_S_SPAR_Viewer::addMarker(double freq){
     }
     QString Freq_Marker_Scale = QString("MHz");
 
-    int n_markers = List_MarkerNames.size();
+    int n_markers = getNumberOfMarkers();
     n_markers++;
+
+    MarkerProperties props; // Struct to hold Marker widgets
 
     QString new_marker_name = QStringLiteral("Mkr%1").arg(n_markers);
     QLabel * new_marker_label = new QLabel(new_marker_name);
     new_marker_label->setObjectName(new_marker_name);
-    List_MarkerNames.append(new_marker_label);
+    props.nameLabel = new_marker_label;
+
     this->MarkersGrid->addWidget(new_marker_label, n_markers, 0);
 
     QString SpinBox_name = QStringLiteral("Mkr_SpinBox%1").arg(n_markers);
     QDoubleSpinBox * new_marker_Spinbox = new QDoubleSpinBox();
     new_marker_Spinbox->setObjectName(SpinBox_name);
+    new_marker_Spinbox->setMinimum(Magnitude_PhaseChart->getXmin());
     new_marker_Spinbox->setMaximum(Magnitude_PhaseChart->getXmax());
     new_marker_Spinbox->setValue(f_marker);
     connect(new_marker_Spinbox, SIGNAL(valueChanged(double)), SLOT(updateMarkerTable()));
-    List_MarkerFreq.append(new_marker_Spinbox);
+    props.freqSpinBox = new_marker_Spinbox;
     this->MarkersGrid->addWidget(new_marker_Spinbox, n_markers, 1);
 
     QString Combobox_name = QStringLiteral("Mkr_ComboBox%1").arg(n_markers);
     QComboBox * new_marker_Combo = new QComboBox();
     new_marker_Combo->setObjectName(Combobox_name);
     new_marker_Combo->addItems(frequency_units);
-    new_marker_Combo->setCurrentIndex(1);
+    new_marker_Combo->setCurrentIndex(Magnitude_PhaseChart->getFreqIndex());
     connect(new_marker_Combo, SIGNAL(currentIndexChanged(int)), SLOT(changeMarkerLimits()));
-    List_MarkerScale.append(new_marker_Combo);
+    props.scaleComboBox = new_marker_Combo;
     this->MarkersGrid->addWidget(new_marker_Combo, n_markers, 2);
 
     // Remove button
@@ -1674,8 +1678,12 @@ void Qucs_S_SPAR_Viewer::addMarker(double freq){
             }
         )");
     connect(new_marker_removebutton, SIGNAL(clicked()), SLOT(removeMarker()));
-    List_Button_DeleteMarker.append(new_marker_removebutton);
+    props.deleteButton = new_marker_removebutton;
     this->MarkersGrid->addWidget(new_marker_removebutton, n_markers, 3, Qt::AlignCenter);
+
+    // Add marker widgets to the marker map
+    markerMap[new_marker_name] = props;
+
 
     // Add new entry to the table
     tableMarkers->setRowCount(n_markers);
@@ -1685,13 +1693,18 @@ void Qucs_S_SPAR_Viewer::addMarker(double freq){
 
     changeMarkerLimits(Combobox_name);
 
+
+    // Add marker to Smith Chart
+    f_marker = getMarkerFreq(new_marker_name);
+    smithChart->addMarker(new_marker_name, f_marker);
+
 }
 
 
 void Qucs_S_SPAR_Viewer::updateMarkerTable(){
 
     //If there are no markers, remove the entries and return
-    int n_markers = List_MarkerNames.size();
+  int n_markers = getNumberOfMarkers();
     if (n_markers == 0){
         tableMarkers->clear();
         tableMarkers->setColumnCount(0);
@@ -1727,7 +1740,13 @@ void Qucs_S_SPAR_Viewer::updateMarkerTable(){
     // Columns are traces. Rows are markers
     for (int c = 0; c<tableMarkers->columnCount(); c++){//Traces
         for (int r = 0; r<tableMarkers->rowCount(); r++){//Marker
-            freq_marker = QStringLiteral("%1 ").arg(QString::number(List_MarkerFreq[r]->value(), 'f', 1)) + List_MarkerScale[r]->currentText();
+            QString markerName;
+            MarkerProperties mkr_props;
+
+            getMarkerByPosition(r, markerName, mkr_props); // Get the whole marker given the position
+
+            // Compose the marker text
+            freq_marker = QStringLiteral("%1 ").arg(QString::number(mkr_props.freqSpinBox->value(), 'f', 1)) + mkr_props.scaleComboBox->currentText();
 
             if (c==0){
                 // First column
@@ -1752,6 +1771,15 @@ void Qucs_S_SPAR_Viewer::updateMarkerTable(){
             tableMarkers->setItem(r, c, new_item);
         }
     }
+
+  // Update Smith Chart markers
+    QStringList marker_list = markerMap.keys();
+    for (const QString &str : marker_list) {
+      double marker_freq = getMarkerFreq(str);
+      smithChart->updateMarkerFrequency(str, marker_freq);
+    }
+
+
 }
 
 // Find the closest x-axis value in a series given a x value (not necesarily in the grid)
@@ -1818,61 +1846,63 @@ void Qucs_S_SPAR_Viewer::removeMarker()
 
     //Find the index of the button to remove
     int index_to_delete = -1;
-    for (int i = 0; i < List_Button_DeleteMarker.size(); i++) {
-        if (List_Button_DeleteMarker.at(i)->objectName() == ID) {
-            index_to_delete = i;
-            break;
-        }
+    int nmarkers = getNumberOfMarkers();
+    for (int i = 0; i < nmarkers; i++) {
+      MarkerProperties mkr_prop;
+      QString mkr_name;
+
+      getMarkerByPosition(i, mkr_name, mkr_prop);
+      if (mkr_prop.deleteButton->objectName() == ID) {
+          index_to_delete = i;
+          break;
+      }
     }
-    removeMarker(index_to_delete);
+    QString marker_to_remove = QString("Mkr%1").arg(index_to_delete);
+    removeMarker(marker_to_remove);
 }
 
 
-void Qucs_S_SPAR_Viewer::removeMarker(int index_to_delete)
-{
-    // Delete the label
-    QLabel* labelToRemove = List_MarkerNames.at(index_to_delete);
-    MarkersGrid->removeWidget(labelToRemove);
-    List_MarkerNames.removeAt(index_to_delete);
-    delete labelToRemove;
+void Qucs_S_SPAR_Viewer::removeMarker(const QString& markerName) {
+  if (markerMap.contains(markerName)) {
+    // Get the marker properties
+    MarkerProperties& props = markerMap[markerName];
 
-    // Delete the SpinBox
-    QDoubleSpinBox * SpinBoxToRemove = List_MarkerFreq.at(index_to_delete);
-    MarkersGrid->removeWidget(SpinBoxToRemove);
-    List_MarkerFreq.removeAt(index_to_delete);
-    delete SpinBoxToRemove;
+    // Delete all widgets
+    delete props.nameLabel;
+    delete props.freqSpinBox;
+    delete props.scaleComboBox;
+    delete props.deleteButton;
 
-    // Delete the linestyle combo
-    QComboBox* ComboToRemove = List_MarkerScale.at(index_to_delete);
-    MarkersGrid->removeWidget(ComboToRemove);
-    List_MarkerScale.removeAt(index_to_delete);
-    delete ComboToRemove;
-
-    // Delete the "delete" button
-    QToolButton* ButtonToRemove = List_Button_DeleteMarker.at(index_to_delete);
-    MarkersGrid->removeWidget(ButtonToRemove);
-    List_Button_DeleteMarker.removeAt(index_to_delete);
-    delete ButtonToRemove;
+    // Remove from the map
+    markerMap.remove(markerName);
 
     updateMarkerTable();
     updateMarkerNames();
     updateGridLayout(MarkersGrid);
+  }
 }
 
+// Removes all markers on a row
 void Qucs_S_SPAR_Viewer::removeAllMarkers()
 {
-    int n_markers = List_MarkerNames.size();
+    int n_markers = getNumberOfMarkers();
     for (int i = 0; i < n_markers; i++) {
-        removeMarker(n_markers-i-1);
+      QString marker_to_remove = QString("Mkr%1").arg(n_markers-i-1);
+      removeMarker(marker_to_remove);
     }
 }
 
 // After removing a marker, the names of the other markers must be updated
 void Qucs_S_SPAR_Viewer::updateMarkerNames()
 {
-  int n_markers = List_MarkerNames.size();
+  int n_markers = getNumberOfMarkers();
   for (int i = 0; i < n_markers; i++) {
-    QLabel * MarkerLabel = List_MarkerNames[i];
+    MarkerProperties mkr_props;
+    QString mkr_name;
+
+    getMarkerByPosition(i, mkr_name, mkr_props);
+
+    QLabel * MarkerLabel = mkr_props.nameLabel;
     MarkerLabel->setText(QStringLiteral("Mkr%1").arg(i+1));
   }
 }
@@ -1880,7 +1910,7 @@ void Qucs_S_SPAR_Viewer::updateMarkerNames()
 // After removing a marker, the names of the other markers must be updated
 void Qucs_S_SPAR_Viewer::updateLimitNames()
 {
-  int n_limits = List_LimitNames.size();
+  int n_limits = getNumberOfMarkers();
   for (int i = 0; i < n_limits; i++) {
     QLabel * LimitLabel = List_LimitNames[i];
     LimitLabel->setText(QStringLiteral("Limit %1").arg(i+1));
@@ -1992,11 +2022,19 @@ void Qucs_S_SPAR_Viewer::changeMarkerLimits(QString ID)
 {
     //Find the index of the marker
     int index = -1;
-    for (int i = 0; i < List_MarkerScale.size(); i++) {
-        if (List_MarkerScale.at(i)->objectName() == ID) {
-            index = i;
-            break;
-        }
+    int nmarkers = getNumberOfMarkers();
+
+    // Inspects all the markers' combobox and find that've been triggered
+    for (int i = 0; i < nmarkers; i++) {
+      MarkerProperties mkr_props;
+      QString mkr_name;
+
+      getMarkerByPosition(i, mkr_name, mkr_props);
+
+      if (mkr_props.scaleComboBox->objectName() == ID) {
+          index = i;
+          break;
+      }
     }
 
     // The lower and upper limits are given by the axis settings
@@ -2007,27 +2045,33 @@ void Qucs_S_SPAR_Viewer::changeMarkerLimits(QString ID)
     f_upper /=f_scale;
     f_lower /=f_scale;
 
+    // Get markers properties
+    MarkerProperties mkr_props;
+    QString mkr_name;
+
+    getMarkerByPosition(index, mkr_name, mkr_props);
+
     // Now we have to normalize this with respect to the marker's combo
-    QString new_scale = List_MarkerScale.at(index)->currentText();
+    QString new_scale = mkr_props.scaleComboBox->currentText();
     double f_scale_combo = getFreqScale(new_scale);
     f_upper *= f_scale_combo;
     f_lower *= f_scale_combo;
 
-    List_MarkerFreq.at(index)->setMinimum(f_lower);
-    List_MarkerFreq.at(index)->setMaximum(f_upper);
+    mkr_props.freqSpinBox->setMinimum(f_lower);
+    mkr_props.freqSpinBox->setMaximum(f_upper);
 
     // Update minimum step
     double diff = f_upper - f_lower;
     if (diff < 1){
-        List_MarkerFreq.at(index)->setSingleStep(0.01);
+         mkr_props.freqSpinBox->setSingleStep(0.01);
     }else{
         if (diff < 10){
-            List_MarkerFreq.at(index)->setSingleStep(0.1);
+             mkr_props.freqSpinBox->setSingleStep(0.1);
         }else{
             if (diff < 100){
-                List_MarkerFreq.at(index)->setSingleStep(1);
+                 mkr_props.freqSpinBox->setSingleStep(1);
             }else{
-                List_MarkerFreq.at(index)->setSingleStep(10);
+                 mkr_props.freqSpinBox->setSingleStep(10);
             }
 
         }
@@ -2338,13 +2382,19 @@ bool Qucs_S_SPAR_Viewer::save()
 
   // ----------------------------------------------------------------
   // Save the markers
-  if (List_MarkerFreq.size() != 0){
+  int nmarkers = getNumberOfMarkers();
+  if (nmarkers != 0){
     xmlWriter.writeStartElement("MARKERS");
     double freq;
-    for (int i = 0; i < List_MarkerFreq.size(); i++)
+    for (int i = 0; i < nmarkers; i++)
     {
-      freq = List_MarkerFreq[i]->value();
-      QString scale = List_MarkerScale[i]->currentText();
+      MarkerProperties mkr_props;
+      QString mkr_name;
+
+      getMarkerByPosition(i, mkr_name, mkr_props);
+
+      freq = mkr_props.freqSpinBox->value();
+      QString scale = mkr_props.scaleComboBox->currentText();
       freq /= getFreqScale(scale);
       xmlWriter.writeTextElement("Mkr", QString::number(freq));
     }
@@ -2536,9 +2586,7 @@ void Qucs_S_SPAR_Viewer::loadSession(QString session_file)
   QList<double> Limit_Start_Freq, Limit_Start_Val, Limit_Stop_Freq, Limit_Stop_Val;
   QList<int> Limit_Couple_Values;
   QList<QString> Limit_Start_Freq_Unit, Limit_Stop_Freq_Unit;
-  double x_axis_min, x_axis_max, y_axis_min, y_axis_max;
-  int index_x_axis_units;
-  bool lock_axis_setting;
+
   // Markers
   QList<double> Markers;
 
@@ -2566,8 +2614,6 @@ void Qucs_S_SPAR_Viewer::loadSession(QString session_file)
             }
           }
         }
-      } else if (xml.name().toString().contains("lock_status")) {
-        lock_axis_setting = xml.readElementText().toInt();
       } else if (xml.name() == QStringLiteral("Limit")) {
         while (!(xml.tokenType() == QXmlStreamReader::EndElement && xml.name() == QStringLiteral("Limit"))) {
           xml.readNext();
@@ -2859,4 +2905,67 @@ void Qucs_S_SPAR_Viewer::calculate_Sparameter_trace(QString file, QString metric
       }
     }
   }
+}
+
+
+
+// Gets the marker frequency based on the marker name
+double Qucs_S_SPAR_Viewer::getMarkerFreq(QString markerName){
+  // Check if marker exists
+  if (!markerMap.contains(markerName)) {
+    qWarning() << "Marker" << markerName << "not found!";
+    return 0.0;
+  }
+
+  // Get the marker properties
+  const MarkerProperties& props = markerMap[markerName];
+
+  // Get the base frequency from the spin box
+  double baseFrequency = props.freqSpinBox->value();
+
+  // Get the scale factor from the combo box
+  QString scaleText = props.scaleComboBox->currentText();
+  double scaleFactor = 1.0;
+
+  // Convert scale text to actual multiplication factor
+  if (scaleText == "Hz") {
+    scaleFactor = 1.0;
+  } else if (scaleText == "kHz") {
+    scaleFactor = 1e3;
+  } else if (scaleText == "MHz") {
+    scaleFactor = 1e6;
+  } else if (scaleText == "GHz") {
+    scaleFactor = 1e9;
+  } else if (scaleText == "THz") {
+    scaleFactor = 1e12;
+  }
+
+  // Apply scale factor to base frequency
+  return baseFrequency * scaleFactor;
+}
+
+// Get the marker given the position of the entry
+bool Qucs_S_SPAR_Viewer::getMarkerByPosition(int position, QString& outMarkerName, MarkerProperties& outProperties) {
+  // Check if position is valid
+  if (position < 0 || position >= markerMap.size()) {
+    qWarning() << "Invalid position:" << position;
+    return false;
+  }
+
+  // Get an iterator to the beginning of the map
+  auto it = markerMap.begin();
+
+  // Advance the iterator by 'position' steps
+  std::advance(it, position);
+
+  // Get the marker name and properties
+  outMarkerName = it.key();
+  outProperties = it.value();
+
+  return true;
+}
+
+
+int Qucs_S_SPAR_Viewer::getNumberOfMarkers(){
+  return markerMap.keys().size();
 }

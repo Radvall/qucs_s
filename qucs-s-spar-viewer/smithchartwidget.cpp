@@ -1028,3 +1028,33 @@ void SmithChartWidget::updateFrequencyRange()
   }
 }
 
+// Update an existing marker's frequency
+bool SmithChartWidget::updateMarkerFrequency(const QString& markerId, double newFrequency) {
+  // Check if marker exists
+  if (!markers.contains(markerId)) {
+    return false;
+  }
+
+  // Check if any trace contains this frequency
+  bool frequencyInRange = false;
+  for (auto it = traces.constBegin(); it != traces.constEnd(); ++it) {
+    const Trace& trace = it.value();
+    if (!trace.frequencies.isEmpty() &&
+        newFrequency >= trace.frequencies.first() &&
+        newFrequency <= trace.frequencies.last()) {
+      frequencyInRange = true;
+      break;
+    }
+  }
+
+  if (!frequencyInRange) {
+    return false; // Frequency is not within the range of any trace
+  }
+
+  // Update the marker's frequency
+  markers[markerId].frequency = newFrequency;
+
+  // Trigger repaint
+  update();
+  return true;
+}
