@@ -35,11 +35,20 @@ struct tQucsSettings
 
 extern struct tQucsSettings QucsSettings;
 
-// Struct to hold all properties of a marker
+// Struct to hold all the widgets related a marker
 struct MarkerProperties {
   QLabel* nameLabel;
   QDoubleSpinBox* freqSpinBox;
   QComboBox* scaleComboBox;
+  QToolButton* deleteButton;
+};
+
+// Struct to hold all the widgets related a trace
+struct TraceProperties {
+  QLabel* nameLabel;
+  QSpinBox* width;
+  QPushButton * colorButton;
+  QComboBox* LineStyleComboBox;
   QToolButton* deleteButton;
 };
 
@@ -69,8 +78,10 @@ class Qucs_S_SPAR_Viewer : public QMainWindow
   void addTrace();
   void addTrace(QString, QString, QColor, int trace_width = 1, QString trace_style = "Solid");
   void removeTrace();
-  void removeTrace(int);
-  void removeTrace(QList<int>);
+  void removeTrace(const QString& );
+  void removeTrace(QStringList);
+  int getNumberOfTraces();
+  bool getTraceByPosition(int position, QString& outTraceName, TraceProperties& outProperties);
 
   void updateTracesCombo();
 
@@ -87,6 +98,7 @@ class Qucs_S_SPAR_Viewer : public QMainWindow
   int getNumberOfMarkers();
   void updateMarkerTable();
   void updateMarkerNames();
+  bool getMarkerByPosition(int position, QString& outMarkerName, MarkerProperties& outProperties);
 
   void addLimit(double f_limit1=-1, QString f_limit1_unit = "", double f_limit2=-1, QString f_limit2_unit = "", double y_limit1=-1, double y_limit2=-1, bool coupled=false);
   void removeLimit();
@@ -124,12 +136,9 @@ class Qucs_S_SPAR_Viewer : public QMainWindow
   QDockWidget *dockTracesList;
   QWidget * TracesList_Widget;
   QGridLayout * TracesGrid;
-  QList<QLabel *> List_TraceNames;
-  QList<QSpinBox *> List_TraceWidth;
-  QList<QPushButton *> List_Trace_Color;
-  QList<QComboBox *> List_Trace_LineStyle;
-  QList<QComboBox *> List_Trace_Type;
-  QList<QToolButton*> List_Button_DeleteTrace;
+
+  // These structures group the widgets related to the traces so that they can be accessed by name
+  QMap<QString, TraceProperties> traceMap;
 
   QTabWidget *traceTabs;
   QWidget *magnitudePhaseTab, *smithTab;
@@ -191,7 +200,6 @@ class Qucs_S_SPAR_Viewer : public QMainWindow
   QMap<QString, MarkerProperties> markerMap; // All marker widgets are here
 
   double getMarkerFreq(QString);
-  bool getMarkerByPosition(int position, QString& outMarkerName, MarkerProperties& outProperties);
 
   // Limits
   QDockWidget *dockLimits;

@@ -951,8 +951,6 @@ void Qucs_S_SPAR_Viewer::removeFile()
 
 void Qucs_S_SPAR_Viewer::removeFile(int index_to_delete)
 {
-
-
     // Delete the label
     QLabel* labelToRemove = List_FileNames.at(index_to_delete);
     QString dataset_to_remove = labelToRemove->text();
@@ -967,34 +965,31 @@ void Qucs_S_SPAR_Viewer::removeFile(int index_to_delete)
     delete ButtonToRemove;
 
     // Look for the widgets associated to the trace and remove them
-    QList<int> indices_to_remove;
+    QStringList List_TraceNames = traceMap.keys();
     for (int i = 0; i < List_TraceNames.size(); i++){
-        QString trace_name = List_TraceNames.at(i)->text();
+        QString trace_name = List_TraceNames.at(i);
         QStringList parts = {
             trace_name.section('.', 0, -2),
             trace_name.section('.', -1)
         };
         QString dataset_trace = parts[0];
         if (dataset_trace == dataset_to_remove ){
-            QString Label_Object_Name = List_TraceNames.at(i)->objectName();
+          TraceProperties& props = traceMap[trace_name];
 
-            //Find the index of the button to remove
-            int index_to_delete = -1;
-            for (int j = 0; j < List_TraceNames.size(); j++) {
-                if (List_TraceNames.at(j)->objectName() == Label_Object_Name) {
-                    index_to_delete = j;
-                    break;
-                }
-            }
-            indices_to_remove.append(index_to_delete);
+          // Delete all widgets
+          delete props.nameLabel;
+          delete props.colorButton;
+          delete props.deleteButton;
+          delete props.LineStyleComboBox;
+          delete props.width;
+
+          // Remove from the map
+          traceMap.remove(trace_name);
         }
     }
 
-    // Once the list of widgets to remove is known, then remove them on a row
-    std::sort(indices_to_remove.begin(), indices_to_remove.end(), std::greater<int>()); // Sort the items to avoid segfault when removing the widgets
-    removeTrace(indices_to_remove);
 
-    // Delete the map entry
+    // Delete the dataset map entry
     datasets.remove(dataset_to_remove);
 
     // Rebuild the dataset combobox based on the available datasets.
@@ -1047,75 +1042,72 @@ void Qucs_S_SPAR_Viewer::removeTrace()
 
     //Find the index of the button to remove
     int index_to_delete = -1;
-    for (int i = 0; i < List_Button_DeleteTrace.size(); i++) {
-        if (List_Button_DeleteTrace.at(i)->objectName() == ID) {
-            index_to_delete = i;
-            break;
-        }
+    int ntraces = getNumberOfTraces();
+
+    TraceProperties trace_props;
+    QString trace_name;
+    for (int i = 0; i < ntraces; i++) {
+      getTraceByPosition(i, trace_name, trace_props);
+
+      if (trace_props.deleteButton->objectName() == ID) {
+          index_to_delete = i;
+          break;
+      }
     }
-    removeTrace(index_to_delete);
+
+    removeTrace(trace_name); // Remove trace by name
 }
 
 // This function is called when the user wants to remove a trace from the plot
-void Qucs_S_SPAR_Viewer::removeTrace(QList<int> indices_to_delete)
+void Qucs_S_SPAR_Viewer::removeTrace(QStringList trace_to_remove)
 {
-    if (indices_to_delete.isEmpty())
+    if (trace_to_remove.isEmpty())
         return;
 
-    for (int i = 0; i < indices_to_delete.size(); i++)
-        removeTrace(indices_to_delete.at(i));
+    for (int i = 0; i < trace_to_remove.size(); i++)
+        removeTrace(trace_to_remove.at(i));
 }
 
-void Qucs_S_SPAR_Viewer::removeTrace(int index_to_delete)
+void Qucs_S_SPAR_Viewer::removeTrace(const QString& trace_to_remove)
 {
-    // First get the trace name
-    QLabel* labelToRemove = List_TraceNames.at(index_to_delete);
-    QString trace_name = labelToRemove->text();
+
+  if (traceMap.contains(trace_to_remove)) {
+    // Get the marker properties
+    TraceProperties& props = traceMap[trace_to_remove];
+
 
     // First find the layout where the widgets must be removed
-    bool isSmithTrace = trace_name.endsWith("Smith");
-    bool isMagnitudePhaseTrace = trace_name.endsWith("dB") || trace_name.endsWith("ang");
+    bool isSmithTrace = trace_to_remove.endsWith("Smith");
+    bool isMagnitudePhaseTrace = trace_to_remove.endsWith("dB") || trace_to_remove.endsWith("ang");
 
     // Get the appropriate layout based on the trace type
     QGridLayout *targetLayout = isSmithTrace ? smithLayout : magnitudePhaseLayout;
 
-    // Delete the label
-    targetLayout->removeWidget(labelToRemove);
-    List_TraceNames.removeAt(index_to_delete);
-    delete labelToRemove;
+    // Delete all widgets
+    targetLayout->removeWidget(props.nameLabel);
+    delete props.nameLabel;
 
-    // Delete the color button
-    QPushButton* ColorButtonToRemove = List_Trace_Color.at(index_to_delete);
-    targetLayout->removeWidget(ColorButtonToRemove);
-    List_Trace_Color.removeAt(index_to_delete);
-    delete ColorButtonToRemove;
+    targetLayout->removeWidget(props.colorButton);
+    delete props.colorButton;
 
-    // Delete the linestyle combo
-    QComboBox* ComboToRemove = List_Trace_LineStyle.at(index_to_delete);
-    targetLayout->removeWidget(ComboToRemove);
-    List_Trace_LineStyle.removeAt(index_to_delete);
-    delete ComboToRemove;
+    targetLayout->removeWidget(props.LineStyleComboBox);
+    delete props.LineStyleComboBox;
 
-    // Delete the width spinbox
-    QSpinBox * SpinToRemove = List_TraceWidth.at(index_to_delete);
-    targetLayout->removeWidget(SpinToRemove);
-    List_TraceWidth.removeAt(index_to_delete);
-    delete SpinToRemove;
+    targetLayout->removeWidget(props.width);
+    delete props.width;
 
-    // Delete the "delete" button
-    QToolButton* ButtonToRemove = List_Button_DeleteTrace.at(index_to_delete);
-    targetLayout->removeWidget(ButtonToRemove);
-    List_Button_DeleteTrace.removeAt(index_to_delete);
-    delete ButtonToRemove;
+    targetLayout->removeWidget(props.deleteButton);
+    delete props.deleteButton;
 
-    // Remove the trace from the QMap
-    trace_list.removeAll(trace_name);
+    // Remove from the map
+    traceMap.remove(trace_to_remove);
 
     // Update the corresponding chart widget
     if (isSmithTrace){
       // Remove from the Smith Chart widget
-      trace_name.chop(6); // Remove the "_Smith" suffix
-      smithChart->removeTrace(trace_name);
+      QString str = trace_to_remove;
+      str.chop(6); // Remove the "_Smith" suffix
+      smithChart->removeTrace(str);
       return;
     } else {
       // Magnitude and phase plot
@@ -1126,6 +1118,9 @@ void Qucs_S_SPAR_Viewer::removeTrace(int index_to_delete)
 
       updateGridLayout(TracesGrid);
     }
+
+
+  }
 }
 
 
@@ -1251,20 +1246,23 @@ void Qucs_S_SPAR_Viewer::addTrace(QString selected_dataset, QString selected_tra
 
          // Add the trace to the list of displayed list and create the widgets associated to the trace properties
 
-         // Label
+  // Label
   QLabel *new_trace_label = new QLabel(trace_name);
   new_trace_label->setObjectName(QStringLiteral("Trace_Name_") + trace_name);
-  List_TraceNames.append(new_trace_label);
+
+  traceMap[trace_name].nameLabel = new_trace_label;
   targetLayout->addWidget(new_trace_label, n_trace, 0);
 
-         // Color picker
+  // Color picker
   QPushButton *new_trace_color = new QPushButton();
   new_trace_color->setObjectName(QStringLiteral("Trace_Color_") + trace_name);
   connect(new_trace_color, SIGNAL(clicked()), SLOT(changeTraceColor()));
   QString styleSheet = QStringLiteral("QPushButton { background-color: %1; }").arg(trace_color.name());
   new_trace_color->setStyleSheet(styleSheet);
   new_trace_color->setAttribute(Qt::WA_TranslucentBackground); // Needed for Windows buttons to behave as they should
-  List_Trace_Color.append(new_trace_color);
+
+
+  traceMap[trace_name].colorButton = new_trace_color;
   targetLayout->addWidget(new_trace_color, n_trace, 1);
 
          // Line Style
@@ -1278,7 +1276,8 @@ void Qucs_S_SPAR_Viewer::addTrace(QString selected_dataset, QString selected_tra
   int index = new_trace_linestyle->findText(trace_style);
   new_trace_linestyle->setCurrentIndex(index);
   connect(new_trace_linestyle, SIGNAL(currentIndexChanged(int)), SLOT(changeTraceLineStyle()));
-  List_Trace_LineStyle.append(new_trace_linestyle);
+
+  traceMap[trace_name].LineStyleComboBox = new_trace_linestyle;
   targetLayout->addWidget(new_trace_linestyle, n_trace, 2);
 
          // Capture the pen style to correctly render the trace
@@ -1300,7 +1299,8 @@ void Qucs_S_SPAR_Viewer::addTrace(QString selected_dataset, QString selected_tra
   new_trace_width->setObjectName(QStringLiteral("Trace_Width_") + trace_name);
   new_trace_width->setValue(trace_width);
   connect(new_trace_width, SIGNAL(valueChanged(int)), SLOT(changeTraceWidth()));
-  List_TraceWidth.append(new_trace_width);
+
+  traceMap[trace_name].width = new_trace_width;
   targetLayout->addWidget(new_trace_width, n_trace, 3);
 
          // Remove button
@@ -1317,10 +1317,11 @@ void Qucs_S_SPAR_Viewer::addTrace(QString selected_dataset, QString selected_tra
             }
         )");
   connect(new_trace_removebutton, SIGNAL(clicked()), SLOT(removeTrace()));
-  List_Button_DeleteTrace.append(new_trace_removebutton);
+
+  traceMap[trace_name].deleteButton = new_trace_removebutton;
   targetLayout->addWidget(new_trace_removebutton, n_trace, 4);
 
-         // Create the series for the trace
+  // Create the series for the trace
   QLineSeries* series = new QLineSeries();
   series->setName(trace_name);
   trace_list.append(trace_name);
@@ -1440,15 +1441,18 @@ void Qucs_S_SPAR_Viewer::changeTraceColor()
                     QString ID = button->objectName();
 
                     int index_to_change_color = -1;
-                    for (int i = 0; i < List_Trace_Color.size(); i++) {
-                        if (List_Trace_Color.at(i)->objectName() == ID) {
-                            index_to_change_color = i;
-                            break;
-                        }
-                    }
+                    int ntraces = getNumberOfTraces();
 
-                    QLabel* label = List_TraceNames.at(index_to_change_color);
-                    QString trace_name = label->text();
+                    QString trace_name;
+                    TraceProperties trace_props;
+                    for (int i = 0; i < ntraces; i++) {
+                      getTraceByPosition(i, trace_name, trace_props);
+
+                      if (trace_props.colorButton->objectName() == ID) {
+                          index_to_change_color = i;
+                          break;
+                      }
+                    }
 
                     if (trace_name.endsWith("_Smith")) {
                       // Smith Chart widget
@@ -1482,15 +1486,16 @@ void Qucs_S_SPAR_Viewer::changeTraceLineStyle()
     QString ID = combo->objectName();
 
     int index_to_change_linestyle = -1;
-    for (int i = 0; i < List_Trace_LineStyle.size(); i++) {
-        if (List_Trace_LineStyle.at(i)->objectName() == ID) {
-            index_to_change_linestyle = i;
-            break;
-        }
+    int ntraces = getNumberOfTraces();
+    QString trace_name;
+    TraceProperties trace_props;
+    for (int i = 0; i < ntraces; i++) {
+      getTraceByPosition(i, trace_name, trace_props);
+      if (trace_props.LineStyleComboBox->objectName() == ID) {
+          index_to_change_linestyle = i;
+          break;
+      }
     }
-
-    QLabel* label = List_TraceNames.at(index_to_change_linestyle);
-    QString trace_name = label->text();
 
     // New trace line style
     enum Qt::PenStyle PenStyle;
@@ -1542,18 +1547,18 @@ void Qucs_S_SPAR_Viewer::changeTraceWidth() {
   QString ID = spinbox->objectName();
 
   int index_to_change_linestyle = -1;
-  for (int i = 0; i < List_TraceWidth.size(); i++) {
-    if (List_TraceWidth.at(i)->objectName() == ID) {
+  int ntraces = getNumberOfTraces();
+  QString trace_name;
+  TraceProperties trace_props;
+  for (int i = 0; i < ntraces; i++) {
+    getTraceByPosition(i, trace_name, trace_props);
+    if (trace_props.width->objectName() == ID) {
       index_to_change_linestyle = i;
       break;
     }
   }
 
   int TraceWidth = spinbox->value();
-
-  // Get the trace name
-  QLabel* label = List_TraceNames.at(index_to_change_linestyle);
-  QString trace_name = label->text();
 
   // Get the QPen of the trace from the corresponding display widget and update the width
   if (trace_name.endsWith("_Smith")) {
@@ -1847,18 +1852,17 @@ void Qucs_S_SPAR_Viewer::removeMarker()
     //Find the index of the button to remove
     int index_to_delete = -1;
     int nmarkers = getNumberOfMarkers();
-    for (int i = 0; i < nmarkers; i++) {
-      MarkerProperties mkr_prop;
-      QString mkr_name;
 
+    MarkerProperties mkr_prop;
+    QString mkr_name;
+    for (int i = 0; i < nmarkers; i++) {
       getMarkerByPosition(i, mkr_name, mkr_prop);
       if (mkr_prop.deleteButton->objectName() == ID) {
           index_to_delete = i;
           break;
       }
     }
-    QString marker_to_remove = QString("Mkr%1").arg(index_to_delete);
-    removeMarker(marker_to_remove);
+    removeMarker(mkr_name); // Remove marker by name
 }
 
 
@@ -2449,26 +2453,31 @@ bool Qucs_S_SPAR_Viewer::save()
   }
   // ----------------------------------------------------------------
   // Save the traces displayed and their properties
-  if (List_TraceNames.size() != 0){
+  int ntraces = getNumberOfTraces();
+  if (ntraces != 0){
     xmlWriter.writeStartElement("DISPLAYED_TRACES");
     QString trace_name, color, style;
     int width;
-    for (int i = 0; i < List_TraceNames.size(); i++){
+    for (int i = 0; i < ntraces; i++){
+
+      QString trace_name;
+      TraceProperties trace_props;
+      getTraceByPosition(i, trace_name, trace_props);
+
       xmlWriter.writeStartElement("trace");
       // Trace name
-      trace_name = List_TraceNames[i]->text();
       xmlWriter.writeTextElement("trace_name", trace_name);
 
       // Trace width
-      width = List_TraceWidth[i]->value();
+      width = trace_props.width->value();
       xmlWriter.writeTextElement("trace_width", QString::number(width));
 
       // Trace color
-      color = List_Trace_Color[i]->palette().color(QPalette::Button).name();
+      color = trace_props.colorButton->palette().color(QPalette::Button).name();
       xmlWriter.writeTextElement("trace_color", color);
 
       // Trace style
-      style = List_Trace_LineStyle[i]->currentText();
+      style = trace_props.LineStyleComboBox->currentText();
       xmlWriter.writeTextElement("trace_style", style);
       xmlWriter.writeEndElement(); // Trace
 
@@ -2966,6 +2975,34 @@ bool Qucs_S_SPAR_Viewer::getMarkerByPosition(int position, QString& outMarkerNam
 }
 
 
+// Get the trace given the position of the entry
+bool Qucs_S_SPAR_Viewer::getTraceByPosition(int position, QString& outTraceName, TraceProperties& outProperties) {
+  // Check if position is valid
+  if (position < 0 || position >= traceMap.size()) {
+    qWarning() << "Invalid position:" << position;
+    return false;
+  }
+
+         // Get an iterator to the beginning of the map
+  auto it = traceMap.begin();
+
+         // Advance the iterator by 'position' steps
+  std::advance(it, position);
+
+         // Get the marker name and properties
+  outTraceName = it.key();
+  outProperties = it.value();
+
+  return true;
+}
+
+
+// Returns the total number of markers
 int Qucs_S_SPAR_Viewer::getNumberOfMarkers(){
   return markerMap.keys().size();
+}
+
+// Returns the total number of traces
+int Qucs_S_SPAR_Viewer::getNumberOfTraces(){
+  return traceMap.keys().size();
 }
