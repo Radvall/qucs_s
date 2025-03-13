@@ -1696,11 +1696,24 @@ void Qucs_S_SPAR_Viewer::addMarker(double freq){
     QTableWidgetItem *newfreq = new QTableWidgetItem(new_freq);
     tableMarkers->setItem(n_markers-1, 0, newfreq);
 
+
     changeMarkerLimits(Combobox_name);
 
+    f_marker = getMarkerFreq(new_marker_name);
+
+    // Define QPen
+    QPen pen;
+    pen.setColor(Qt::black);
+    pen.setWidth(1);
+    pen.setStyle(Qt::SolidLine);
+    pen.setCapStyle(Qt::RoundCap);
+    pen.setJoinStyle(Qt::RoundJoin);
+    pen.setCosmetic(true);
+
+    // Add marker to the magnitude / phase plot
+    Magnitude_PhaseChart->addMarker(new_marker_name, f_marker, pen);
 
     // Add marker to Smith Chart
-    f_marker = getMarkerFreq(new_marker_name);
     smithChart->addMarker(new_marker_name, f_marker);
 
 }
@@ -1724,13 +1737,16 @@ void Qucs_S_SPAR_Viewer::updateMarkerTable(){
     QStringList headers;
     headers.clear();
     headers.append("freq");
-    for (QAbstractSeries *series : qAsConst(seriesList)) {
-        QString series_name = series->name();
-        if (series_name.startsWith("Mkr", Qt::CaseSensitive) || series_name.startsWith("Limit", Qt::CaseSensitive)){
-            //Markers and limits are traces in the QChart, but they cannot be added as markers again!
-            continue;
-        }
-        headers.append(series_name);
+
+    int n_traces = getNumberOfTraces();
+    for (int i = 0; i < n_traces; i++) {
+      // Find the name of the traces from the traces map and add them to a list.
+      // Then use that list to build the header of the table
+      QString trace_name;
+      TraceProperties trace_props;
+      getTraceByPosition(i, trace_name, trace_props);
+
+      headers.append(trace_name);
     }
 
     tableMarkers->setColumnCount(headers.size());// The first row is for the frequency
@@ -1743,11 +1759,10 @@ void Qucs_S_SPAR_Viewer::updateMarkerTable(){
     QString freq_marker;
     // Update each marker
     // Columns are traces. Rows are markers
-    for (int c = 0; c<tableMarkers->columnCount(); c++){//Traces
-        for (int r = 0; r<tableMarkers->rowCount(); r++){//Marker
+    for (int c = 0; c<n_traces; c++){//Traces
+        for (int r = 0; r<n_markers; r++){//Marker
             QString markerName;
             MarkerProperties mkr_props;
-
             getMarkerByPosition(r, markerName, mkr_props); // Get the whole marker given the position
 
             // Compose the marker text
@@ -1760,9 +1775,13 @@ void Qucs_S_SPAR_Viewer::updateMarkerTable(){
                 continue;
             }
             targetX = getFreqFromText(freq_marker);
-            // Look into dataset, traces may be clipped.
-            // It is important to grab the data from the dataset, not from the displayed trace.
-            QString trace_name = seriesList[c-1]->name();
+
+
+            QString trace_name;
+            TraceProperties trace_props;
+            getTraceByPosition(c, trace_name, trace_props);
+
+            // Look into dataset for the trace data
             QStringList parts = {
                 trace_name.section('.', 0, -2),
                 trace_name.section('.', -1)
@@ -1777,11 +1796,12 @@ void Qucs_S_SPAR_Viewer::updateMarkerTable(){
         }
     }
 
-  // Update Smith Chart markers
+    // Update markers
     QStringList marker_list = markerMap.keys();
     for (const QString &str : marker_list) {
       double marker_freq = getMarkerFreq(str);
-      smithChart->updateMarkerFrequency(str, marker_freq);
+      smithChart->updateMarkerFrequency(str, marker_freq); // Update Smith Chart markers
+      Magnitude_PhaseChart->updateMarkerFrequency(str, marker_freq); // Update magnitude / phase markers
     }
 
 
