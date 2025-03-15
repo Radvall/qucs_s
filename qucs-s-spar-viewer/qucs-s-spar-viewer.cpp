@@ -276,7 +276,7 @@ void Qucs_S_SPAR_Viewer::setTraceManagementDock(){
 
   QCombobox_display_mode= new QComboBox();
   QCombobox_display_mode->addItem("dB");
-  QCombobox_display_mode->addItem("ang");
+  QCombobox_display_mode->addItem("Phase");
   QCombobox_display_mode->addItem("Smith");
   QCombobox_display_mode->addItem("n.u.");
   QCombobox_display_mode->setCurrentIndex(0); // Default to dB
@@ -1048,7 +1048,6 @@ void Qucs_S_SPAR_Viewer::removeTrace()
     //qDebug() << "Clicked button:" << ID;
 
     //Find the index of the button to remove
-    int index_to_delete = -1;
     int ntraces = getNumberOfTraces();
 
     TraceProperties trace_props;
@@ -1057,7 +1056,6 @@ void Qucs_S_SPAR_Viewer::removeTrace()
       getTraceByPosition(i, trace_name, trace_props);
 
       if (trace_props.deleteButton->objectName() == ID) {
-          index_to_delete = i;
           break;
       }
     }
@@ -1083,12 +1081,17 @@ void Qucs_S_SPAR_Viewer::removeTrace(const QString& trace_to_remove)
     TraceProperties& props = traceMap[trace_to_remove];
 
 
-    // First find the layout where the widgets must be removed
-    bool isSmithTrace = trace_to_remove.endsWith("Smith");
-    bool isMagnitudePhaseTrace = trace_to_remove.endsWith("dB") || trace_to_remove.endsWith("ang");
-
-    // Get the appropriate layout based on the trace type
-    QGridLayout *targetLayout = isSmithTrace ? smithLayout : magnitudePhaseLayout;
+           // Get the appropriate layout based on the trace type
+    QGridLayout *targetLayout;
+    if (trace_to_remove.endsWith("Smith")) {
+      // Select the layout where Smith Chart traces are shown
+      targetLayout = smithLayout;
+    } else {
+      if (trace_to_remove.endsWith("dB") || trace_to_remove.endsWith("ang")) {
+        // Select the layout where Magnitude and Phase traces are shown
+        targetLayout = magnitudePhaseLayout;
+      }
+    }
 
     // Delete all widgets
     targetLayout->removeWidget(props.nameLabel);
@@ -1110,7 +1113,7 @@ void Qucs_S_SPAR_Viewer::removeTrace(const QString& trace_to_remove)
     traceMap.remove(trace_to_remove);
 
     // Update the corresponding chart widget
-    if (isSmithTrace){
+    if (trace_to_remove.endsWith("Smith")){
       // Remove from the Smith Chart widget
       QString str = trace_to_remove;
       str.chop(6); // Remove the "_Smith" suffix
@@ -1202,6 +1205,9 @@ void Qucs_S_SPAR_Viewer::addTrace()
 
     QString suffix;
     if (selected_view.compare("n.u.")){
+      if (!selected_view.compare("Phase")) {
+        selected_view = QString("ang");
+      }
       selected_trace += QString("_") + selected_view;
     }
 
@@ -1231,7 +1237,7 @@ void Qucs_S_SPAR_Viewer::addTrace(QString selected_dataset, QString selected_tra
 {
   int n_trace = this->trace_list.size() + 1; // Number of displayed traces
 
-         // Get the name of the trace to plot
+  // Get the name of the trace to plot
   QString trace_name = selected_dataset;
   trace_name.append("."); // Separate the dataset from the trace name with a point
   trace_name.append(selected_trace);
@@ -1242,14 +1248,19 @@ void Qucs_S_SPAR_Viewer::addTrace(QString selected_dataset, QString selected_tra
         tr("Warning"),
         tr("This trace is already shown"));
     return;
+  } 
+
+  // Get the appropriate layout based on the trace type
+  QGridLayout *targetLayout;
+  if (selected_trace.endsWith("Smith")) {
+    // Select the layout where Smith Chart traces are shown
+    targetLayout = smithLayout;
+  } else {
+    if (selected_trace.endsWith("dB") || selected_trace.endsWith("ang")) {
+    // Select the layout where Magnitude and Phase traces are shown
+      targetLayout = magnitudePhaseLayout;
+    }
   }
-
-  bool isSmithTrace = selected_trace.endsWith("Smith");
-  bool isMagnitudePhaseTrace = selected_trace.endsWith("dB") || selected_trace.endsWith("ang");
-
-         // Get the appropriate layout based on the trace type
-  QGridLayout *targetLayout = isSmithTrace ? smithLayout : magnitudePhaseLayout;
-
 
          // Add the trace to the list of displayed list and create the widgets associated to the trace properties
 
@@ -1447,7 +1458,6 @@ void Qucs_S_SPAR_Viewer::changeTraceColor()
 
                     QString ID = button->objectName();
 
-                    int index_to_change_color = -1;
                     int ntraces = getNumberOfTraces();
 
                     QString trace_name;
@@ -1456,7 +1466,6 @@ void Qucs_S_SPAR_Viewer::changeTraceColor()
                       getTraceByPosition(i, trace_name, trace_props);
 
                       if (trace_props.colorButton->objectName() == ID) {
-                          index_to_change_color = i;
                           break;
                       }
                     }
@@ -1492,14 +1501,12 @@ void Qucs_S_SPAR_Viewer::changeTraceLineStyle()
     QComboBox *combo = qobject_cast<QComboBox*>(sender());
     QString ID = combo->objectName();
 
-    int index_to_change_linestyle = -1;
     int ntraces = getNumberOfTraces();
     QString trace_name;
     TraceProperties trace_props;
     for (int i = 0; i < ntraces; i++) {
       getTraceByPosition(i, trace_name, trace_props);
       if (trace_props.LineStyleComboBox->objectName() == ID) {
-          index_to_change_linestyle = i;
           break;
       }
     }
@@ -1553,14 +1560,12 @@ void Qucs_S_SPAR_Viewer::changeTraceWidth() {
   QSpinBox *spinbox = qobject_cast<QSpinBox*>(sender());
   QString ID = spinbox->objectName();
 
-  int index_to_change_linestyle = -1;
   int ntraces = getNumberOfTraces();
   QString trace_name;
   TraceProperties trace_props;
   for (int i = 0; i < ntraces; i++) {
     getTraceByPosition(i, trace_name, trace_props);
     if (trace_props.width->objectName() == ID) {
-      index_to_change_linestyle = i;
       break;
     }
   }
@@ -1960,7 +1965,6 @@ void Qucs_S_SPAR_Viewer::removeMarker()
     //qDebug() << "Clicked button:" << ID;
 
     //Find the index of the button to remove
-    int index_to_delete = -1;
     int nmarkers = getNumberOfMarkers();
 
     MarkerProperties mkr_prop;
@@ -1968,7 +1972,6 @@ void Qucs_S_SPAR_Viewer::removeMarker()
     for (int i = 0; i < nmarkers; i++) {
       getMarkerByPosition(i, mkr_name, mkr_prop);
       if (mkr_prop.deleteButton->objectName() == ID) {
-          index_to_delete = i;
           break;
       }
     }
