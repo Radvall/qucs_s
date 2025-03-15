@@ -1,7 +1,7 @@
 #include "rectangularplotwidget.h"
 
 RectangularPlotWidget::RectangularPlotWidget(QWidget *parent)
-    : QWidget(parent), fMin(1e20), fMax(-1)
+    : QWidget(parent), fMin(1e20), fMax(-1), showTraceValues(true)
 {
   // Initialize the chart and chart view
   ChartWidget = new QChart();
@@ -24,6 +24,10 @@ RectangularPlotWidget::RectangularPlotWidget(QWidget *parent)
          // Set up the frequency units
   frequencyUnits << "Hz" << "kHz" << "MHz" << "GHz";
 
+         // Initialize our marker label lists
+  markerLabels.clear();
+  intersectionLabels.clear();
+
          // Create the main layout
   QVBoxLayout *mainLayout = new QVBoxLayout(this);
   mainLayout->addWidget(chartView);
@@ -35,8 +39,13 @@ RectangularPlotWidget::RectangularPlotWidget(QWidget *parent)
 
 RectangularPlotWidget::~RectangularPlotWidget()
 {
+  // Clean up any remaining graphics items
+  clearGraphicsItems();
+
+  // Delete the chart (which will delete all series)
   delete ChartWidget;
 }
+
 
 void RectangularPlotWidget::addTrace(const QString& name, const Trace& trace)
 {
@@ -205,6 +214,9 @@ QMap<QString, double> RectangularPlotWidget::getMarkers() const
 
 void RectangularPlotWidget::updatePlot()
 {
+  // Clear existing graphics items
+  clearGraphicsItems();
+
   // Get the current scale factor based on selected units
   double freqScale = getXscale();
 
@@ -215,27 +227,27 @@ void RectangularPlotWidget::updatePlot()
     delete series;
   }
 
-  // Add each trace as a new series
+         // Add each trace as a new series
   for (auto it = traces.constBegin(); it != traces.constEnd(); ++it) {
     const QString& name = it.key();
     const Trace& trace = it.value();
 
-    // Create a new line series for the trace
+           // Create a new line series for the trace
     QLineSeries* series = new QLineSeries();
     series->setPen(trace.pen);
     series->setName(name);
 
-    // Add data points to the series with proper frequency scaling
+           // Add data points to the series with proper frequency scaling
     for (int i = 0; i < trace.frequencies.size() && i < trace.trace.size(); ++i) {
       // Scale the frequency values according to the current frequency units
       double scaledFreq = trace.frequencies[i] * freqScale;
       series->append(scaledFreq, trace.trace[i]);
     }
 
-    // Add the series to the chart
+           // Add the series to the chart
     ChartWidget->addSeries(series);
 
-    // Attach to the appropriate axes
+           // Attach to the appropriate axes
     series->attachAxis(xAxis);
     if (trace.y_axis == 2) {
       series->attachAxis(y2Axis);
@@ -244,33 +256,137 @@ void RectangularPlotWidget::updatePlot()
     }
   }
 
-  // Draw markers if any
+         // Draw markers if any
   for (auto it = markers.constBegin(); it != markers.constEnd(); ++it) {
     const Marker& marker = it.value();
 
-    // Create a vertical line series for each marker
+           // Create a vertical line series for each marker
     QLineSeries* markerSeries = new QLineSeries();
     markerSeries->setPen(marker.pen);
     markerSeries->setName(marker.id);
 
-    // Find the y-range to cover based on current axes
+           // Find the y-range to cover based on current axes
     double yBottom = yAxis->min();
     double yTop = yAxis->max();
 
-    // Scale the marker frequency according to the current units
+           // Scale the marker frequency according to the current units
     double scaledMarkerFreq = marker.frequency * freqScale;
 
-    // Add a vertical line at the marker frequency
+           // Add a vertical line at the marker frequency
     markerSeries->append(scaledMarkerFreq, yBottom);
     markerSeries->append(scaledMarkerFreq, yTop);
 
-    // Add the marker series to the chart
+           // Add the marker series to the chart
     ChartWidget->addSeries(markerSeries);
     markerSeries->attachAxis(xAxis);
     markerSeries->attachAxis(yAxis);
+
+           // Create a text label showing just the frequency value
+    QString unitText = xAxisUnits->currentText();
+    QString freqText = QString::number(scaledMarkerFreq, 'f', 1) + " " + unitText;
+
+    // Create a QGraphicsTextItem for the marker frequency label
+    QGraphicsTextItem* markerLabel = new QGraphicsTextItem(ChartWidget);
+    markerLabel->setHtml("<div style='text-align:center; background:white; padding:2px; border:1px solid " +
+                         marker.pen.color().name() + "'>" + freqText + "</div>");
+
+    // Get the position at the top of the marker line
+    QPointF labelPos = ChartWidget->mapToPosition(QPointF(scaledMarkerFreq, yTop), markerSeries);
+
+    // Position slightly above the chart
+    labelPos.setY(labelPos.y() - 25); // Move label up by 25 pixels
+
+    // Center the label horizontally on the line
+    QRectF labelRect = markerLabel->boundingRect();
+    labelPos.setX(labelPos.x() - labelRect.width()/2);
+
+    markerLabel->setPos(labelPos);
+
+    // Add to our tracking list for later cleanup
+    markerLabels.append(markerLabel);
+
+    // Add marker intersections with all traces
+    for (auto traceIt = traces.constBegin(); traceIt != traces.constEnd(); ++traceIt) {
+      const Trace& trace = traceIt.value();
+
+      // Find the intersection point of the marker with this trace
+      double intersectionValue = -std::numeric_limits<double>::max();
+      bool found = false;
+
+      // Check if marker frequency is within trace's frequency range
+      if (!trace.frequencies.isEmpty() &&
+          marker.frequency >= trace.frequencies.first() &&
+          marker.frequency <= trace.frequencies.last()) {
+
+        // Find the closest frequency points in the trace
+        int lowerIndex = -1;
+        for (int i = 0; i < trace.frequencies.size() - 1; ++i) {
+          if (trace.frequencies[i] <= marker.frequency && marker.frequency <= trace.frequencies[i+1]) {
+            lowerIndex = i;
+            break;
+          }
+        }
+
+        // If we found an interval containing the marker frequency
+        if (lowerIndex >= 0) {
+          // Linear interpolation to find the value at marker frequency
+          double f1 = trace.frequencies[lowerIndex];
+          double f2 = trace.frequencies[lowerIndex + 1];
+          double v1 = trace.trace[lowerIndex];
+          double v2 = trace.trace[lowerIndex + 1];
+
+          // Linear interpolation formula: v = v1 + (f - f1) * (v2 - v1) / (f2 - f1)
+          intersectionValue = v1 + (marker.frequency - f1) * (v2 - v1) / (f2 - f1);
+          found = true;
+        }
+      }
+
+      // If intersection was found, add a point marker
+      if (found) {
+        QScatterSeries* intersectionPoint = new QScatterSeries();
+        intersectionPoint->setMarkerSize(7);
+
+        // Use the same color as the trace for the intersection point
+        intersectionPoint->setColor(trace.pen.color());
+        intersectionPoint->setBorderColor(Qt::black);
+
+        // Get the y-axis for this trace
+        QAbstractAxis* traceYAxis = (trace.y_axis == 2) ? y2Axis : yAxis;
+
+        // Add the point to the chart
+        intersectionPoint->append(scaledMarkerFreq, intersectionValue);
+        ChartWidget->addSeries(intersectionPoint);
+        intersectionPoint->attachAxis(xAxis);
+        intersectionPoint->attachAxis(traceYAxis);
+
+        // Add value label for the intersection point
+        if (showTraceValues) {
+          QGraphicsTextItem* valueLabel = new QGraphicsTextItem(ChartWidget);
+          QString valueText = QString::number(intersectionValue, 'f', 2);
+          if (trace.y_axis == 2) {
+            valueText += " deg";
+          } else {
+            valueText += " dB";
+          }
+
+          valueLabel->setHtml("<div style='background:white; padding:1px; border:1px solid " +
+                              trace.pen.color().name() + "'>" + valueText + "</div>");
+
+
+          // Position the label near the intersection point
+          QPointF labelPos = ChartWidget->mapToPosition(
+              QPointF(scaledMarkerFreq, intersectionValue), intersectionPoint);
+          labelPos.setX(labelPos.x() + 5); // Offset slightly to avoid overlapping the point
+          valueLabel->setPos(labelPos);
+
+          // Add to our tracking list for later cleanup
+          intersectionLabels.append(valueLabel);
+        }
+      }
+    }
   }
 
-  // Refresh the chart
+         // Refresh the chart
   ChartWidget->update();
 }
 
@@ -337,6 +453,7 @@ void RectangularPlotWidget::changeFreqUnits()
   // Update the axis
   updateXAxis();
 }
+
 QGridLayout* RectangularPlotWidget::setupAxisSettings()
 {
   QGridLayout *axisLayout = new QGridLayout();
@@ -443,9 +560,17 @@ QGridLayout* RectangularPlotWidget::setupAxisSettings()
   y2AxisUnits = new QLabel("deg");
   axisLayout->addWidget(y2AxisUnits, 2, 4);
 
+         // Add the Show Values checkbox in a new row
+  QLabel *markerOptionsLabel = new QLabel("<b>Marker Options</b>");
+  axisLayout->addWidget(markerOptionsLabel, 3, 0);
+
+  showValuesCheckbox = new QCheckBox("Show Data Values");
+  showValuesCheckbox->setChecked(true);  // Default to showing values
+  connect(showValuesCheckbox, SIGNAL(toggled(bool)), this, SLOT(toggleShowValues(bool)));
+  axisLayout->addWidget(showValuesCheckbox, 3, 1, 1, 2);  // Span 2 columns
+
   return axisLayout;
 }
-
 
 // These "get" functions are used by the main program to put markers and limits
 double RectangularPlotWidget::getYmin(){
@@ -559,4 +684,29 @@ bool RectangularPlotWidget::updateMarkerFrequency(const QString& markerId, doubl
          // Trigger repaint
   updatePlot();
   return true;
+}
+
+// Removes the old graphic elements, such as the labels from past marker positions
+void RectangularPlotWidget::clearGraphicsItems()
+{
+  // Remove all marker labels
+  for (QGraphicsTextItem* label : markerLabels) {
+    ChartWidget->scene()->removeItem(label);
+    delete label;
+  }
+  markerLabels.clear();
+
+  // Remove all intersection labels
+  for (QGraphicsTextItem* label : intersectionLabels) {
+    ChartWidget->scene()->removeItem(label);
+    delete label;
+  }
+  intersectionLabels.clear();
+}
+
+
+void RectangularPlotWidget::toggleShowValues(bool show)
+{
+  showTraceValues = show;
+  updatePlot();  // Redraw with new setting
 }

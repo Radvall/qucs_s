@@ -4,6 +4,7 @@
 #include <QWidget>
 #include <QtCharts/QChartView>
 #include <QtCharts/QLineSeries>
+#include <QtCharts/QScatterSeries>
 #include <QtCharts/QValueAxis>
 #include <QDoubleSpinBox>
 #include <QComboBox>
@@ -11,8 +12,10 @@
 #include <QLabel>
 #include <QMap>
 #include <QPen>
+#include <QGraphicsTextItem>
+#include <QCheckBox>  // Added for checkbox
 #include <complex>
-#include <limits>  // For std::numeric_limits
+#include <limits>
 
 class RectangularPlotWidget : public QWidget
 {
@@ -43,7 +46,6 @@ public:
   void setTracePen(const QString& traceName, const QPen& pen);
   QMap<QString, QPen> getTracesInfo() const;
 
-         // Used to set markers and limits
   double getYmax();
   double getYmin();
   double getYdiv();
@@ -71,6 +73,7 @@ private slots:
   void updateYAxis();
   void updateY2Axis();
   void changeFreqUnits();
+  void toggleShowValues(bool show);  // New slot for checkbox
 
 private:
   QChart *ChartWidget;
@@ -84,17 +87,18 @@ private:
   QDoubleSpinBox *xAxisDiv;
   QComboBox *xAxisUnits;
 
-  // Controls for left y-axis
   QDoubleSpinBox *yAxisMin;
   QDoubleSpinBox *yAxisMax;
   QDoubleSpinBox *yAxisDiv;
   QLabel *yAxisUnits;
 
-  // Controls for right y-axis
   QDoubleSpinBox *y2AxisMin;
   QDoubleSpinBox *y2AxisMax;
   QDoubleSpinBox *y2AxisDiv;
   QLabel *y2AxisUnits;
+
+  QCheckBox *showValuesCheckbox;  // New checkbox for showing values
+  bool showTraceValues;           // Flag to control value display
 
   QStringList frequencyUnits;
   double fMin;
@@ -103,10 +107,14 @@ private:
   QMap<QString, Trace> traces;
   QMap<QString, Marker> markers;
 
+  // Lists to keep track of graphics items
+  QList<QGraphicsTextItem*> markerLabels;
+  QList<QGraphicsTextItem*> intersectionLabels;
+
   QGridLayout* setupAxisSettings();
   void updatePlot();
+  void clearGraphicsItems();
 
-  // Helper methods for auto-scaling
   int getYAxisTraceCount() const;
   int getY2AxisTraceCount() const;
 };

@@ -1662,6 +1662,7 @@ void Qucs_S_SPAR_Viewer::addMarker(double freq){
     new_marker_Spinbox->setObjectName(SpinBox_name);
     new_marker_Spinbox->setMinimum(Magnitude_PhaseChart->getXmin());
     new_marker_Spinbox->setMaximum(Magnitude_PhaseChart->getXmax());
+    new_marker_Spinbox->setDecimals(1);
     new_marker_Spinbox->setValue(f_marker);
     connect(new_marker_Spinbox, SIGNAL(valueChanged(double)), SLOT(updateMarkerTable()));
     props.freqSpinBox = new_marker_Spinbox;
