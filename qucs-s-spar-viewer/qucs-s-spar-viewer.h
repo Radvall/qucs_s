@@ -98,6 +98,7 @@ class Qucs_S_SPAR_Viewer : public QMainWindow
   int getNumberOfMarkers();
   void updateMarkerTable();
   void updateMarkerNames();
+  void updateMarkerData(QTableWidget &, QStringList);
   bool getMarkerByPosition(int position, QString& outMarkerName, MarkerProperties& outProperties);
 
   void addLimit(double f_limit1=-1, QString f_limit1_unit = "", double f_limit2=-1, QString f_limit2_unit = "", double y_limit1=-1, double y_limit2=-1, bool coupled=false);
@@ -194,9 +195,9 @@ class Qucs_S_SPAR_Viewer : public QMainWindow
   QDockWidget *dockMarkers;
   QWidget *Marker_Widget;
   QGridLayout * MarkersGrid;
-  QTableWidget *tableMarkers;
   QPushButton *Button_add_marker, *Button_Remove_All_Markers;
-
+  QTableWidget* tableMarkers_Magnitude_Phase;
+  QTableWidget* tableMarkers_Smith;
   QMap<QString, MarkerProperties> markerMap; // All marker widgets are here
 
   double getMarkerFreq(QString);
@@ -237,7 +238,7 @@ class Qucs_S_SPAR_Viewer : public QMainWindow
   void CreateMenuBar();
   void CreateDisplayWidgets(); // Setup magnitude/phase and Smith charts
 
-  void CreateLeftPanel(); // Setup managing docks
+  void CreateRightPanel(); // Setup managing docks
   void setFileManagementDock(); // Setup file managment dock
   void setTraceManagementDock(); // Setup trace managment dock
   void setMarkerManagementDock(); // Setup marker managment dock

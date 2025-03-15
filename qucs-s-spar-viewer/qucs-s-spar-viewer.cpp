@@ -72,7 +72,7 @@ Qucs_S_SPAR_Viewer::Qucs_S_SPAR_Viewer()
 
 
   CreateDisplayWidgets();
-  CreateLeftPanel();
+  CreateRightPanel();
 
   // Put the following widgets on the top to make them visible to the user
   dockFiles->raise();
@@ -141,7 +141,7 @@ void Qucs_S_SPAR_Viewer::CreateMenuBar(){
 // - Limits manager
 // - Notebook
 
-void Qucs_S_SPAR_Viewer::CreateLeftPanel(){
+void Qucs_S_SPAR_Viewer::CreateRightPanel(){
   // Create left panel widgets
   setFileManagementDock();
   setTraceManagementDock();
@@ -359,20 +359,19 @@ void Qucs_S_SPAR_Viewer::setTraceManagementDock(){
   dockTracesList->setWidget(TracesGroup);
 }
 
-void Qucs_S_SPAR_Viewer::setMarkerManagementDock(){
+void Qucs_S_SPAR_Viewer::setMarkerManagementDock() {
   // Markers dock
   dockMarkers = new QDockWidget("Markers", this);
 
-  QWidget * MarkersGroup = new QWidget();
-  QVBoxLayout *Markers_VBox = new QVBoxLayout(MarkersGroup);
+  QWidget* MarkersGroup = new QWidget();
+  QVBoxLayout* Markers_VBox = new QVBoxLayout(MarkersGroup);
 
   // Trace addition box
-  QWidget * MarkerSelection_Widget = new QWidget();
+  QWidget* MarkerSelection_Widget = new QWidget();
 
   MarkersGrid = new QGridLayout(MarkerSelection_Widget);
-  QLabel *Frequency_Marker_Label = new QLabel("<b>Frequency</b>");
+  QLabel* Frequency_Marker_Label = new QLabel("<b>Frequency</b>");
   MarkersGrid->addWidget(Frequency_Marker_Label, 0, 0, Qt::AlignCenter);
-
 
   Button_add_marker = new QPushButton("Add marker");
   Button_add_marker->setStyleSheet("QPushButton {background-color: green;\
@@ -399,16 +398,16 @@ void Qucs_S_SPAR_Viewer::setMarkerManagementDock(){
                                   min-width: 10em;\
                                   padding: 6px;\
                               }");
- connect(Button_Remove_All_Markers, SIGNAL(clicked()), SLOT(removeAllMarkers())); // Connect button with the handler
+  connect(Button_Remove_All_Markers, SIGNAL(clicked()), SLOT(removeAllMarkers())); // Connect button with the handler
   MarkersGrid->addWidget(Button_Remove_All_Markers, 0, 1);
 
   // Marker management
-  QWidget * MarkerList_Widget = new QWidget(); // Panel with the trace settings
+  QWidget* MarkerList_Widget = new QWidget(); // Panel with the trace settings
 
-  QLabel * Label_Marker = new QLabel("<b>Marker</b>");
-  QLabel * Label_Freq_Marker = new QLabel("<b>Frequency</b>");
-  QLabel * Label_Freq_Scale_Marker = new QLabel("<b>Units</b>");
-  QLabel * Label_Remove_Marker = new QLabel("<b>Remove</b>");
+  QLabel* Label_Marker = new QLabel("<b>Marker</b>");
+  QLabel* Label_Freq_Marker = new QLabel("<b>Frequency</b>");
+  QLabel* Label_Freq_Scale_Marker = new QLabel("<b>Units</b>");
+  QLabel* Label_Remove_Marker = new QLabel("<b>Remove</b>");
 
   MarkersGrid = new QGridLayout(MarkerList_Widget);
   MarkersGrid->addWidget(Label_Marker, 0, 0, Qt::AlignCenter);
@@ -416,16 +415,24 @@ void Qucs_S_SPAR_Viewer::setMarkerManagementDock(){
   MarkersGrid->addWidget(Label_Freq_Scale_Marker, 0, 2, Qt::AlignCenter);
   MarkersGrid->addWidget(Label_Remove_Marker, 0, 3, Qt::AlignCenter);
 
-
-  QScrollArea *scrollArea_Marker = new QScrollArea();
+  QScrollArea* scrollArea_Marker = new QScrollArea();
   scrollArea_Marker->setWidget(MarkerList_Widget);
   scrollArea_Marker->setWidgetResizable(true);
 
-  tableMarkers = new QTableWidget(1, 1, this);
+  // Create tab widget to hold the two marker tables
+  QTabWidget* tabWidgetMarkers = new QTabWidget();
+
+  // Create the two tables for different marker types
+  tableMarkers_Magnitude_Phase = new QTableWidget(1, 1, this);
+  tableMarkers_Smith = new QTableWidget(1, 1, this);
+
+  // Add tables to tabs
+  tabWidgetMarkers->addTab(tableMarkers_Magnitude_Phase, "Magnitude/Phase");
+  tabWidgetMarkers->addTab(tableMarkers_Smith, "Smith Chart");
 
   Markers_VBox->addWidget(MarkerSelection_Widget);
   Markers_VBox->addWidget(scrollArea_Marker);
-  Markers_VBox->addWidget(tableMarkers);
+  Markers_VBox->addWidget(tabWidgetMarkers); // Add tab widget instead of single table
 
   dockMarkers->setWidget(MarkersGroup);
 }
@@ -1691,11 +1698,22 @@ void Qucs_S_SPAR_Viewer::addMarker(double freq){
 
 
     // Add new entry to the table
-    tableMarkers->setRowCount(n_markers);
     QString new_freq = QStringLiteral("%1 ").arg(QString::number(f_marker, 'f', 2)) + Freq_Marker_Scale;
     QTableWidgetItem *newfreq = new QTableWidgetItem(new_freq);
-    tableMarkers->setItem(n_markers-1, 0, newfreq);
 
+    if(new_marker_name.endsWith("dB") || new_marker_name.endsWith("ang")){
+      // Magnitude / phase marker
+      int n_markers = tableMarkers_Magnitude_Phase->rowCount() + 1;
+      tableMarkers_Magnitude_Phase->setRowCount(n_markers);
+      tableMarkers_Magnitude_Phase->setRowCount(n_markers);
+      tableMarkers_Magnitude_Phase->setItem(n_markers-1, 0, newfreq);
+    } else {
+      // Smith chart marker
+      int n_markers = tableMarkers_Smith->rowCount() + 1;
+      tableMarkers_Smith->setRowCount(n_markers);
+      tableMarkers_Smith->setRowCount(n_markers);
+      tableMarkers_Smith->setItem(n_markers-1, 0, newfreq);
+    }
 
     changeMarkerLimits(Combobox_name);
 
@@ -1724,20 +1742,29 @@ void Qucs_S_SPAR_Viewer::updateMarkerTable(){
     //If there are no markers, remove the entries and return
   int n_markers = getNumberOfMarkers();
     if (n_markers == 0){
-        tableMarkers->clear();
-        tableMarkers->setColumnCount(0);
-        tableMarkers->setRowCount(0);
+        tableMarkers_Magnitude_Phase->clear();
+        tableMarkers_Magnitude_Phase->setColumnCount(0);
+        tableMarkers_Magnitude_Phase->setRowCount(0);
+
+        tableMarkers_Smith->clear();
+        tableMarkers_Smith->setColumnCount(0);
+        tableMarkers_Smith->setRowCount(0);
         return;
     }
 
     //Ensure that the size of the table is correct
     QList<QAbstractSeries *> seriesList; // TO DO: Get the name of all traces displayed
 
-    // Update marker header
-    QStringList headers;
-    headers.clear();
-    headers.append("freq");
+    // Reset headers
+    QStringList header_Magnitude_Phase;
+    header_Magnitude_Phase.clear();
+    header_Magnitude_Phase.append("freq");
 
+    QStringList header_Smith;
+    header_Smith.clear();
+    header_Smith.append("freq");
+
+    // Build headers
     int n_traces = getNumberOfTraces();
     for (int i = 0; i < n_traces; i++) {
       // Find the name of the traces from the traces map and add them to a list.
@@ -1746,55 +1773,23 @@ void Qucs_S_SPAR_Viewer::updateMarkerTable(){
       TraceProperties trace_props;
       getTraceByPosition(i, trace_name, trace_props);
 
-      headers.append(trace_name);
+      if (trace_name.endsWith("_dB") || trace_name.endsWith("_ang")) {
+        // Magnitude / Phase
+        header_Magnitude_Phase.append(trace_name);
+      } else {
+        // Smith
+        header_Smith.append(trace_name);
+      }
     }
 
-    tableMarkers->setColumnCount(headers.size());// The first row is for the frequency
-    tableMarkers->setRowCount(n_markers);
-    tableMarkers->setHorizontalHeaderLabels(headers);
 
-    QPointF P;
-    qreal targetX;
-    QString new_val;
-    QString freq_marker;
-    // Update each marker
-    // Columns are traces. Rows are markers
-    for (int c = 0; c<n_traces; c++){//Traces
-        for (int r = 0; r<n_markers; r++){//Marker
-            QString markerName;
-            MarkerProperties mkr_props;
-            getMarkerByPosition(r, markerName, mkr_props); // Get the whole marker given the position
+    // Update marker data
 
-            // Compose the marker text
-            freq_marker = QStringLiteral("%1 ").arg(QString::number(mkr_props.freqSpinBox->value(), 'f', 1)) + mkr_props.scaleComboBox->currentText();
+    // Magnitude and phase table
+    updateMarkerData(*tableMarkers_Magnitude_Phase, header_Magnitude_Phase);
+    // Smith Chart table
+    updateMarkerData(*tableMarkers_Smith, header_Smith);
 
-            if (c==0){
-                // First column
-                QTableWidgetItem *new_item = new QTableWidgetItem(freq_marker);
-                tableMarkers->setItem(r, c, new_item);
-                continue;
-            }
-            targetX = getFreqFromText(freq_marker);
-
-
-            QString trace_name;
-            TraceProperties trace_props;
-            getTraceByPosition(c, trace_name, trace_props);
-
-            // Look into dataset for the trace data
-            QStringList parts = {
-                trace_name.section('.', 0, -2),
-                trace_name.section('.', -1)
-            };
-            QString file = parts[0];
-            QString trace = parts[1];
-
-            P = findClosestPoint(datasets[file]["frequency"], datasets[file][trace], targetX);
-            new_val = QStringLiteral("%1").arg(QString::number(P.y(), 'f', 2));
-            QTableWidgetItem *new_item = new QTableWidgetItem(new_val);
-            tableMarkers->setItem(r, c, new_item);
-        }
-    }
 
     // Update markers
     QStringList marker_list = markerMap.keys();
@@ -1805,6 +1800,100 @@ void Qucs_S_SPAR_Viewer::updateMarkerTable(){
     }
 
 
+}
+
+
+// Fill the different marker tables
+void Qucs_S_SPAR_Viewer::updateMarkerData(QTableWidget& table, QStringList header){
+
+  QPointF P;
+  qreal targetX;
+  QString new_val;
+  QString freq_marker;
+
+  int n_markers = getNumberOfMarkers();
+  int n_traces = header.size();
+  table.setColumnCount(n_traces);
+  table.setRowCount(n_markers);
+  table.setHorizontalHeaderLabels(header);
+
+  for (int c = 0; c<n_traces; c++){//Traces
+    for (int r = 0; r<n_markers; r++){//Marker
+      QString markerName;
+      MarkerProperties mkr_props;
+      getMarkerByPosition(r, markerName, mkr_props); // Get the whole marker given the position
+
+             // Compose the marker text
+      freq_marker = QStringLiteral("%1 ").arg(QString::number(mkr_props.freqSpinBox->value(), 'f', 1)) + mkr_props.scaleComboBox->currentText();
+
+      if (c==0){
+        // First column
+        QTableWidgetItem *new_item = new QTableWidgetItem(freq_marker);
+        table.setItem(r, c, new_item);
+        continue;
+      }
+      targetX = getFreqFromText(freq_marker);
+
+
+      QString trace_name = header.at(c);
+
+      // Look into dataset for the trace data
+      QStringList parts = {
+          trace_name.section('.', 0, -2),
+          trace_name.section('.', -1)
+      };
+      QString file = parts[0];
+      QString trace = parts[1];
+
+      // Find data on the dataset
+      if (trace.endsWith("dB") || trace.endsWith("_ang")) {
+        // Go directly to the dataset for data
+        P = findClosestPoint(datasets[file]["frequency"], datasets[file][trace], targetX);
+        new_val = QStringLiteral("%1").arg(QString::number(P.y(), 'f', 2));
+      } else {
+        if (trace.endsWith("Smith")){
+          // Get R + j X
+          QString sxx_re = trace;
+          QString sxx_im = trace;
+          sxx_re.replace("Smith", "re");
+          sxx_im.replace("Smith", "im");
+
+
+          QPointF sij_real = findClosestPoint(datasets[file]["frequency"], datasets[file][sxx_re], targetX);
+          QPointF sij_imag = findClosestPoint(datasets[file]["frequency"], datasets[file][sxx_im], targetX);
+          double Z0 = datasets[file]["Z0"].at(0);
+
+          double S_real = sij_real.y();
+          double S_imag = sij_imag.y();
+
+          // Calculate VSWR
+          double magnitude_Gamma = sqrt(S_real * S_real + S_imag * S_imag);
+          double SWR = (1.0 + magnitude_Gamma) / (1.0 - magnitude_Gamma);
+
+          // Calculate complex impedance
+          std::complex<double> Gamma(S_real, S_imag);
+          std::complex<double> Z = Z0 * (1.0 + Gamma) / (1.0 - Gamma);
+
+          double imag_part = Z.imag();
+
+          if (imag_part < 0) {
+            new_val = QStringLiteral("Z=%1-j%2 Ω\nSWR = %3").arg(QString::number(Z.real(), 'f', 1)).arg(QString::number(Z.imag(), 'f', 1)).arg(QString::number(SWR, 'f', 2));
+          } else {
+            if (imag_part > 0) {
+              new_val = QStringLiteral("Z=%1+j%2 Ω\nSWR = %3").arg(QString::number(Z.real(), 'f', 1)).arg(QString::number(Z.imag(), 'f', 1)).arg(QString::number(SWR, 'f', 2));
+            } else {
+              // Z is pure real
+              new_val = QStringLiteral("Z=%1 Ω\nSWR = %3").arg(QString::number(Z.real(), 'f', 1)).arg(QString::number(SWR, 'f', 2));
+            }
+          }
+        }
+
+      }
+
+      QTableWidgetItem *new_item = new QTableWidgetItem(new_val);
+      table.setItem(r, c, new_item);
+    }
+  }
 }
 
 // Find the closest x-axis value in a series given a x value (not necesarily in the grid)
@@ -1899,6 +1988,10 @@ void Qucs_S_SPAR_Viewer::removeMarker(const QString& markerName) {
 
     // Remove from the map
     markerMap.remove(markerName);
+
+    // Remove markers from the display widgets
+    Magnitude_PhaseChart->removeMarker(markerName);
+    smithChart->removeMarker(markerName);
 
     updateMarkerTable();
     updateMarkerNames();
