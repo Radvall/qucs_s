@@ -2538,211 +2538,6 @@ void Qucs_S_SPAR_Viewer::slotSaveAs()
   save();
 }
 
-bool Qucs_S_SPAR_Viewer::save()
-{
-  if (datasets.isEmpty()){
-    // Nothing to save
-    QMessageBox::information(
-        this,
-        tr("Error"),
-        tr("Nothing to save: No data was loaded.") );
-    return false;
-  }
-  QFile file(savepath);
-  if (!file.open(QIODevice::WriteOnly | QIODevice::Text))
-  {
-    return false;
-  }
-
-  QXmlStreamWriter xmlWriter(&file);
-  xmlWriter.setAutoFormatting(true);
-  xmlWriter.writeStartDocument();
-  xmlWriter.writeStartElement("DATA");//Top level
-
-  // ----------------------------------------------------------------
-  // Save the markers
-  int nmarkers = getNumberOfMarkers();
-  if (nmarkers != 0){
-    xmlWriter.writeStartElement("MARKERS");
-    double freq;
-    for (int i = 0; i < nmarkers; i++)
-    {
-      MarkerProperties mkr_props;
-      QString mkr_name;
-
-      getMarkerByPosition(i, mkr_name, mkr_props);
-
-      freq = mkr_props.freqSpinBox->value();
-      QString scale = mkr_props.scaleComboBox->currentText();
-      freq /= getFreqScale(scale);
-      xmlWriter.writeTextElement("Mkr", QString::number(freq));
-    }
-    xmlWriter.writeEndElement(); // Markers
-  }
-  // ----------------------------------------------------------------
-  // Save the limits
-  int nlimits = limitsMap.keys().size();
-  if (nlimits != 0){
-      double freq, value;
-      bool Coupled_Limits;
-      xmlWriter.writeStartElement("LIMITS");
-
-      // Offset
-      value = Limits_Offset->value();
-      xmlWriter.writeTextElement("offset", QString::number(value));
-
-      for (int i = 0; i < nlimits; i++)
-      {
-        xmlWriter.writeStartElement("Limit");
-
-        QString limit_name;
-        LimitProperties limit_props;
-        getLimitByPosition(i, limit_name, limit_props);
-
-        // fstart
-        freq = limit_props.Start_Freq->value();
-        xmlWriter.writeTextElement("fstart", QString::number(freq));
-
-        // fstart unit
-        QString fstart_unit = limit_props.Start_Freq_Scale->currentText();
-        xmlWriter.writeTextElement("fstart_unit", fstart_unit);
-
-        // Start value
-        value = limit_props.Start_Value->value();
-        xmlWriter.writeTextElement("val_start", QString::number(value));
-
-        // fstop
-        freq = limit_props.Stop_Freq->value();
-        xmlWriter.writeTextElement("fstop", QString::number(freq));
-
-        // fstop unit
-        QString fstop_unit = limit_props.Stop_Freq_Scale->currentText();
-        xmlWriter.writeTextElement("fstop_unit", fstop_unit);
-
-        // Stop value
-        value = limit_props.Stop_Value->value();
-        xmlWriter.writeTextElement("val_stop", QString::number(value));
-
-        // Couple values
-        Coupled_Limits = (limit_props.Couple_Value->text() == "<-X->");
-        xmlWriter.writeTextElement("couple_values", QString::number(Coupled_Limits));
-
-        QString y_axis = limit_props.axis->currentText();
-        xmlWriter.writeTextElement("y_axis", y_axis);
-
-        xmlWriter.writeEndElement(); // Limit
-      }
-      xmlWriter.writeEndElement(); // Limits
-  }
-  // ----------------------------------------------------------------
-  // Save the traces displayed and their properties
-  int ntraces = getNumberOfTraces();
-  if (ntraces != 0){
-    xmlWriter.writeStartElement("DISPLAYED_TRACES");
-    QString trace_name, color, style;
-    int width;
-    for (int i = 0; i < ntraces; i++){
-
-      QString trace_name;
-      TraceProperties trace_props;
-      getTraceByPosition(i, trace_name, trace_props);
-
-      xmlWriter.writeStartElement("trace");
-      // Trace name
-      xmlWriter.writeTextElement("trace_name", trace_name);
-
-      // Trace width
-      width = trace_props.width->value();
-      xmlWriter.writeTextElement("trace_width", QString::number(width));
-
-      // Trace color
-      color = trace_props.colorButton->palette().color(QPalette::Button).name();
-      xmlWriter.writeTextElement("trace_color", color);
-
-      // Trace style
-      style = trace_props.LineStyleComboBox->currentText();
-      xmlWriter.writeTextElement("trace_style", style);
-      xmlWriter.writeEndElement(); // Trace
-
-    }
-    xmlWriter.writeEndElement(); // Displayed traces
-  }
-  // ----------------------------------------------------------------
-  // Save the axes settings
-  xmlWriter.writeStartElement("AXES");
-  xmlWriter.writeTextElement("x-axis-min", QString::number(Magnitude_PhaseChart->getXmin()));
-  xmlWriter.writeTextElement("x-axis-max", QString::number(Magnitude_PhaseChart->getXmax()));
-  xmlWriter.writeTextElement("x-axis-div", QString::number(Magnitude_PhaseChart->getXdiv()));
-  //xmlWriter.writeTextElement("x-axis-scale", QCombobox_x_axis_units->currentText());
-  xmlWriter.writeTextElement("y-axis-min", QString::number(Magnitude_PhaseChart->getYmin()));
-  xmlWriter.writeTextElement("y-axis-max", QString::number(Magnitude_PhaseChart->getYmax()));
-  xmlWriter.writeTextElement("y-axis-div", QString::number(Magnitude_PhaseChart->getYdiv()));
-  xmlWriter.writeTextElement("lock_status", QString::number(lock_axis));
-
-  xmlWriter.writeEndElement(); // Axes
-
-  // ----------------------------------------------------------------
-  // Save notes
-  xmlWriter.writeStartElement("NOTES");
-  xmlWriter.writeTextElement("note", Notes_Widget->getText());
-  xmlWriter.writeEndElement();
-
-  // ----------------------------------------------------------------
-  // Save the datasets
-  // Only S-parameter data is saved. This is done to minimize the size of the session file.
-  xmlWriter.writeStartElement("DATASETS");
-  for (auto outerIt = datasets.constBegin(); outerIt != datasets.constEnd(); ++outerIt)
-  {
-    xmlWriter.writeStartElement("file");
-    xmlWriter.writeAttribute("file_name", outerIt.key());
-
-    const QMap<QString, QList<double>>& innerMap = outerIt.value();
-    for (auto innerIt = innerMap.constBegin(); innerIt != innerMap.constEnd(); ++innerIt)
-    {
-      QString trace_name = innerIt.key();
-      QStringList blacklist;
-      blacklist.append("K");
-      blacklist.append("mu");
-      blacklist.append("mu_p");
-      blacklist.append("delta");
-      blacklist.append("MAG");
-      blacklist.append("MSG");
-      blacklist.append("Re{Zin}");
-      blacklist.append("Im{Zin}");
-      blacklist.append("Re{Zout}");
-      blacklist.append("Im{Zout}");
-
-      if (blacklist.contains(trace_name)){
-        // Zin, Zout, K, mu, etc. traces are discarded
-        continue;
-      }
-
-      // Only S (Re/Im ang dB/ang) traces here
-      xmlWriter.writeStartElement("trace");
-      xmlWriter.writeAttribute("trace_name", trace_name);
-
-      const QList<double>& values = innerIt.value();
-      for (const double& value : values)
-      {
-        xmlWriter.writeTextElement("value", QString::number(value));
-      }
-
-      xmlWriter.writeEndElement(); // inner-item
-    }
-
-    xmlWriter.writeEndElement(); // outer-item
-  }
-
-  xmlWriter.writeEndElement(); // Datasets
-  // ----------------------------------------------------------------
-
-  xmlWriter.writeEndElement(); // Top level
-  xmlWriter.writeEndDocument();
-
-  file.close();
-  return true;
-}
-
 
 void Qucs_S_SPAR_Viewer::slotLoadSession()
 {
@@ -2755,185 +2550,175 @@ void Qucs_S_SPAR_Viewer::slotLoadSession()
 }
 
 
-void Qucs_S_SPAR_Viewer::loadSession(QString session_file)
-{
-  QFile file(session_file);
+bool Qucs_S_SPAR_Viewer::save() {
+  if (savepath.isEmpty()) {
+    return false; // No save path specified
+  }
 
+  QFile file(savepath);
+  if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+    QMessageBox::warning(this, tr("Save Session"), tr("Could not open file for writing."));
+    return false;
+  }
+
+  QXmlStreamWriter xml(&file);
+  xml.setAutoFormatting(true);
+  xml.writeStartDocument();
+  xml.writeStartElement("session");
+
+         // Save window geometry and state
+  xml.writeStartElement("settings");
+  xml.writeTextElement("geometry", saveGeometry().toBase64());
+  xml.writeTextElement("state", QString::number(static_cast<int>(windowState())));
+  xml.writeEndElement(); // settings
+
+         // Save files
+  xml.writeStartElement("files");
+  for (const QString& filePath : datasets.keys()) {
+    xml.writeTextElement("file", filePath);
+  }
+  xml.writeEndElement(); // files
+
+         // Save traces
+  xml.writeStartElement("traces");
+  for (const QString& traceName : traceMap.keys()) {
+    TraceProperties props = traceMap[traceName];
+    xml.writeStartElement("trace");
+    xml.writeAttribute("name", traceName);
+    xml.writeTextElement("dataset", traceName.section('.', 0, -2));
+    xml.writeTextElement("color", props.colorButton->palette().color(QPalette::Button).name());
+    xml.writeTextElement("width", QString::number(props.width->value()));
+    xml.writeTextElement("style", props.LineStyleComboBox->currentText());
+    xml.writeEndElement(); // trace
+  }
+  xml.writeEndElement(); // traces
+
+         // Save markers
+  xml.writeStartElement("markers");
+  for (const QString& markerName : markerMap.keys()) {
+    MarkerProperties props = markerMap[markerName];
+    xml.writeStartElement("marker");
+    xml.writeTextElement("frequency", QString::number(props.freqSpinBox->value()));
+    xml.writeTextElement("scale", props.scaleComboBox->currentText());
+    xml.writeEndElement(); // marker
+  }
+  xml.writeEndElement(); // markers
+
+         // Save limits
+  xml.writeStartElement("limits");
+  for (const QString& limitName : limitsMap.keys()) {
+    LimitProperties props = limitsMap[limitName];
+    xml.writeStartElement("limit");
+    xml.writeTextElement("start_freq", QString::number(props.Start_Freq->value()));
+    xml.writeTextElement("stop_freq", QString::number(props.Stop_Freq->value()));
+    xml.writeTextElement("start_value", QString::number(props.Start_Value->value()));
+    xml.writeTextElement("stop_value", QString::number(props.Stop_Value->value()));
+    xml.writeTextElement("start_freq_scale", props.Start_Freq_Scale->currentText());
+    xml.writeTextElement("stop_freq_scale", props.Stop_Freq_Scale->currentText());
+    xml.writeTextElement("axis", props.axis->currentText());
+    xml.writeEndElement(); // limit
+  }
+  xml.writeEndElement(); // limits
+
+         // Save notes
+  xml.writeStartElement("notes");
+  xml.writeTextElement("content", Notes_Widget->toPlainText());
+  xml.writeEndElement(); // notes
+
+  xml.writeEndElement(); // session
+  xml.writeEndDocument();
+
+  file.close();
+  return true;
+}
+
+void Qucs_S_SPAR_Viewer::loadSession(QString session_file) {
+  QFile file(session_file);
   if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-    qDebug() << "Error opening file:" << file.errorString();
+    QMessageBox::warning(this, tr("Load Session"), tr("Could not open file for reading."));
     return;
   }
 
-  savepath = session_file;
-
-  addRecentFile(session_file);// Add it to the "Recent Files" list
-
   QXmlStreamReader xml(&file);
 
-  // Trace properties
-  QList<int> trace_width;
-  QList<QString> trace_name, trace_color, trace_style;
-
-  // Limit data
-  QList<double> Limit_Start_Freq, Limit_Start_Val, Limit_Stop_Freq, Limit_Stop_Val;
-  QList<int> Limit_Couple_Values;
-  QList<QString> Limit_Start_Freq_Unit, Limit_Stop_Freq_Unit;
-
-  // Markers
-  QList<double> Markers;
-
-  // Clear current dataset
-  datasets.clear();
+         // Clear current state
+  removeAllFiles();
+  removeAllMarkers();
+  removeAllLimits();
 
   while (!xml.atEnd() && !xml.hasError()) {
-    // Read next element
     QXmlStreamReader::TokenType token = xml.readNext();
 
-    //qDebug() << xml.name().toString();
     if (token == QXmlStreamReader::StartElement) {
-      if (xml.name() == QStringLiteral("trace")) {
-        while (!(xml.tokenType() == QXmlStreamReader::EndElement && xml.name() == QStringLiteral("trace"))) {
-          xml.readNext();
+      if (xml.name() == QStringLiteral("settings")) {
+        while (!(xml.tokenType() == QXmlStreamReader::EndElement && xml.name() == QStringLiteral("settings"))) {
           if (xml.tokenType() == QXmlStreamReader::StartElement) {
-            if (xml.name() == QStringLiteral("trace_name")) {
-              trace_name.append(xml.readElementText());
-            } else if (xml.name() == QStringLiteral("trace_width")) {
-              trace_width.append(xml.readElementText().toInt());
-            } else if (xml.name() == QStringLiteral("trace_color")) {
-              trace_color.append(xml.readElementText());
-            } else if (xml.name() == QStringLiteral("trace_style")) {
-              trace_style.append(xml.readElementText());
-            }
-          }
-        }
-      } else if (xml.name() == QStringLiteral("Limit")) {
-        while (!(xml.tokenType() == QXmlStreamReader::EndElement && xml.name() == QStringLiteral("Limit"))) {
-          xml.readNext();
-          if (xml.tokenType() == QXmlStreamReader::StartElement) {
-            if (xml.name() == QStringLiteral("fstart")) {
-              Limit_Start_Freq.append(xml.readElementText().toDouble());
-            } else if (xml.name() == QStringLiteral("val_start")) {
-              Limit_Start_Val.append(xml.readElementText().toDouble());
-            } else if (xml.name() == QStringLiteral("fstop")) {
-              Limit_Stop_Freq.append(xml.readElementText().toDouble());
-            } else if (xml.name() == QStringLiteral("val_stop")) {
-              Limit_Stop_Val.append(xml.readElementText().toDouble());
-            } else if (xml.name() == QStringLiteral("fstart_unit")) {
-              Limit_Start_Freq_Unit.append(xml.readElementText());
-            } else if (xml.name() == QStringLiteral("fstop_unit")) {
-              Limit_Stop_Freq_Unit.append(xml.readElementText());
-            } else if (xml.name() == QStringLiteral("couple_values")) {
-              Limit_Couple_Values.append(xml.readElementText().toInt());
-            }else if (xml.name() == QStringLiteral("offset")) {
-              Limits_Offset->setValue(xml.readElementText().toDouble());
-            }
-          }
-        }
-      } else if (xml.name() == QStringLiteral("MARKERS")){
-        while (!(xml.tokenType() == QXmlStreamReader::EndElement && xml.name() == QStringLiteral("MARKERS"))) {
-          xml.readNext();
-          if (xml.tokenType() == QXmlStreamReader::StartElement) {
-            double value = xml.readElementText().toDouble();
-            Markers.append(value);
-          }
-        }
-      } else if (xml.name() == QStringLiteral("file")) {
-        // Load datasets
-        QString fileName, traceName;
-        while (!xml.atEnd() && !xml.hasError())
-        {
-          if (xml.tokenType() == QXmlStreamReader::StartElement)
-          {
-            if (xml.name() == QStringLiteral("file"))
-            {
-              fileName = xml.attributes().value("file_name").toString();
-              //qDebug() << "File name:" << fileName;
-            }
-            else if (xml.name() == QStringLiteral("trace"))
-            {
-              traceName = xml.attributes().value("trace_name").toString();
-              //qDebug() << "Trace name:" << traceName;
-            }
-            else if (xml.name() == QStringLiteral("value"))
-            {
-              QString value = xml.readElementText();
-              //qDebug() << "Value:" << value;
-              datasets[fileName][traceName].append(value.toDouble());
+            if (xml.name() == QStringLiteral("geometry")) {
+              restoreGeometry(QByteArray::fromBase64(xml.readElementText().toLatin1()));
+            } else if (xml.name() == QStringLiteral("state")) {
+              // Restore the window state from a QByteArray
+              restoreState(QByteArray::fromBase64(xml.readElementText().toLatin1()));
             }
           }
           xml.readNext();
         }
-      } else if (xml.name().toString().contains("note")){
-          QString note = xml.readElementText();
-          Notes_Widget->loadText(note);
+      } else if (xml.name() == QStringLiteral("files")) {
+        while (!(xml.tokenType() == QXmlStreamReader::EndElement && xml.name() == QStringLiteral("files"))) {
+          if (xml.tokenType() == QXmlStreamReader::StartElement && xml.name() == QStringLiteral("file")) {
+            addFiles(QStringList() << xml.readElementText());
+          }
+          xml.readNext();
+        }
+      } else if (xml.name() == QStringLiteral("traces")) {
+        while (!(xml.tokenType() == QXmlStreamReader::EndElement && xml.name() == QStringLiteral("traces"))) {
+          if (xml.tokenType() == QXmlStreamReader::StartElement && xml.name() == QStringLiteral("trace")) {
+            QString traceName = xml.attributes().value("name").toString();
+            QString dataset = xml.readElementText();
+            QColor color(xml.readElementText());
+            int width = xml.readElementText().toInt();
+            QString style = xml.readElementText();
+            addTrace(traceName, dataset, color, width, style);
+          }
+          xml.readNext();
+        }
+      } else if (xml.name() == QStringLiteral("markers")) {
+        while (!(xml.tokenType() == QXmlStreamReader::EndElement && xml.name() == QStringLiteral("markers"))) {
+          if (xml.tokenType() == QXmlStreamReader::StartElement && xml.name() == QStringLiteral("marker")) {
+            double freq = xml.readElementText().toDouble();
+            addMarker(freq);
+          }
+          xml.readNext();
+        }
+      } else if (xml.name() == QStringLiteral("limits")) {
+        while (!(xml.tokenType() == QXmlStreamReader::EndElement && xml.name() == QStringLiteral("limits"))) {
+          if (xml.tokenType() == QXmlStreamReader::StartElement && xml.name() == QStringLiteral("limit")) {
+            double start_freq = xml.readElementText().toDouble();
+            double stop_freq = xml.readElementText().toDouble();
+            double start_value = xml.readElementText().toDouble();
+            double stop_value = xml.readElementText().toDouble();
+            QString start_freq_scale = xml.readElementText();
+            QString stop_freq_scale = xml.readElementText();
+            QString axis = xml.readElementText();
+            addLimit(start_freq, start_freq_scale, stop_freq, stop_freq_scale, start_value, stop_value, true);
+          }
+          xml.readNext();
+        }
+      } else if (xml.name() == QStringLiteral("notes")) {
+        Notes_Widget->setPlainText(xml.readElementText());
       }
     }
   }
 
-
   if (xml.hasError()) {
-    qDebug() << "Error parsing XML: " << xml.errorString();
+    QMessageBox::warning(this, tr("Load Session"), tr("Error parsing XML: ") + xml.errorString());
   }
 
-  // Close the file
   file.close();
 
-
-  // Update dataset and trace selection comboboxes
-  QStringList files = datasets.keys();
-  for (int i = 0; i < files.size(); i++){
-    QString file = files.at(i);
-    QCombobox_datasets->addItem(file);
-
-    // Add file management widgets
-    // Label
-    QLabel * Filename_Label = new QLabel(file);
-    Filename_Label->setObjectName(QStringLiteral("File_") + QString::number(i));
-    List_FileNames.append(Filename_Label);
-    this->FilesGrid->addWidget(List_FileNames.last(), i, 0, 1, 1);
-
-    // Create the "Remove" button
-    QToolButton * RemoveButton = new QToolButton();
-    RemoveButton->setObjectName(QStringLiteral("Remove_") + QString::number(i));
-    QIcon icon(":/bitmaps/trash.png"); // Use a resource path or a relative path
-    RemoveButton->setIcon(icon);
-
-    RemoveButton->setStyleSheet("QToolButton {background-color: red;\
-                                    border-width: 2px;\
-                                    border-radius: 10px;\
-                                    border-color: beige;\
-                                    font: bold 14px;\
-                                }");
-    List_RemoveButton.append(RemoveButton);
-    this->FilesGrid->addWidget(List_RemoveButton.last(), i, 1, 1, 1);
-    connect(RemoveButton, SIGNAL(clicked()), SLOT(removeFile())); // Connect button with the handler to remove the entry.
-
-  }
-  updateTracesCombo();// Update traces
-
-  // Add traces to the display
-  for (int i = 0; i < trace_name.size(); i++){
-    QStringList parts = {
-        trace_name[i].section('.', 0, -2),
-        trace_name[i].section('.', -1)
-    };
-    addTrace(parts[0], parts[1], trace_color.at(i), trace_width.at(i), trace_style.at(i));
-  }
-
-  // Add markers
-  for (int i = 0; i < Markers.size(); i++){
-    addMarker(Markers.at(i));
-  }
-
-  // Add limits
-  for (int i = 0; i < Limit_Start_Freq.size(); i++){
-    addLimit(Limit_Start_Freq.at(i), Limit_Start_Freq_Unit.at(i), Limit_Stop_Freq.at(i), Limit_Stop_Freq_Unit.at(i), Limit_Start_Val.at(i), Limit_Stop_Val.at(i), Limit_Couple_Values.at(i));
-  }
-
-  // Show the trace settings widget
-  dockTracesList->raise();
-
-  return;
+         // Update UI
+  updateTracesCombo();
+  updateMarkerTable();
+  updateLimits();
 }
 
 void Qucs_S_SPAR_Viewer::updateGridLayout(QGridLayout* layout)
