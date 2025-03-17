@@ -53,6 +53,21 @@ struct TraceProperties {
 };
 
 
+// Struct to hold all the widgets related a limit
+struct LimitProperties {
+  QLabel* LimitLabel;
+  QDoubleSpinBox * Start_Freq;
+  QDoubleSpinBox * Stop_Freq;
+  QDoubleSpinBox * Start_Value;
+  QDoubleSpinBox * Stop_Value;
+  QComboBox * Start_Freq_Scale;
+  QComboBox * Stop_Freq_Scale;
+  QComboBox * axis;
+  QToolButton * Button_Delete_Limit;
+  QFrame* Separator;
+  QPushButton* Couple_Value;
+};
+
 class Qucs_S_SPAR_Viewer : public QMainWindow
 {
  Q_OBJECT
@@ -101,12 +116,14 @@ class Qucs_S_SPAR_Viewer : public QMainWindow
   void updateMarkerData(QTableWidget &, QStringList);
   bool getMarkerByPosition(int position, QString& outMarkerName, MarkerProperties& outProperties);
 
-  void addLimit(double f_limit1=-1, QString f_limit1_unit = "", double f_limit2=-1, QString f_limit2_unit = "", double y_limit1=-1, double y_limit2=-1, bool coupled=false);
+  void addLimit(double f_limit1=-1, QString f_limit1_unit = "", double f_limit2=-1, QString f_limit2_unit = "", double y_limit1=-1, double y_limit2=-1, bool coupled=true);
   void removeLimit();
-  void removeLimit(int);
+  void removeLimit(QString);
   void removeAllLimits();
   void updateLimits();
   void updateLimitNames();
+  int getNumberOfLimits();
+  bool getLimitByPosition(int, QString&, LimitProperties&);
 
   void coupleSpinBoxes();
 
@@ -138,7 +155,7 @@ class Qucs_S_SPAR_Viewer : public QMainWindow
   QWidget * TracesList_Widget;
   QGridLayout * TracesGrid;
 
-  // These structures group the widgets related to the traces so that they can be accessed by name
+  // This structure groups the widgets related to the traces so that they can be accessed by name
   QMap<QString, TraceProperties> traceMap;
 
   QTabWidget *traceTabs;
@@ -198,7 +215,7 @@ class Qucs_S_SPAR_Viewer : public QMainWindow
   QPushButton *Button_add_marker, *Button_Remove_All_Markers;
   QTableWidget* tableMarkers_Magnitude_Phase;
   QTableWidget* tableMarkers_Smith;
-  QMap<QString, MarkerProperties> markerMap; // All marker widgets are here
+  QMap<QString, MarkerProperties> markerMap; // All marker widgets are here. This way they can be accessed by the name of the marker
 
   double getMarkerFreq(QString);
 
@@ -207,14 +224,8 @@ class Qucs_S_SPAR_Viewer : public QMainWindow
   QWidget *Limits_Widget;
   QGridLayout * LimitsGrid;
   QPushButton *Button_add_Limit, *Button_Remove_All_Limits;
-  QList<QLabel *> List_LimitNames;
-  QList<QDoubleSpinBox *> List_Limit_Start_Freq, List_Limit_Stop_Freq;
-  QList<QDoubleSpinBox *> List_Limit_Start_Value, List_Limit_Stop_Value;
-  QList<QComboBox *> List_Limit_Start_Freq_Scale, List_Limit_Stop_Freq_Scale;
-  QList<QToolButton*> List_Button_Delete_Limit;
-  QList<QFrame*> List_Separators;
-  QList<QPushButton*> List_Couple_Value;
   QDoubleSpinBox * Limits_Offset;
+  QMap<QString, LimitProperties> limitsMap; // This structure groups the widgets related to the traces so that they can be accessed by name
 
   // Save
   QString savepath;

@@ -36,6 +36,15 @@ public:
     QPen pen;
   };
 
+  struct Limit {
+    double f1; // Start frequency
+    double f2; // End frequency
+    double y1; // Start y
+    double y2; // End y
+    int y_axis; // 0: Left y-axis; 1: Right y-axis
+    QPen pen;
+  };
+
   explicit RectangularPlotWidget(QWidget *parent = nullptr);
   ~RectangularPlotWidget();
 
@@ -58,6 +67,7 @@ public:
   double getXmin();
   double getXdiv();
   double getXscale();
+  QString getXunits();
   int getFreqIndex();
 
   bool addMarker(const QString& markerId, double frequency, const QPen& pen = QPen(Qt::red, 2));
@@ -65,6 +75,13 @@ public:
   bool updateMarkerFrequency(const QString& markerId, double newFrequency);
   void clearMarkers();
   QMap<QString, double> getMarkers() const;
+
+
+  bool addLimit(const QString& LimitId, const Limit & limit);
+  void removeLimit(const QString& LimitID);
+  void clearLimits();
+  QMap<QString, Limit> getLimits() const;
+  bool updateLimit(const QString& limitId, const Limit& limit);
 
   QChart *chart() const { return ChartWidget; }
 
@@ -106,6 +123,7 @@ private:
 
   QMap<QString, Trace> traces;
   QMap<QString, Marker> markers;
+  QMap<QString, Limit> limits;
 
   // Lists to keep track of graphics items
   QList<QGraphicsTextItem*> markerLabels;

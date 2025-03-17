@@ -227,7 +227,7 @@ void RectangularPlotWidget::updatePlot()
     delete series;
   }
 
-         // Add each trace as a new series
+  // Add each trace as a new series
   for (auto it = traces.constBegin(); it != traces.constEnd(); ++it) {
     const QString& name = it.key();
     const Trace& trace = it.value();
@@ -256,7 +256,7 @@ void RectangularPlotWidget::updatePlot()
     }
   }
 
-         // Draw markers if any
+  // Draw markers if any
   for (auto it = markers.constBegin(); it != markers.constEnd(); ++it) {
     const Marker& marker = it.value();
 
@@ -386,7 +386,37 @@ void RectangularPlotWidget::updatePlot()
     }
   }
 
-         // Refresh the chart
+
+  // Draw limits if any
+  for (auto it = limits.constBegin(); it != limits.constEnd(); ++it) {
+    const Limit& limit = it.value();
+
+    // Create a line series for the limit
+    QLineSeries* limitSeries = new QLineSeries();
+    limitSeries->setPen(limit.pen);
+    limitSeries->setName(it.key());
+
+    // Scale the frequencies according to the current units
+    double scaledF1 = limit.f1 * freqScale;
+    double scaledF2 = limit.f2 * freqScale;
+
+    // Add the two points defining the limit line
+    limitSeries->append(scaledF1, limit.y1);
+    limitSeries->append(scaledF2, limit.y2);
+
+    // Add the limit series to the chart
+    ChartWidget->addSeries(limitSeries);
+
+    // Attach to the appropriate axes
+    limitSeries->attachAxis(xAxis);
+    if (limit.y_axis == 1) {
+      limitSeries->attachAxis(y2Axis);
+    } else {
+      limitSeries->attachAxis(yAxis);
+    }
+  }
+
+  // Refresh the chart
   ChartWidget->update();
 }
 
@@ -459,7 +489,7 @@ QGridLayout* RectangularPlotWidget::setupAxisSettings()
   QGridLayout *axisLayout = new QGridLayout();
 
          // X-axis settings
-  QLabel *xAxisLabel = new QLabel("<b>x-axis</b>");
+  QLabel *xAxisLabel = new QLabel("<b>Frequency</b>");
   axisLayout->addWidget(xAxisLabel, 0, 0);
 
   xAxisMin = new QDoubleSpinBox();
@@ -609,6 +639,9 @@ double RectangularPlotWidget::getXdiv(){
   return xAxisDiv->value();
 }
 
+QString RectangularPlotWidget::getXunits(){
+  return xAxisUnits->currentText();
+}
 
 
 // Count traces assigned to the primary y-axis
@@ -709,4 +742,61 @@ void RectangularPlotWidget::toggleShowValues(bool show)
 {
   showTraceValues = show;
   updatePlot();  // Redraw with new setting
+}
+
+
+bool RectangularPlotWidget::addLimit(const QString& limitId, const Limit& limit)
+{
+  // Check if limit with this ID already exists
+  if (limits.contains(limitId)) {
+    return false;
+  }
+
+         // Store the limit in the map
+  limits.insert(limitId, limit);
+
+         // Update the plot to show the new limit
+  updatePlot();
+  return true;
+}
+
+
+void RectangularPlotWidget::removeLimit(const QString& limitId)
+{
+  // Remove the limit if it exists
+  if (limits.contains(limitId)) {
+    limits.remove(limitId);
+    // Update the plot to reflect the removal
+    updatePlot();
+  }
+}
+
+void RectangularPlotWidget::clearLimits()
+{
+  limits.clear();
+  updatePlot();
+}
+
+
+QMap<QString, RectangularPlotWidget::Limit> RectangularPlotWidget::getLimits() const
+{
+  return limits;
+}
+
+
+// Update limit given the name
+bool RectangularPlotWidget::updateLimit(const QString& limitId, const Limit& limit)
+{
+  // Check if the limit exists
+  if (!limits.contains(limitId)) {
+    return false;
+  }
+
+  // Update the limit in the map
+  limits[limitId] = limit;
+
+  // Update the plot to reflect the changes
+  updatePlot();
+
+  return true;
 }

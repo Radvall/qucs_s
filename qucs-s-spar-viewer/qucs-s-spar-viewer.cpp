@@ -2031,10 +2031,13 @@ void Qucs_S_SPAR_Viewer::updateMarkerNames()
 // After removing a marker, the names of the other markers must be updated
 void Qucs_S_SPAR_Viewer::updateLimitNames()
 {
-  int n_limits = getNumberOfMarkers();
+  int n_limits = getNumberOfLimits();
   for (int i = 0; i < n_limits; i++) {
-    QLabel * LimitLabel = List_LimitNames[i];
-    LimitLabel->setText(QStringLiteral("Limit %1").arg(i+1));
+    QString limit_name;
+    LimitProperties limit_props;
+    getLimitByPosition(i, limit_name, limit_props);
+
+    limit_props.LimitLabel->setText(QStringLiteral("Limit %1").arg(i+1));
   }
 }
 
@@ -2044,78 +2047,48 @@ void Qucs_S_SPAR_Viewer::removeLimit()
   QString ID = qobject_cast<QToolButton*>(sender())->objectName();
   //qDebug() << "Clicked button:" << ID;
 
-         //Find the index of the button to remove
-  int index_to_delete = -1;
-  for (int i = 0; i < List_Button_Delete_Limit.size(); i++) {
-    if (List_Button_Delete_Limit.at(i)->objectName() == ID) {
-      index_to_delete = i;
+  //Find the index of the button to remove
+  int n_limits = getNumberOfLimits();
+  for (int i = 0; i < n_limits; i++) {
+
+    QString limit_name;
+    LimitProperties limit_props;
+    getLimitByPosition(i, limit_name, limit_props);
+
+    if (limit_props.Button_Delete_Limit->objectName() == ID) {
+      removeLimit(limit_name);
       break;
     }
   }
-  removeLimit(index_to_delete);
+
 }
 
-void Qucs_S_SPAR_Viewer::removeLimit(int index_to_delete)
+void Qucs_S_SPAR_Viewer::removeLimit(QString limit_to_remove)
 {
-  // Delete the label
-  QLabel* labelToRemove = List_LimitNames.at(index_to_delete);
-  LimitsGrid->removeWidget(labelToRemove);
-  List_LimitNames.removeAt(index_to_delete);
-  delete labelToRemove;
 
-  // Delete the fstart SpinBox
-  QDoubleSpinBox * SpinBox_fstart_ToRemove = List_Limit_Start_Freq.at(index_to_delete);
-  LimitsGrid->removeWidget(SpinBox_fstart_ToRemove);
-  List_Limit_Start_Freq.removeAt(index_to_delete);
-  delete SpinBox_fstart_ToRemove;
+  // Get the widgets
+  LimitProperties limit_props = limitsMap[limit_to_remove];
 
-  // Delete the fstop SpinBox
-  QDoubleSpinBox * SpinBox_fstop_ToRemove = List_Limit_Stop_Freq.at(index_to_delete);
-  LimitsGrid->removeWidget(SpinBox_fstop_ToRemove);
-  List_Limit_Stop_Freq.removeAt(index_to_delete);
-  delete SpinBox_fstop_ToRemove;
+  // Remove the widgets
+  delete limit_props.axis;
+  delete limit_props.Button_Delete_Limit;
+  delete limit_props.Couple_Value;
+  delete limit_props.LimitLabel;
+  delete limit_props.Separator;
+  delete limit_props.Start_Freq;
+  delete limit_props.Start_Freq_Scale;
+  delete limit_props.Start_Value;
+  delete limit_props.Stop_Freq;
+  delete limit_props.Stop_Freq_Scale;
+  delete limit_props.Stop_Value;
 
-  // Delete the start value SpinBox
-  QDoubleSpinBox * SpinBox_val_start_ToRemove = List_Limit_Start_Value.at(index_to_delete);
-  LimitsGrid->removeWidget(SpinBox_val_start_ToRemove);
-  List_Limit_Start_Value.removeAt(index_to_delete);
-  delete SpinBox_val_start_ToRemove;
 
-  // Delete the stop value SpinBox
-  QDoubleSpinBox * SpinBox_val_stop_ToRemove = List_Limit_Stop_Value.at(index_to_delete);
-  LimitsGrid->removeWidget(SpinBox_val_stop_ToRemove);
-  List_Limit_Stop_Value.removeAt(index_to_delete);
-  delete SpinBox_val_stop_ToRemove;
+  // Remove limit entry from the map
+  limitsMap.remove(limit_to_remove);
 
-  //Delete frequency scale combo. fstart
-  QComboBox* Combo_fstart_ToRemove = List_Limit_Start_Freq_Scale.at(index_to_delete);
-  LimitsGrid->removeWidget(Combo_fstart_ToRemove);
-  List_Limit_Start_Freq_Scale.removeAt(index_to_delete);
-  delete Combo_fstart_ToRemove;
 
-  //Delete frequency scale combo. fstop
-  QComboBox* Combo_fstop_ToRemove = List_Limit_Stop_Freq_Scale.at(index_to_delete);
-  LimitsGrid->removeWidget(Combo_fstop_ToRemove);
-  List_Limit_Stop_Freq_Scale.removeAt(index_to_delete);
-  delete Combo_fstop_ToRemove;
-
-  // Delete the "delete" button
-  QToolButton* ButtonToRemove = List_Button_Delete_Limit.at(index_to_delete);
-  LimitsGrid->removeWidget(ButtonToRemove);
-  List_Button_Delete_Limit.removeAt(index_to_delete);
-  delete ButtonToRemove;
-
-  // Delete the "coupled" button
-  QPushButton* ButtonCoupledToRemove = List_Couple_Value.at(index_to_delete);
-  LimitsGrid->removeWidget(ButtonCoupledToRemove);
-  List_Couple_Value.removeAt(index_to_delete);
-  delete ButtonCoupledToRemove;
-
-  // Delete the separator
-  QFrame* SeparatorToRemove = List_Separators.at(index_to_delete);
-  LimitsGrid->removeWidget(SeparatorToRemove);
-  List_Separators.removeAt(index_to_delete);
-  delete SeparatorToRemove;
+  // Remove limit lines from the plot
+  Magnitude_PhaseChart->removeLimit(limit_to_remove);
 
   updateGridLayout(LimitsGrid);
   updateLimitNames();
@@ -2123,9 +2096,12 @@ void Qucs_S_SPAR_Viewer::removeLimit(int index_to_delete)
 
 void Qucs_S_SPAR_Viewer::removeAllLimits()
 {
-  int n_limits = List_LimitNames.size();
+  int n_limits = getNumberOfLimits();
   for (int i = 0; i < n_limits; i++) {
-    removeLimit(n_limits-i-1);
+    QString limit_name;
+    LimitProperties limit_props;
+    getLimitByPosition(i, limit_name, limit_props);
+    removeLimit(limit_name);
   }
 }
 
@@ -2264,7 +2240,7 @@ void Qucs_S_SPAR_Viewer::addLimit(double f_limit1, QString f_limit1_unit, double
 
   }
 
-  int n_limits = List_LimitNames.size();
+  int n_limits = getNumberOfLimits();
   n_limits++;
   int limit_index = 3*n_limits-2;
 
@@ -2273,7 +2249,7 @@ void Qucs_S_SPAR_Viewer::addLimit(double f_limit1, QString f_limit1_unit, double
   QString new_limit_name = QStringLiteral("Limit %1").arg(n_limits);
   QLabel * new_limit_label = new QLabel(new_limit_name);
   new_limit_label->setObjectName(new_limit_name);
-  List_LimitNames.append(new_limit_label);
+  limitsMap[new_limit_name].LimitLabel = new_limit_label;
   this->LimitsGrid->addWidget(new_limit_label, limit_index, 0);
 
   QString SpinBox_fstart_name = QStringLiteral("Lmt_Freq_Start_SpinBox_%1").arg(new_limit_name);
@@ -2283,22 +2259,14 @@ void Qucs_S_SPAR_Viewer::addLimit(double f_limit1, QString f_limit1_unit, double
   new_limit_fstart_Spinbox->setMaximum(Magnitude_PhaseChart->getXmax());
   new_limit_fstart_Spinbox->setSingleStep(Magnitude_PhaseChart->getXdiv()/5);
   new_limit_fstart_Spinbox->setValue(f_limit1);
-  connect(new_limit_fstart_Spinbox, SIGNAL(valueChanged(double)), SLOT(updateTraces()));
-  List_Limit_Start_Freq.append(new_limit_fstart_Spinbox);
+  limitsMap[new_limit_name].Start_Freq = new_limit_fstart_Spinbox;
   this->LimitsGrid->addWidget(new_limit_fstart_Spinbox, limit_index, 1);
 
   QString Combobox_start_name = QStringLiteral("Lmt_Start_ComboBox_%1").arg(new_limit_name);
   QComboBox * new_start_limit_Combo = new QComboBox();
   new_start_limit_Combo->setObjectName(Combobox_start_name);
   new_start_limit_Combo->addItems(frequency_units);
-  if (f_limit1_unit.isEmpty()){
-    new_start_limit_Combo->setCurrentIndex(1);
-  } else {
-    int index = new_start_limit_Combo->findText(f_limit1_unit);
-    new_start_limit_Combo->setCurrentIndex(index);
-  }
-  connect(new_start_limit_Combo, SIGNAL(currentIndexChanged(int)), SLOT(updateTraces()));
-  List_Limit_Start_Freq_Scale.append(new_start_limit_Combo);
+  limitsMap[new_limit_name].Start_Freq_Scale = new_start_limit_Combo;
   this->LimitsGrid->addWidget(new_start_limit_Combo, limit_index, 2);
 
   QString SpinBox_fstop_name = QStringLiteral("Lmt_Freq_Stop_SpinBox_%1").arg(new_limit_name);
@@ -2308,23 +2276,34 @@ void Qucs_S_SPAR_Viewer::addLimit(double f_limit1, QString f_limit1_unit, double
   new_limit_fstop_Spinbox->setMaximum(Magnitude_PhaseChart->getXmax());
   new_limit_fstop_Spinbox->setSingleStep(Magnitude_PhaseChart->getXdiv()/5);
   new_limit_fstop_Spinbox->setValue(f_limit2);
-  connect(new_limit_fstop_Spinbox, SIGNAL(valueChanged(double)), SLOT(updateTraces()));
-  List_Limit_Stop_Freq.append(new_limit_fstop_Spinbox);
+  limitsMap[new_limit_name].Stop_Freq = new_limit_fstop_Spinbox;
   this->LimitsGrid->addWidget(new_limit_fstop_Spinbox, limit_index, 3);
 
   QString Combobox_stop_name = QStringLiteral("Lmt_Stop_ComboBox_%1").arg(new_limit_name);
   QComboBox * new_stop_limit_Combo = new QComboBox();
   new_stop_limit_Combo->setObjectName(Combobox_stop_name);
   new_stop_limit_Combo->addItems(frequency_units);
-  if (f_limit2_unit.isEmpty()){
-    new_stop_limit_Combo->setCurrentIndex(1);
+
+  if (f_limit1_unit.isEmpty()) {
+    QString Mag_Phase_Units = Magnitude_PhaseChart->getXunits();
+    if (Mag_Phase_Units.isEmpty()){
+      new_start_limit_Combo->setCurrentIndex(1);
+      new_stop_limit_Combo->setCurrentIndex(1);
+    } else {
+      int index = new_stop_limit_Combo->findText(Mag_Phase_Units);
+      new_stop_limit_Combo->setCurrentIndex(index);
+      new_start_limit_Combo->setCurrentIndex(index);
+    }
   } else {
-    int index = new_stop_limit_Combo->findText(f_limit2_unit);
+    // The units exist (e.g. loading session file)
+    int index = new_start_limit_Combo->findText(f_limit1_unit, Qt::MatchFlag::MatchContains); // Find the index of the unit
+    new_start_limit_Combo->setCurrentIndex(index);
+
+    index = new_stop_limit_Combo->findText(f_limit2_unit, Qt::MatchFlag::MatchContains); // Find the index of the unit
     new_stop_limit_Combo->setCurrentIndex(index);
   }
 
-  connect(new_stop_limit_Combo, SIGNAL(currentIndexChanged(int)), SLOT(updateTraces()));
-  List_Limit_Stop_Freq_Scale.append(new_stop_limit_Combo);
+  limitsMap[new_limit_name].Stop_Freq_Scale = new_stop_limit_Combo;
   this->LimitsGrid->addWidget(new_stop_limit_Combo, limit_index, 4);
 
   // Remove button
@@ -2342,19 +2321,17 @@ void Qucs_S_SPAR_Viewer::addLimit(double f_limit1, QString f_limit1_unit, double
                 border-radius: 20px;
             }
         )");
-  connect(new_limit_removebutton, SIGNAL(clicked()), SLOT(removeLimit()));
-  List_Button_Delete_Limit.append(new_limit_removebutton);
+  limitsMap[new_limit_name].Button_Delete_Limit = new_limit_removebutton;
   this->LimitsGrid->addWidget(new_limit_removebutton, limit_index, 5, Qt::AlignCenter);
 
   QString SpinBox_val_start_name = QStringLiteral("Lmt_Val_Start_SpinBox_%1").arg(new_limit_name);
   QDoubleSpinBox * new_limit_val_start_Spinbox = new QDoubleSpinBox();
   new_limit_val_start_Spinbox->setObjectName(SpinBox_val_start_name);
-  new_limit_val_start_Spinbox->setMaximum(Magnitude_PhaseChart->getYmin());
-  new_limit_val_start_Spinbox->setMaximum(Magnitude_PhaseChart->getYmax());
+  new_limit_val_start_Spinbox->setMinimum(-1000);
+  new_limit_val_start_Spinbox->setMaximum(1000);
   new_limit_val_start_Spinbox->setValue(y_limit1);
   new_limit_val_start_Spinbox->setSingleStep(Magnitude_PhaseChart->getYdiv()/5);
-  connect(new_limit_val_start_Spinbox, SIGNAL(valueChanged(double)), SLOT(updateLimits()));
-  List_Limit_Start_Value.append(new_limit_val_start_Spinbox);
+  limitsMap[new_limit_name].Start_Value = new_limit_val_start_Spinbox;
   this->LimitsGrid->addWidget(new_limit_val_start_Spinbox, limit_index+1, 1);
 
   // Coupled spinbox value
@@ -2364,18 +2341,17 @@ void Qucs_S_SPAR_Viewer::addLimit(double f_limit1, QString f_limit1_unit, double
   new_limit_CoupleButton->setChecked(coupled);
   tooltip_message = QStringLiteral("Couple start and stop values");
   new_limit_CoupleButton->setToolTip(tooltip_message);
-  connect(new_limit_CoupleButton, SIGNAL(clicked(bool)), SLOT(coupleSpinBoxes()));
-  List_Couple_Value.append(new_limit_CoupleButton);
+  limitsMap[new_limit_name].Couple_Value = new_limit_CoupleButton;
   this->LimitsGrid->addWidget(new_limit_CoupleButton, limit_index+1, 2);
 
   QString SpinBox_val_stop_name = QStringLiteral("Lmt_Val_Stop_SpinBox_%1").arg(new_limit_name);
   QDoubleSpinBox * new_limit_val_stop_Spinbox = new QDoubleSpinBox();
   new_limit_val_stop_Spinbox->setObjectName(SpinBox_val_stop_name);
-  new_limit_val_stop_Spinbox->setMaximum(Magnitude_PhaseChart->getYmax());
+  new_limit_val_stop_Spinbox->setMinimum(-1000);
+  new_limit_val_stop_Spinbox->setMaximum(1000);
   new_limit_val_stop_Spinbox->setValue(y_limit2);
   new_limit_val_stop_Spinbox->setSingleStep(Magnitude_PhaseChart->getYdiv()/5);
-  connect(new_limit_val_stop_Spinbox, SIGNAL(valueChanged(double)), SLOT(updateLimits()));
-  List_Limit_Stop_Value.append(new_limit_val_stop_Spinbox);
+  limitsMap[new_limit_name].Stop_Value = new_limit_val_stop_Spinbox;
   this->LimitsGrid->addWidget(new_limit_val_stop_Spinbox, limit_index+1, 3);
 
   if (coupled){
@@ -2383,17 +2359,59 @@ void Qucs_S_SPAR_Viewer::addLimit(double f_limit1, QString f_limit1_unit, double
   } else {
     new_limit_CoupleButton->setText("<-X->");
   }
-  new_limit_CoupleButton->click();
+
+  QString QComboBox_yaxis_name = QStringLiteral("Combo_yaxis_%1").arg(new_limit_name);
+  QComboBox * QComboBox_y_axis = new QComboBox();
+  QComboBox_y_axis->setObjectName(QComboBox_yaxis_name);
+  QComboBox_y_axis->addItem("Left Y");
+  QComboBox_y_axis->addItem("Right Y");
+  limitsMap[new_limit_name].axis = QComboBox_y_axis;
+  this->LimitsGrid->addWidget(QComboBox_y_axis, limit_index+1, 4);
 
   QString Separator_name = QStringLiteral("Lmt_Separator_%1").arg(new_limit_name);
   QFrame * new_Separator = new QFrame();
   new_Separator->setObjectName(Separator_name);
   new_Separator->setFrameShape(QFrame::HLine);
   new_Separator->setFrameShadow(QFrame::Sunken);
-  List_Separators.append(new_Separator);
+  limitsMap[new_limit_name].Separator = new_Separator;
   this->LimitsGrid->addWidget(new_Separator, limit_index+2, 0, 1, 6);
 
+  // Connect widgets to handler
+  connect(limitsMap[new_limit_name].Start_Freq, SIGNAL(valueChanged(double)), SLOT(updateLimits()));
+  connect(limitsMap[new_limit_name].Start_Freq_Scale, SIGNAL(currentIndexChanged(int)), SLOT(updateLimits()));
+  connect(limitsMap[new_limit_name].Stop_Freq, SIGNAL(valueChanged(double)), SLOT(updateLimits()));
+  connect(limitsMap[new_limit_name].Stop_Freq_Scale, SIGNAL(currentIndexChanged(int)), SLOT(updateLimits()));
+  connect(limitsMap[new_limit_name].Button_Delete_Limit, SIGNAL(clicked()), SLOT(removeLimit()));
+  connect(limitsMap[new_limit_name].Start_Value, SIGNAL(valueChanged(double)), SLOT(updateLimits()));
+  connect(limitsMap[new_limit_name].Couple_Value, SIGNAL(clicked(bool)), SLOT(coupleSpinBoxes()));
+  connect(limitsMap[new_limit_name].Stop_Value, SIGNAL(valueChanged(double)), SLOT(updateLimits()));
+  connect(limitsMap[new_limit_name].axis, SIGNAL(currentIndexChanged(int)), SLOT(updateLimits()));
 
+  // Force to update the locked / unlocked status of the y-axis spinboxes
+  limitsMap[new_limit_name].Couple_Value->click();
+
+  // Add limit to the chart
+  RectangularPlotWidget::Limit NewLimit;
+
+  double f1 = limitsMap[new_limit_name].Start_Freq->value();
+  QString scale = limitsMap[new_limit_name].Start_Freq_Scale->currentText();
+  double f1_scale = getFreqScale(scale);
+  f1 = f1 / f1_scale;
+
+
+  double f2 = limitsMap[new_limit_name].Stop_Freq->value();
+  scale = limitsMap[new_limit_name].Stop_Freq_Scale->currentText();
+  double f2_scale = getFreqScale(scale);
+  f2 = f2 / f2_scale;
+
+  NewLimit.f1 = f1;
+  NewLimit.f2 = f2;
+  NewLimit.y1 = limitsMap[new_limit_name].Start_Value->value();
+  NewLimit.y2 = limitsMap[new_limit_name].Stop_Value->value();
+  NewLimit.pen = QPen(Qt::black, 2, Qt::SolidLine);
+
+  Magnitude_PhaseChart->addLimit(new_limit_name, NewLimit);
+  Magnitude_PhaseChart->update();
 }
 
 void Qucs_S_SPAR_Viewer::coupleSpinBoxes(){
@@ -2401,30 +2419,33 @@ void Qucs_S_SPAR_Viewer::coupleSpinBoxes(){
   QPushButton* button = qobject_cast<QPushButton*>(sender());
   // Get the button ID, from it we can get the index and then lock the upper limit spinbox
   QString name_button = button->objectName();
-  // Get the limit name
-  int lastUnderscoreIndex = name_button.lastIndexOf('_');
-  QString limit_name = name_button.mid(lastUnderscoreIndex + 1);
 
-  // Get a list with the limit names
-  QList<QString> labelNames;
-  for (const QLabel *label : qAsConst(List_LimitNames)) {
-    labelNames.append(label->text());
+
+  int nlimits = getNumberOfLimits();
+
+  // Get limit
+  QString limit_name;
+  LimitProperties limit_props;
+  for (int i = 0; i < nlimits; i++) {
+    getLimitByPosition(i, limit_name, limit_props);
+    if (limit_props.Couple_Value->objectName() == name_button) {
+      break;
+    }
   }
 
-  int index = labelNames.indexOf(limit_name);
-
-  QDoubleSpinBox * upper_limit_spinbox = List_Limit_Stop_Value.at(index);
-
-  if (button->text() == "<--->"){
-    button->setText("<-X->");
+  if (limit_props.Couple_Value->text() == "<--->"){
+    limit_props.Couple_Value->setText("<-X->");
     QString tooltip_message = QStringLiteral("Uncouple start and stop values");
-    button->setToolTip(tooltip_message);
-    QDoubleSpinBox * lower_limit_spinbox = List_Limit_Start_Value.at(index);
-    upper_limit_spinbox->setValue(lower_limit_spinbox->value());
-    upper_limit_spinbox->setDisabled(true);
+    limit_props.Couple_Value->setToolTip(tooltip_message);
+
+    // Couple limit spinboxes
+    double start_value = limit_props.Start_Value->value();
+    limit_props.Stop_Value->setValue(start_value);
+    limit_props.Stop_Value->setDisabled(true);
+
   }else{
-    button->setText("<--->");
-    upper_limit_spinbox->setEnabled(true);
+    limit_props.Couple_Value->setText("<--->");
+    limit_props.Stop_Value->setEnabled(true);
   }
 }
 
@@ -2433,17 +2454,54 @@ void Qucs_S_SPAR_Viewer::coupleSpinBoxes(){
 void Qucs_S_SPAR_Viewer::updateLimits()
 {
   // First check if some value-coupling button is activated. If not, simply call updateTraces()
-  int n_limits = List_Couple_Value.size();
+  int n_limits = getNumberOfLimits();
   for (int i = 0; i < n_limits; i++) {
-    QPushButton* button = List_Couple_Value.at(i);
-    if (button->text() == "<-X->"){
+
+    QString limit_name;
+    LimitProperties limit_props;
+    getLimitByPosition(i, limit_name, limit_props);
+
+    if (limit_props.Couple_Value->text() == "<-X->"){
       // The control is locked. Set the stop value equal to the start value
-      QDoubleSpinBox* start = List_Limit_Start_Value.at(i);
-      QDoubleSpinBox* stop = List_Limit_Stop_Value.at(i);
-      double val_start = start->value();
-      stop->setValue(val_start);
+      double val_start = limit_props.Start_Value->value();
+      limit_props.Stop_Value->setValue(val_start);
     }
   }
+
+  // Catch the widget limit that triggered this function and update its value in the chart
+  QObject * WidgetTriggered = sender();
+
+  QString ObjectName = WidgetTriggered->objectName();
+
+  int lastUnderscoreIndex = ObjectName.lastIndexOf('_');
+  QString limit_name = ObjectName.mid(lastUnderscoreIndex + 1);
+
+  // Get the actual values of the widgets corresponding to that limit
+  RectangularPlotWidget::Limit limit_props;
+  double f1 = limitsMap[limit_name].Start_Freq->value();
+  QString scale = limitsMap[limit_name].Start_Freq_Scale->currentText();
+  double f1_scale = getFreqScale(scale);
+  f1 = f1 / f1_scale;
+
+
+  double f2 = limitsMap[limit_name].Stop_Freq->value();
+  scale = limitsMap[limit_name].Stop_Freq_Scale->currentText();
+  double f2_scale = getFreqScale(scale);
+  f2 = f2 / f2_scale;
+
+  limit_props.f1 = f1;
+  limit_props.f2 = f2;
+  limit_props.y1 = limitsMap[limit_name].Start_Value->value();
+  limit_props.y2 = limitsMap[limit_name].Stop_Value->value();
+  limit_props.y_axis = limitsMap[limit_name].axis->currentIndex();
+  limit_props.pen = QPen(Qt::black, 2, Qt::SolidLine);
+
+
+  Magnitude_PhaseChart->updateLimit(limit_name, limit_props);
+
+
+
+  Magnitude_PhaseChart->update();
 }
 
 
@@ -2523,7 +2581,8 @@ bool Qucs_S_SPAR_Viewer::save()
   }
   // ----------------------------------------------------------------
   // Save the limits
-  if (List_Limit_Start_Freq.size() != 0){
+  int nlimits = limitsMap.keys().size();
+  if (nlimits != 0){
       double freq, value;
       bool Coupled_Limits;
       xmlWriter.writeStartElement("LIMITS");
@@ -2532,37 +2591,44 @@ bool Qucs_S_SPAR_Viewer::save()
       value = Limits_Offset->value();
       xmlWriter.writeTextElement("offset", QString::number(value));
 
-      for (int i = 0; i < List_Limit_Start_Freq.size(); i++)
+      for (int i = 0; i < nlimits; i++)
       {
         xmlWriter.writeStartElement("Limit");
 
+        QString limit_name;
+        LimitProperties limit_props;
+        getLimitByPosition(i, limit_name, limit_props);
+
         // fstart
-        freq = List_Limit_Start_Freq[i]->value();
+        freq = limit_props.Start_Freq->value();
         xmlWriter.writeTextElement("fstart", QString::number(freq));
 
         // fstart unit
-        QString fstart_unit = List_Limit_Start_Freq_Scale[i]->currentText();
+        QString fstart_unit = limit_props.Start_Freq_Scale->currentText();
         xmlWriter.writeTextElement("fstart_unit", fstart_unit);
 
         // Start value
-        value = List_Limit_Start_Value[i]->value();
+        value = limit_props.Start_Value->value();
         xmlWriter.writeTextElement("val_start", QString::number(value));
 
         // fstop
-        freq = List_Limit_Stop_Freq[i]->value();
+        freq = limit_props.Stop_Freq->value();
         xmlWriter.writeTextElement("fstop", QString::number(freq));
 
         // fstop unit
-        QString fstop_unit = List_Limit_Stop_Freq_Scale[i]->currentText();
+        QString fstop_unit = limit_props.Stop_Freq_Scale->currentText();
         xmlWriter.writeTextElement("fstop_unit", fstop_unit);
 
         // Stop value
-        value = List_Limit_Stop_Value[i]->value();
+        value = limit_props.Stop_Value->value();
         xmlWriter.writeTextElement("val_stop", QString::number(value));
 
         // Couple values
-        Coupled_Limits = (List_Couple_Value[i]->text() == "<-X->");
+        Coupled_Limits = (limit_props.Couple_Value->text() == "<-X->");
         xmlWriter.writeTextElement("couple_values", QString::number(Coupled_Limits));
+
+        QString y_axis = limit_props.axis->currentText();
+        xmlWriter.writeTextElement("y_axis", y_axis);
 
         xmlWriter.writeEndElement(); // Limit
       }
@@ -3091,6 +3157,27 @@ bool Qucs_S_SPAR_Viewer::getMarkerByPosition(int position, QString& outMarkerNam
   return true;
 }
 
+// Get the marker given the position of the entry
+bool Qucs_S_SPAR_Viewer::getLimitByPosition(int position, QString& outLimitName, LimitProperties& outProperties) {
+  // Check if position is valid
+  if (position < 0 || position >= limitsMap.size()) {
+    qWarning() << "Invalid position:" << position;
+    return false;
+  }
+
+  // Get an iterator to the beginning of the map
+  auto it = limitsMap.begin();
+
+         // Advance the iterator by 'position' steps
+  std::advance(it, position);
+
+         // Get the marker name and properties
+  outLimitName = it.key();
+  outProperties = it.value();
+
+  return true;
+}
+
 
 // Get the trace given the position of the entry
 bool Qucs_S_SPAR_Viewer::getTraceByPosition(int position, QString& outTraceName, TraceProperties& outProperties) {
@@ -3122,4 +3209,9 @@ int Qucs_S_SPAR_Viewer::getNumberOfMarkers(){
 // Returns the total number of traces
 int Qucs_S_SPAR_Viewer::getNumberOfTraces(){
   return traceMap.keys().size();
+}
+
+// Returns the total number of limits
+int Qucs_S_SPAR_Viewer::getNumberOfLimits(){
+  return limitsMap.keys().size();
 }
