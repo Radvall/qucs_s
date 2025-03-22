@@ -696,31 +696,7 @@ void Qucs_S_SPAR_Viewer::addFiles(QStringList fileNames)
     {
         // Create the file name label
         filename = QFileInfo(fileNames.at(i-existing_files)).fileName();
-
-        QLabel * Filename_Label = new QLabel(filename.left(filename.lastIndexOf('.')));
-        Filename_Label->setObjectName(QStringLiteral("File_") + QString::number(i));
-        List_FileNames.append(Filename_Label);
-        this->FilesGrid->addWidget(List_FileNames.last(), i,0,1,1);
-
-        // Create the "Remove" button
-        QToolButton * RemoveButton = new QToolButton();
-        RemoveButton->setObjectName(QStringLiteral("Remove_") + QString::number(i));
-        QIcon icon(":/bitmaps/trash.png"); // Use a resource path or a relative path
-        RemoveButton->setIcon(icon);
-
-        RemoveButton->setStyleSheet("QToolButton {background-color: red;\
-                                        border-width: 2px;\
-                                        border-radius: 10px;\
-                                        border-color: beige;\
-                                        font: bold 14px;\
-                                        margin: auto;\
-                                    }");
-
-        List_RemoveButton.append(RemoveButton);
-        this->FilesGrid->addWidget(List_RemoveButton.last(), i,1,1,1);
-
-
-        connect(RemoveButton, SIGNAL(clicked()), SLOT(removeFile())); // Connect button with the handler to remove the entry.
+        CreateFileWidgets(filename, i+1);
 
         // Read the Touchstone file.
         // Please see https://ibis.org/touchstone_ver2.0/touchstone_ver2_0.pdf
@@ -936,6 +912,42 @@ void Qucs_S_SPAR_Viewer::addFiles(QStringList fileNames)
     // Show the trace settings widget
     dockTracesList->raise();
 }
+
+// This function creates the label and the button in the file list
+void Qucs_S_SPAR_Viewer::CreateFileWidgets(QString filename, int position = 0) {
+
+  if (position == 0) {
+    position = this->datasets.size();
+  }
+
+  QLabel * Filename_Label = new QLabel(filename.left(filename.lastIndexOf('.')));
+  Filename_Label->setObjectName(QStringLiteral("File_") + QString::number(position));
+  List_FileNames.append(Filename_Label);
+  this->FilesGrid->addWidget(List_FileNames.last(), position,0,1,1);
+
+  // Create the "Remove" button
+  QToolButton * RemoveButton = new QToolButton();
+  RemoveButton->setObjectName(QStringLiteral("Remove_") + QString::number(position));
+  QIcon icon(":/bitmaps/trash.png"); // Use a resource path or a relative path
+  RemoveButton->setIcon(icon);
+
+  RemoveButton->setStyleSheet("QToolButton {background-color: red;\
+                                  border-width: 2px;\
+                                  border-radius: 10px;\
+                                  border-color: beige;\
+                                  font: bold 14px;\
+                                  margin: auto;\
+                              }");
+
+  List_RemoveButton.append(RemoveButton);
+  this->FilesGrid->addWidget(List_RemoveButton.last(), position,1,1,1);
+
+
+  connect(RemoveButton, SIGNAL(clicked()), SLOT(removeFile())); // Connect button with the handler to remove the entry.
+
+}
+
+
 
 // This function is called whenever a s-par file is intended to be removed from the map of datasets
 void Qucs_S_SPAR_Viewer::removeFile()
@@ -1627,7 +1639,7 @@ int Qucs_S_SPAR_Viewer::findClosestIndex(const QList<double>& list, double value
 }
 
 
-void Qucs_S_SPAR_Viewer::addMarker(double freq){
+void Qucs_S_SPAR_Viewer::addMarker(double freq, QString Freq_Marker_Scale){
 
     // If there are no traces in the display, show a message and exit
     if (trace_list.size() == 0){
@@ -1645,10 +1657,9 @@ void Qucs_S_SPAR_Viewer::addMarker(double freq){
       double f2 = Magnitude_PhaseChart->getXmax();
       f_marker = f1 + 0.5*(f2-f1);
     } else {
-      f_marker= freq;
-      f_marker *= 1e-6;// Scale according to the x-axis units
+      f_marker= freq/getFreqScale(Freq_Marker_Scale);
+      f_marker *= Magnitude_PhaseChart->getXscale();// Scale according to the x-axis units
     }
-    QString Freq_Marker_Scale = QString("MHz");
 
     int n_markers = getNumberOfMarkers();
     n_markers++;
@@ -2549,7 +2560,6 @@ void Qucs_S_SPAR_Viewer::slotLoadSession()
   loadSession(fileName);
 }
 
-
 bool Qucs_S_SPAR_Viewer::save() {
   if (savepath.isEmpty()) {
     return false; // No save path specified
@@ -2563,74 +2573,107 @@ bool Qucs_S_SPAR_Viewer::save() {
 
   QXmlStreamWriter xml(&file);
   xml.setAutoFormatting(true);
-  xml.writeStartDocument();
+  xml.writeStartDocument("1.0", "UTF-8");
+
   xml.writeStartElement("session");
+  xml.writeAttribute("version", "1.0"); // Add version attribute
 
          // Save window geometry and state
   xml.writeStartElement("settings");
   xml.writeTextElement("geometry", saveGeometry().toBase64());
-  xml.writeTextElement("state", QString::number(static_cast<int>(windowState())));
+  xml.writeTextElement("state", saveState().toBase64());
   xml.writeEndElement(); // settings
 
-         // Save files
-  xml.writeStartElement("files");
-  for (const QString& filePath : datasets.keys()) {
-    xml.writeTextElement("file", filePath);
+         // Save datasets
+  if (!datasets.isEmpty()) {  //Check empty map
+    xml.writeStartElement("datasets");
+    for (const QString& datasetName : datasets.keys()) {
+      if (!datasetName.isEmpty() && !datasets[datasetName].isEmpty()) {  //Validate data
+        xml.writeStartElement("dataset");
+        xml.writeAttribute("name", datasetName);
+
+               // Save dataset data
+        const QMap<QString, QList<double>>& dataset = datasets[datasetName];
+        for (const QString& key : dataset.keys()) {
+          xml.writeStartElement("data");
+          xml.writeAttribute("key", key);
+          for (double value : dataset[key]) {
+            xml.writeTextElement("value", QString::number(value, 'g', 15)); // Consistent number formatting
+          }
+          xml.writeEndElement(); // data
+        }
+
+        xml.writeEndElement(); // dataset
+      }
+    }
+    xml.writeEndElement(); // datasets
   }
-  xml.writeEndElement(); // files
 
          // Save traces
-  xml.writeStartElement("traces");
-  for (const QString& traceName : traceMap.keys()) {
-    TraceProperties props = traceMap[traceName];
-    xml.writeStartElement("trace");
-    xml.writeAttribute("name", traceName);
-    xml.writeTextElement("dataset", traceName.section('.', 0, -2));
-    xml.writeTextElement("color", props.colorButton->palette().color(QPalette::Button).name());
-    xml.writeTextElement("width", QString::number(props.width->value()));
-    xml.writeTextElement("style", props.LineStyleComboBox->currentText());
-    xml.writeEndElement(); // trace
+  if (!traceMap.isEmpty()) { //Check empty map
+    xml.writeStartElement("traces");
+    for (const QString& traceName : traceMap.keys()) {
+      TraceProperties props = traceMap[traceName];
+      xml.writeStartElement("trace");
+      xml.writeAttribute("name", traceName);
+      xml.writeAttribute("dataset", traceName.section('.', 0, -2)); // Extract dataset name
+      xml.writeAttribute("color", props.colorButton->palette().color(QPalette::Button).name());
+      xml.writeAttribute("width", QString::number(props.width->value()));
+      xml.writeAttribute("style", props.LineStyleComboBox->currentText());
+      xml.writeEndElement(); // trace
+    }
+    xml.writeEndElement(); // traces
   }
-  xml.writeEndElement(); // traces
 
          // Save markers
-  xml.writeStartElement("markers");
-  for (const QString& markerName : markerMap.keys()) {
-    MarkerProperties props = markerMap[markerName];
-    xml.writeStartElement("marker");
-    xml.writeTextElement("frequency", QString::number(props.freqSpinBox->value()));
-    xml.writeTextElement("scale", props.scaleComboBox->currentText());
-    xml.writeEndElement(); // marker
+  if (!markerMap.isEmpty()) { //Check empty map
+    xml.writeStartElement("markers");
+    for (const QString& markerName : markerMap.keys()) {
+      MarkerProperties props = markerMap[markerName];
+      xml.writeStartElement("marker");
+      xml.writeAttribute("frequency", QString::number(props.freqSpinBox->value()));
+      xml.writeAttribute("scale", props.scaleComboBox->currentText());
+      xml.writeEndElement(); // marker
+    }
+    xml.writeEndElement(); // markers
   }
-  xml.writeEndElement(); // markers
 
          // Save limits
-  xml.writeStartElement("limits");
-  for (const QString& limitName : limitsMap.keys()) {
-    LimitProperties props = limitsMap[limitName];
-    xml.writeStartElement("limit");
-    xml.writeTextElement("start_freq", QString::number(props.Start_Freq->value()));
-    xml.writeTextElement("stop_freq", QString::number(props.Stop_Freq->value()));
-    xml.writeTextElement("start_value", QString::number(props.Start_Value->value()));
-    xml.writeTextElement("stop_value", QString::number(props.Stop_Value->value()));
-    xml.writeTextElement("start_freq_scale", props.Start_Freq_Scale->currentText());
-    xml.writeTextElement("stop_freq_scale", props.Stop_Freq_Scale->currentText());
-    xml.writeTextElement("axis", props.axis->currentText());
-    xml.writeEndElement(); // limit
+  if (!limitsMap.isEmpty()) { //Check empty map
+    xml.writeStartElement("limits");
+    for (const QString& limitName : limitsMap.keys()) {
+      LimitProperties props = limitsMap[limitName];
+      xml.writeStartElement("limit");
+      xml.writeAttribute("start_freq", QString::number(props.Start_Freq->value()));
+      xml.writeAttribute("stop_freq", QString::number(props.Stop_Freq->value()));
+      xml.writeAttribute("start_value", QString::number(props.Start_Value->value()));
+      xml.writeAttribute("stop_value", QString::number(props.Stop_Value->value()));
+      xml.writeAttribute("start_freq_scale", props.Start_Freq_Scale->currentText());
+      xml.writeAttribute("stop_freq_scale", props.Stop_Freq_Scale->currentText());
+      xml.writeAttribute("axis", props.axis->currentText());
+      xml.writeEndElement(); // limit
+    }
+    xml.writeEndElement(); // limits
   }
-  xml.writeEndElement(); // limits
 
          // Save notes
   xml.writeStartElement("notes");
-  xml.writeTextElement("content", Notes_Widget->toPlainText());
+  xml.writeCDATA(Notes_Widget->toPlainText()); // Use CDATA for notes
   xml.writeEndElement(); // notes
 
   xml.writeEndElement(); // session
   xml.writeEndDocument();
 
+  if (file.error() != QFile::NoError) {
+    QMessageBox::warning(this, tr("Save Session"), tr("Error writing file: ") + file.errorString());
+    return false;
+  }
+
   file.close();
   return true;
 }
+
+
 
 void Qucs_S_SPAR_Viewer::loadSession(QString session_file) {
   QFile file(session_file);
@@ -2656,16 +2699,39 @@ void Qucs_S_SPAR_Viewer::loadSession(QString session_file) {
             if (xml.name() == QStringLiteral("geometry")) {
               restoreGeometry(QByteArray::fromBase64(xml.readElementText().toLatin1()));
             } else if (xml.name() == QStringLiteral("state")) {
-              // Restore the window state from a QByteArray
               restoreState(QByteArray::fromBase64(xml.readElementText().toLatin1()));
             }
           }
           xml.readNext();
         }
-      } else if (xml.name() == QStringLiteral("files")) {
-        while (!(xml.tokenType() == QXmlStreamReader::EndElement && xml.name() == QStringLiteral("files"))) {
-          if (xml.tokenType() == QXmlStreamReader::StartElement && xml.name() == QStringLiteral("file")) {
-            addFiles(QStringList() << xml.readElementText());
+      } else if (xml.name() == QStringLiteral("datasets")) {
+        while (!(xml.tokenType() == QXmlStreamReader::EndElement && xml.name() == QStringLiteral("datasets"))) {
+          if (xml.tokenType() == QXmlStreamReader::StartElement && xml.name() == QStringLiteral("dataset")) {
+            QString datasetName = xml.attributes().value("name").toString();
+            QMap<QString, QList<double>> dataset;
+
+            while (!(xml.tokenType() == QXmlStreamReader::EndElement && xml.name() == QStringLiteral("dataset"))) {
+              if (xml.tokenType() == QXmlStreamReader::StartElement && xml.name() == QStringLiteral("data")) {
+                QString key = xml.attributes().value("key").toString();
+                QList<double> values;
+
+                while (!(xml.tokenType() == QXmlStreamReader::EndElement && xml.name() == QStringLiteral("data"))) {
+                  if (xml.tokenType() == QXmlStreamReader::StartElement && xml.name() == QStringLiteral("value")) {
+                    values.append(xml.readElementText().toDouble());
+                  }
+                  xml.readNext();
+                }
+
+                dataset[key] = values;
+              }
+              xml.readNext();
+            }
+
+            datasets[datasetName] = dataset;
+            QCombobox_datasets->addItem(datasetName); // Add dataset to the combobox
+
+            // Add dataset to the file list
+            CreateFileWidgets(datasetName);
           }
           xml.readNext();
         }
@@ -2673,32 +2739,36 @@ void Qucs_S_SPAR_Viewer::loadSession(QString session_file) {
         while (!(xml.tokenType() == QXmlStreamReader::EndElement && xml.name() == QStringLiteral("traces"))) {
           if (xml.tokenType() == QXmlStreamReader::StartElement && xml.name() == QStringLiteral("trace")) {
             QString traceName = xml.attributes().value("name").toString();
-            QString dataset = xml.readElementText();
-            QColor color(xml.readElementText());
-            int width = xml.readElementText().toInt();
-            QString style = xml.readElementText();
-            addTrace(traceName, dataset, color, width, style);
+            traceName = traceName.mid(traceName.indexOf('.') + 1); // Remove all that comes before the dot, including the dot.
+            QString dataset = xml.attributes().value("dataset").toString(); // Read dataset from attributes
+            QColor color(xml.attributes().value("color").toString()); // Read color from attributes
+            int width = xml.attributes().value("width").toString().toInt(); // Read width from attributes
+            QString style = xml.attributes().value("style").toString(); // Read style from attributes
+
+                   // Add the trace
+            addTrace(dataset, traceName, color, width, style);
           }
           xml.readNext();
         }
       } else if (xml.name() == QStringLiteral("markers")) {
         while (!(xml.tokenType() == QXmlStreamReader::EndElement && xml.name() == QStringLiteral("markers"))) {
           if (xml.tokenType() == QXmlStreamReader::StartElement && xml.name() == QStringLiteral("marker")) {
-            double freq = xml.readElementText().toDouble();
-            addMarker(freq);
+            double freq = xml.attributes().value("frequency").toString().toDouble(); // Read frequency from attributes
+            QString scale = xml.attributes().value("scale").toString(); // Read scale from attributes
+            addMarker(freq, scale);
           }
           xml.readNext();
         }
       } else if (xml.name() == QStringLiteral("limits")) {
         while (!(xml.tokenType() == QXmlStreamReader::EndElement && xml.name() == QStringLiteral("limits"))) {
           if (xml.tokenType() == QXmlStreamReader::StartElement && xml.name() == QStringLiteral("limit")) {
-            double start_freq = xml.readElementText().toDouble();
-            double stop_freq = xml.readElementText().toDouble();
-            double start_value = xml.readElementText().toDouble();
-            double stop_value = xml.readElementText().toDouble();
-            QString start_freq_scale = xml.readElementText();
-            QString stop_freq_scale = xml.readElementText();
-            QString axis = xml.readElementText();
+            double start_freq = xml.attributes().value("start_freq").toString().toDouble(); // Read start_freq from attributes
+            double stop_freq = xml.attributes().value("stop_freq").toString().toDouble(); // Read stop_freq from attributes
+            double start_value = xml.attributes().value("start_value").toString().toDouble(); // Read start_value from attributes
+            double stop_value = xml.attributes().value("stop_value").toString().toDouble(); // Read stop_value from attributes
+            QString start_freq_scale = xml.attributes().value("start_freq_scale").toString(); // Read start_freq_scale from attributes
+            QString stop_freq_scale = xml.attributes().value("stop_freq_scale").toString(); // Read stop_freq_scale from attributes
+            QString axis = xml.attributes().value("axis").toString(); // Read axis from attributes
             addLimit(start_freq, start_freq_scale, stop_freq, stop_freq_scale, start_value, stop_value, true);
           }
           xml.readNext();
@@ -2715,10 +2785,9 @@ void Qucs_S_SPAR_Viewer::loadSession(QString session_file) {
 
   file.close();
 
-         // Update UI
+  // Update UI
   updateTracesCombo();
   updateMarkerTable();
-  updateLimits();
 }
 
 void Qucs_S_SPAR_Viewer::updateGridLayout(QGridLayout* layout)

@@ -89,6 +89,7 @@ class Qucs_S_SPAR_Viewer : public QMainWindow
   void removeFile();
   void removeFile(int);
   void removeAllFiles();
+  void CreateFileWidgets(QString filename, int position);
 
   void addTrace();
   void addTrace(QString, QString, QColor, int trace_width = 1, QString trace_style = "Solid");
@@ -106,7 +107,7 @@ class Qucs_S_SPAR_Viewer : public QMainWindow
   void changeMarkerLimits();
   void changeMarkerLimits(QString);
 
-  void addMarker(double freq = -1);
+  void addMarker(double freq = -1, QString Freq_Marker_Scale = QString("MHz"));
   void removeMarker();
   void removeMarker(const QString &);
   void removeAllMarkers();
