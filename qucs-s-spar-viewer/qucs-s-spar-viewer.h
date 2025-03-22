@@ -4,6 +4,7 @@
 #include "codeeditor.h"
 #include "smithchartwidget.h"
 #include "rectangularplotwidget.h"
+#include "polarplotwidget.h"
 
 #include <QMainWindow>
 #include <QLabel>
@@ -160,8 +161,8 @@ class Qucs_S_SPAR_Viewer : public QMainWindow
   QMap<QString, TraceProperties> traceMap;
 
   QTabWidget *traceTabs;
-  QWidget *magnitudePhaseTab, *smithTab;
-  QGridLayout *magnitudePhaseLayout, *smithLayout;
+  QWidget *magnitudePhaseTab, *smithTab, *polarTab;
+  QGridLayout *magnitudePhaseLayout, *smithLayout, *polarLayout, *nuLayout;
 
   // Axis settings widgets
   QPushButton *Lock_axis_settings_Button;
@@ -201,21 +202,22 @@ class Qucs_S_SPAR_Viewer : public QMainWindow
   QList<QGraphicsItem*> textLabels;
   bool removeSeriesByName(QChart*, const QString&);
 
-
-
   // Smith Chart
   SmithChartWidget *smithChart;
   QDockWidget *dockSmithChart;
   QList<SmithChartWidget::Trace> SmithChartTraces;
 
+  // Polar plot
+  PolarPlotWidget *polarChart;
+  QDockWidget *dockPolarChart;
+  QList<PolarPlotWidget::Trace> PolarChartTraces;
 
   // Markers
   QDockWidget *dockMarkers;
   QWidget *Marker_Widget;
   QGridLayout * MarkersGrid;
   QPushButton *Button_add_marker, *Button_Remove_All_Markers;
-  QTableWidget* tableMarkers_Magnitude_Phase;
-  QTableWidget* tableMarkers_Smith;
+  QTableWidget* tableMarkers_Magnitude_Phase,  *tableMarkers_Smith, *tableMarkers_Polar, *tableMarkers_nu;
   QMap<QString, MarkerProperties> markerMap; // All marker widgets are here. This way they can be accessed by the name of the marker
 
   double getMarkerFreq(QString);

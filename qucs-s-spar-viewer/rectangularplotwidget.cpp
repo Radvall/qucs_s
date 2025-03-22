@@ -244,10 +244,10 @@ void RectangularPlotWidget::updatePlot()
       series->append(scaledFreq, trace.trace[i]);
     }
 
-           // Add the series to the chart
+    // Add the series to the chart
     ChartWidget->addSeries(series);
 
-           // Attach to the appropriate axes
+    // Attach to the appropriate axes
     series->attachAxis(xAxis);
     if (trace.y_axis == 2) {
       series->attachAxis(y2Axis);
