@@ -52,15 +52,10 @@ void RectangularPlotWidget::addTrace(const QString& name, const Trace& trace)
   // Create a local copy of the trace that we can modify
   Trace traceCopy = trace;
 
-  // Check if the trace name ends with "_ang" and assign to y2-axis if it does
-  if (name.endsWith("_ang")) {
-    traceCopy.y_axis = 2; // Assign to y2-axis (right axis)
-  }
-
   // Store the (potentially modified) trace in the map
   traces[name] = traceCopy;
 
-         // Update frequency range if this trace has data
+  // Update frequency range if this trace has data
   if (!traceCopy.frequencies.isEmpty()) {
     double traceMinFreq = traceCopy.frequencies.first();
     double traceMaxFreq = traceCopy.frequencies.last();
@@ -80,7 +75,36 @@ void RectangularPlotWidget::addTrace(const QString& name, const Trace& trace)
     updateXAxis();
   }
 
-         // Adjust y-axis and y2-axis ranges based on trace data
+  // Check if the y-axis title displays the content of the trace title and update
+  QString TitleText; // Chart title
+  QString TraceTitle = trace.y_axis_title;
+  if (trace.y_axis == 1) {
+    // Left y-axis
+    TitleText = yAxis->titleText();
+    if (!TitleText.contains(TraceTitle)) {
+      // If the title does not contain the title the trace should have, then append it
+      if (!TitleText.isEmpty()) {
+        // If the title string has previous content, add a comma and append the new content
+        TitleText += QString(", ");
+      }
+      TitleText += TraceTitle;
+      change_Y_axis_title(TitleText);
+    }
+  } else {
+    // Right y-axis
+    TitleText = y2Axis->titleText();
+    if (!TitleText.contains(TraceTitle)) {
+      // If the title does not contain the title the trace should have, then append it
+      if (!TitleText.isEmpty()) {
+        // If the title string has previous content, add a comma and append the new content
+        TitleText += QString(", ");
+      }
+      TitleText += TraceTitle;
+      change_Y2_axis_title(TitleText);
+    }
+  }
+
+  // Adjust y-axis and y2-axis ranges based on trace data
   if (!traceCopy.trace.isEmpty()) {
     // Find min and max values in the trace data
     double traceMin = std::numeric_limits<double>::max();
@@ -362,12 +386,8 @@ void RectangularPlotWidget::updatePlot()
         // Add value label for the intersection point
         if (showTraceValues) {
           QGraphicsTextItem* valueLabel = new QGraphicsTextItem(ChartWidget);
-          QString valueText = QString::number(intersectionValue, 'f', 2);
-          if (trace.y_axis == 2) {
-            valueText += " deg";
-          } else {
-            valueText += " dB";
-          }
+          QString valueText = QString::number(intersectionValue, 'f', 1);
+          valueText += QString(" %1").arg(trace.units); // Attach units
 
           valueLabel->setHtml("<div style='background:white; padding:1px; border:1px solid " +
                               trace.pen.color().name() + "'>" + valueText + "</div>");
@@ -488,8 +508,8 @@ QGridLayout* RectangularPlotWidget::setupAxisSettings()
 {
   QGridLayout *axisLayout = new QGridLayout();
 
-         // X-axis settings
-  QLabel *xAxisLabel = new QLabel("<b>Frequency</b>");
+  // X-axis settings
+  xAxisLabel = new QLabel("<b>Frequency</b>");
   axisLayout->addWidget(xAxisLabel, 0, 0);
 
   xAxisMin = new QDoubleSpinBox();
@@ -799,4 +819,24 @@ bool RectangularPlotWidget::updateLimit(const QString& limitId, const Limit& lim
   updatePlot();
 
   return true;
+}
+
+void RectangularPlotWidget::change_Y_axis_title(QString title) {
+  yAxis->setTitleText(title);
+}
+
+void RectangularPlotWidget::change_Y_axis_units(QString units) {
+  yAxisUnits->setText(units);
+}
+
+void RectangularPlotWidget::change_Y2_axis_title(QString title) {
+  y2Axis->setTitleText(title);
+}
+
+void RectangularPlotWidget::change_Y2_axis_units(QString units) {
+  y2AxisUnits->setText(units);
+}
+
+void RectangularPlotWidget::change_X_axis_title(QString title) {
+  xAxis->setTitleText(title);
 }

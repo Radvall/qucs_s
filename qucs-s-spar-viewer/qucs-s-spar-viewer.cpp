@@ -294,25 +294,29 @@ void Qucs_S_SPAR_Viewer::setTraceManagementDock(){
 
   traceTabs = new QTabWidget(this); // Ensure 'this' is the parent
 
-         // Create tabs for Magnitude/Phase and Smith Chart
+  // Create tabs for Magnitude/Phase and Smith Chart
   magnitudePhaseTab = new QWidget(traceTabs); // Parent is traceTabs
   smithTab = new QWidget(traceTabs); // Parent is traceTabs
   polarTab = new QWidget(traceTabs); // Parent is traceTabs
+  nuTab = new QWidget(traceTabs); // Parent is traceTabs
 
          // Add tabs to the tab widget
   traceTabs->addTab(magnitudePhaseTab, "Magnitude/Phase");
   traceTabs->addTab(smithTab, "Smith Chart");
   traceTabs->addTab(polarTab, "Polar Chart");
+  traceTabs->addTab(nuTab, "Natural Units");
 
          // Create layouts for each tab
   magnitudePhaseLayout = new QGridLayout(magnitudePhaseTab);
   smithLayout = new QGridLayout(smithTab);
   polarLayout = new QGridLayout(polarTab);
+  nuLayout = new QGridLayout(polarTab);
 
          // Set the layouts on the tabs
   magnitudePhaseTab->setLayout(magnitudePhaseLayout);
   smithTab->setLayout(smithLayout);
   polarTab->setLayout(polarLayout);
+  nuTab->setLayout(nuLayout);
 
   // Set Magnitude tab
   QLabel * Label_Name_mag = new QLabel("<b>Name</b>");
@@ -352,6 +356,19 @@ void Qucs_S_SPAR_Viewer::setTraceManagementDock(){
   polarLayout->addWidget(Label_LineStyle_Polar, 0, 2, Qt::AlignCenter);
   polarLayout->addWidget(Label_LineWidth_Polar, 0, 3, Qt::AlignCenter);
   polarLayout->addWidget(Label_Remove_Polar, 0, 4, Qt::AlignCenter);
+
+  // Set "Natural units" tab
+  QLabel * Label_Name_nu = new QLabel("<b>Name</b>");
+  QLabel * Label_Color_nu = new QLabel("<b>Color</b>");
+  QLabel * Label_LineStyle_nu = new QLabel("<b>Line Style</b>");
+  QLabel * Label_LineWidth_nu = new QLabel("<b>Width</b>");
+  QLabel * Label_Remove_nu = new QLabel("<b>Remove</b>");
+
+  nuLayout->addWidget(Label_Name_nu, 0, 0, Qt::AlignCenter);
+  nuLayout->addWidget(Label_Color_nu, 0, 1, Qt::AlignCenter);
+  nuLayout->addWidget(Label_LineStyle_nu, 0, 2, Qt::AlignCenter);
+  nuLayout->addWidget(Label_LineWidth_nu, 0, 3, Qt::AlignCenter);
+  nuLayout->addWidget(Label_Remove_nu, 0, 4, Qt::AlignCenter);
 
   setupScrollableLayout();
 
@@ -444,11 +461,13 @@ void Qucs_S_SPAR_Viewer::setMarkerManagementDock() {
   tableMarkers_Magnitude_Phase = new QTableWidget(1, 1, this);
   tableMarkers_Smith = new QTableWidget(1, 1, this);
   tableMarkers_Polar = new QTableWidget(1, 1, this);
+  tableMarkers_nu = new QTableWidget(1, 1, this);
 
   // Add tables to tabs
   tabWidgetMarkers->addTab(tableMarkers_Magnitude_Phase, "Magnitude/Phase");
   tabWidgetMarkers->addTab(tableMarkers_Smith, "Smith Chart");
   tabWidgetMarkers->addTab(tableMarkers_Polar, "Polar Chart");
+  tabWidgetMarkers->addTab(tableMarkers_nu, "Natural Units Chart");
 
   Markers_VBox->addWidget(MarkerSelection_Widget);
   Markers_VBox->addWidget(scrollArea_Marker);
@@ -562,15 +581,27 @@ void Qucs_S_SPAR_Viewer::CreateDisplayWidgets(){
   dockPolarChart->setAllowedAreas(Qt::AllDockWidgetAreas);
   addDockWidget(Qt::LeftDockWidgetArea, dockPolarChart);
 
+  // Natural units chart settings
+  nuChart = new RectangularPlotWidget(this);
+  docknuChart = new QDockWidget("Natural Units", this);
+  docknuChart->setWidget(nuChart);
+  docknuChart->setAllowedAreas(Qt::AllDockWidgetAreas);
+  addDockWidget(Qt::LeftDockWidgetArea, docknuChart);
+  nuChart->change_Y_axis_title(QString("")); // Remove default labels
+  nuChart->change_Y_axis_units(QString(""));
+  nuChart->change_Y2_axis_title(QString(""));
+  nuChart->change_Y2_axis_units(QString(""));
 
   // Disable dock closing
   dockChart->setFeatures(dockChart->features() & ~QDockWidget::DockWidgetClosable);
   dockSmithChart->setFeatures(dockSmithChart->features() & ~QDockWidget::DockWidgetClosable);
   dockPolarChart->setFeatures(dockPolarChart->features() & ~QDockWidget::DockWidgetClosable);
+  docknuChart->setFeatures(docknuChart->features() & ~QDockWidget::DockWidgetClosable);
 
   // Tabify the chart docks
   tabifyDockWidget(dockChart, dockSmithChart);
   tabifyDockWidget(dockSmithChart, dockPolarChart);
+  tabifyDockWidget(dockPolarChart, docknuChart);
 }
 
 void Qucs_S_SPAR_Viewer::setupScrollAreaForLayout(QGridLayout* &layout, QWidget* parentTab, const QString &objectName)
@@ -625,6 +656,10 @@ void Qucs_S_SPAR_Viewer::setupScrollAreaForLayout(QGridLayout* &layout, QWidget*
     magnitudePhaseScrollArea = scrollArea;
   } else if (objectName == "smithScrollArea") {
     smithScrollArea = scrollArea;
+  } else if (objectName == "polarScrollArea") {
+    polarScrollArea = scrollArea;
+  } else if (objectName == "nuScrollArea") {
+    nuScrollArea = scrollArea;
   }
 }
 
@@ -633,6 +668,8 @@ void Qucs_S_SPAR_Viewer::setupScrollableLayout()
   // Create scroll areas for both layouts
   setupScrollAreaForLayout(magnitudePhaseLayout, magnitudePhaseTab, "magnitudePhaseScrollArea");
   setupScrollAreaForLayout(smithLayout, smithTab, "smithScrollArea");
+  setupScrollAreaForLayout(polarLayout, polarTab, "polarScrollArea");
+  setupScrollAreaForLayout(nuLayout, nuTab, "nuScrollArea");
 }
 
 Qucs_S_SPAR_Viewer::~Qucs_S_SPAR_Viewer()
@@ -661,7 +698,7 @@ void Qucs_S_SPAR_Viewer::slotHelpAbout()
 {
     QMessageBox::about(this, tr("About..."),
     "Qucs-S S-parameter Viewer Version " PACKAGE_VERSION+
-    tr("\nCopyright (C) 2024 by")+" Andrés Martínez Mera"
+    tr("\nCopyright (C) 2025 by")+" Andrés Martínez Mera"
     "\n"
     "\nThis is free software; see the source for copying conditions."
     "\nThere is NO warranty; not even for MERCHANTABILITY or "
@@ -921,6 +958,9 @@ void Qucs_S_SPAR_Viewer::addFiles(QStringList fileNames)
 
         this->addTrace(filename, QStringLiteral("S11_Polar"), Qt::darkBlue);
         this->addTrace(filename, QStringLiteral("S22_Polar"), Qt::darkGreen);
+
+        this->addTrace(filename, QStringLiteral("Re{Zin}"), Qt::darkBlue);
+        this->addTrace(filename, QStringLiteral("Im{Zin}"), Qt::red);
     }
 
     // Default behaviour: When adding multiple S2P file, then show the S21 of all traces
@@ -1140,6 +1180,10 @@ void Qucs_S_SPAR_Viewer::removeTrace(const QString& trace_to_remove)
       } else {
         if (trace_to_remove.endsWith("Polar")) {
           targetLayout = polarLayout;
+        } else {
+          if (trace_to_remove.endsWith("n.u.")) {
+            targetLayout = nuLayout;
+          }
         }
       }
     }
@@ -1163,24 +1207,28 @@ void Qucs_S_SPAR_Viewer::removeTrace(const QString& trace_to_remove)
     // Remove from the map
     traceMap.remove(trace_to_remove);
 
+    QString str = trace_to_remove;
     // Update the corresponding chart widget
     if (trace_to_remove.endsWith("Smith")){
       // Remove from the Smith Chart widget
-      QString str = trace_to_remove;
       str.chop(6); // Remove the "_Smith" suffix
       smithChart->removeTrace(str);
       return;
     } else {
       if (trace_to_remove.endsWith("Polar")){
-        QString str = trace_to_remove;
         str.chop(6); // Remove the "_Smith" suffix
         polarChart->removeTrace(str);
       } else {
-      // Magnitude and phase plot
-      // Update the chart limits.
-      this->f_max = -1;
-      this->f_min = 1e30;
-      updateGridLayout(TracesGrid);
+        if (trace_to_remove.endsWith("n.u.")){
+          str.chop(5); // Remove the "_n.u." suffix
+          nuChart->removeTrace(str);
+        } else {
+          // Magnitude and phase plot
+          // Update the chart limits.
+          this->f_max = -1;
+          this->f_min = 1e30;
+          updateGridLayout(TracesGrid);
+        }
       }
     }
 
@@ -1259,12 +1307,12 @@ void Qucs_S_SPAR_Viewer::addTrace()
     selected_view = this->QCombobox_display_mode->currentText();
 
     QString suffix;
-    if (selected_view.compare("n.u.")){
-      if (!selected_view.compare("Phase")) {
-        selected_view = QString("ang");
-      }
-      selected_trace += QString("_") + selected_view;
+
+    if (!selected_view.compare("Phase")) {
+      selected_view = QString("ang");
     }
+    selected_trace += QString("_") + selected_view;
+
 
     int linewidth = 1;
     if (!selected_view.compare("Smith")){
@@ -1420,12 +1468,29 @@ void Qucs_S_SPAR_Viewer::addTrace(QString selected_dataset, QString selected_tra
     QList<double> frequencies = datasets[selected_dataset]["frequency"];
     double Z0 = datasets[selected_dataset]["Z0"].first();
 
+    // Get units,  set the y-axis and title
+    QString units;
+    QString yaxis_title;
+    int yaxis;
+    if (selected_trace.contains("dB"))  {
+      units = QString("dB");
+      yaxis = 1;
+      yaxis_title = QString("Magnitude (dB)");
+    } else {
+      units = QString("deg");
+      yaxis = 2;
+      yaxis_title = QString("Phase (deg)");
+    }
+
     // Add the trace to the chart
     RectangularPlotWidget::Trace new_trace;
     new_trace.trace = trace_data;
     new_trace.frequencies = frequencies;
     new_trace.pen = pen;
     new_trace.Z0 = Z0;
+    new_trace.units = units;
+    new_trace.y_axis = yaxis;
+    new_trace.y_axis_title = yaxis_title;
     Magnitude_PhaseChart->addTrace(trace_name, new_trace);
 
   } else {
@@ -1435,10 +1500,10 @@ void Qucs_S_SPAR_Viewer::addTrace(QString selected_dataset, QString selected_tra
       QList<std::complex<double>> impedances;
       QList<double> frequencies = datasets[selected_dataset]["frequency"];
 
-      QString trace_dataset = selected_trace.replace("Smith", "");
+      QString trace_dataset = selected_trace.replace("_Smith", "");
 
-      QList<double> sii_re = datasets[selected_dataset][trace_dataset + QString("re")];
-      QList<double> sii_im = datasets[selected_dataset][trace_dataset + QString("im")];
+      QList<double> sii_re = datasets[selected_dataset][trace_dataset + QString("_re")];
+      QList<double> sii_im = datasets[selected_dataset][trace_dataset + QString("_im")];
 
       double Z0 = datasets[selected_dataset]["Z0"].first();
 
@@ -1465,12 +1530,12 @@ void Qucs_S_SPAR_Viewer::addTrace(QString selected_dataset, QString selected_tra
     } else {
       if (selected_trace.contains("Polar")) {
 
-        QString trace_dataset = selected_trace.replace("Polar", "");
+        QString trace_dataset = selected_trace.replace("_Polar", "");
 
         // Polar plot
         QList<double> frequencies = datasets[selected_dataset]["frequency"];
-        QList<double> sij_re = datasets[selected_dataset][trace_dataset + QString("re")];
-        QList<double> sij_im = datasets[selected_dataset][trace_dataset + QString("im")];
+        QList<double> sij_re = datasets[selected_dataset][trace_dataset + QString("_re")];
+        QList<double> sij_im = datasets[selected_dataset][trace_dataset + QString("_im")];
 
         QList<std::complex<double>> S;
         for (int i = 0; i < frequencies.size(); i++) {
@@ -1491,6 +1556,59 @@ void Qucs_S_SPAR_Viewer::addTrace(QString selected_dataset, QString selected_tra
         polarChart->addTrace(TraceName, new_trace);
       } else {
         // Natural units
+        QString trace_dataset = selected_trace.replace("_n.u.", "");
+
+        QList<double> frequencies = datasets[selected_dataset]["frequency"];
+
+        // Check if the user wants to display a S-parameter. In that case, the real part will be displayed wrt the left y-axis and the
+        // imaginary part will be displayed wrt the right y-axis
+        if (selected_trace.startsWith("S")) {
+          // S-parameter. Real part -> left-y. Imaginary part -> right-y
+          QList<double> sij_re = datasets[selected_dataset][trace_dataset + QString("_re")];
+          QList<double> sij_im = datasets[selected_dataset][trace_dataset + QString("_im")];
+
+        } else {
+          // Not a S-parameter
+
+          // The traces derived from S-parameter data are not pre-calculated (e.g. K, MAG, etc). They are computed upon user request.
+          if (datasets[selected_dataset][trace_dataset].isEmpty()) {
+            calculate_Sparameter_trace(selected_dataset, trace_dataset);
+          }
+
+          QList<double> trace_data = datasets[selected_dataset][trace_dataset];
+
+          // Get units
+          QString units = QString("");
+
+          // Set axis
+          int yaxis = 1;
+
+          // Set y-axis title
+          QString y_axis_title;
+          if (selected_trace.contains("Im{")) {
+            yaxis = 2;
+            units = QString("Ω");
+            y_axis_title = QString("Reactance (Ohm)");
+          } else {
+            if (selected_trace.contains("Re{")) {
+              y_axis_title = QString("Impedance (Ohm)");
+              units = QString("Ω");
+            }
+          }
+
+          RectangularPlotWidget::Trace new_trace;
+          new_trace.frequencies = frequencies;
+          new_trace.trace = trace_data;
+          new_trace.pen = pen;
+          new_trace.units = units;
+          new_trace.y_axis = yaxis;
+          new_trace.y_axis_title = y_axis_title;
+
+          nuChartTraces.append(new_trace);
+
+          QString TraceName = selected_dataset + QString(".") + trace_dataset;
+          nuChart->addTrace(TraceName, new_trace);
+        }
       }
 
     }
@@ -1595,10 +1713,25 @@ void Qucs_S_SPAR_Viewer::changeTraceColor()
                         polarChart->setTracePen(traceName, currentPen);
 
                       } else {
-                        // Magnitude / Phase chart
-                        QPen currentPen = Magnitude_PhaseChart->getTracePen(trace_name);
-                        currentPen.setColor(color);
-                        Magnitude_PhaseChart->setTracePen(trace_name, currentPen);
+                        if (trace_name.endsWith("_n.u.")) {
+
+                          // Extract the base trace name (remove the "_Smith" suffix)
+                          QString traceName = trace_name.left(trace_name.length() - 5);
+
+                          QPen currentPen = nuChart->getTracePen(traceName);
+
+                          // Update the color while preserving color and style
+                          currentPen.setColor(color);
+
+                          // Set the modified pen back to the trace
+                          nuChart->setTracePen(traceName, currentPen);
+
+                        } else {
+                          // Magnitude / Phase chart
+                          QPen currentPen = Magnitude_PhaseChart->getTracePen(trace_name);
+                          currentPen.setColor(color);
+                          Magnitude_PhaseChart->setTracePen(trace_name, currentPen);
+                        }
                       }
                     }
                 }
@@ -1670,10 +1803,26 @@ void Qucs_S_SPAR_Viewer::changeTraceLineStyle()
         polarChart->setTracePen(traceName, currentPen);
 
       } else {
-      // Magnitude / Phase chart
-      QPen currentPen = Magnitude_PhaseChart->getTracePen(trace_name);
-      currentPen.setStyle(PenStyle);
-      Magnitude_PhaseChart->setTracePen(trace_name, currentPen);
+        if (trace_name.endsWith("_n.u.")){
+          // Natural units chart
+          QString traceName = trace_name.left(trace_name.length() - 5);
+          QPen currentPen = nuChart->getTracePen(traceName);
+          currentPen.setStyle(PenStyle);
+          nuChart->setTracePen(traceName, currentPen);
+        } else {
+          if (trace_name.endsWith("_n.u.")){
+            // Natural units chart
+            QString traceName = trace_name.left(trace_name.length() - 5);
+            QPen currentPen = nuChart->getTracePen(traceName);
+            currentPen.setStyle(PenStyle);
+            nuChart->setTracePen(traceName, currentPen);
+          } else {
+            // Magnitude / Phase chart
+            QPen currentPen = Magnitude_PhaseChart->getTracePen(trace_name);
+            currentPen.setStyle(PenStyle);
+            Magnitude_PhaseChart->setTracePen(trace_name, currentPen);
+          }
+        }
       }
     }
 }
@@ -1710,10 +1859,18 @@ void Qucs_S_SPAR_Viewer::changeTraceWidth() {
       currentPen.setWidth(TraceWidth);
       polarChart->setTracePen(traceName, currentPen);
     } else {
-      // Magnitude / Phase chart
-      QPen currentPen = Magnitude_PhaseChart->getTracePen(trace_name);
-      currentPen.setWidth(TraceWidth);
-      Magnitude_PhaseChart->setTracePen(trace_name, currentPen);
+      if (trace_name.endsWith("_n.u.")){
+        // Natural units chart
+        QString traceName = trace_name.left(trace_name.length() - 5);
+        QPen currentPen = nuChart->getTracePen(traceName);
+        currentPen.setWidth(TraceWidth);
+        nuChart->setTracePen(traceName, currentPen);
+      } else {
+        // Magnitude / Phase chart
+        QPen currentPen = Magnitude_PhaseChart->getTracePen(trace_name);
+        currentPen.setWidth(TraceWidth);
+        Magnitude_PhaseChart->setTracePen(trace_name, currentPen);
+      }
     }
   }
 }
@@ -1857,6 +2014,11 @@ void Qucs_S_SPAR_Viewer::addMarker(double freq, QString Freq_Marker_Scale){
     tableMarkers_Polar->setRowCount(n_markers);
     tableMarkers_Polar->setItem(n_markers-1, 0, newfreq);
 
+    n_markers = tableMarkers_nu->rowCount() + 1;
+    tableMarkers_nu->setRowCount(n_markers);
+    tableMarkers_nu->setRowCount(n_markers);
+    tableMarkers_nu->setItem(n_markers-1, 0, newfreq);
+
     changeMarkerLimits(Combobox_name);
 
     f_marker = getMarkerFreq(new_marker_name);
@@ -1874,7 +2036,7 @@ void Qucs_S_SPAR_Viewer::addMarker(double freq, QString Freq_Marker_Scale){
     Magnitude_PhaseChart->addMarker(new_marker_name, f_marker, pen); // Magnitude & Phase
     smithChart->addMarker(new_marker_name, f_marker); // Smith Chart
     polarChart->addMarker(new_marker_name, f_marker); // Polar plot
-
+    nuChart->addMarker(new_marker_name, f_marker, pen); // Natural units plot
 }
 
 
@@ -1890,6 +2052,14 @@ void Qucs_S_SPAR_Viewer::updateMarkerTable(){
         tableMarkers_Smith->clear();
         tableMarkers_Smith->setColumnCount(0);
         tableMarkers_Smith->setRowCount(0);
+
+        tableMarkers_Polar->clear();
+        tableMarkers_Polar->setColumnCount(0);
+        tableMarkers_Polar->setRowCount(0);
+
+        tableMarkers_nu->clear();
+        tableMarkers_nu->setColumnCount(0);
+        tableMarkers_nu->setRowCount(0);
         return;
     }
 
@@ -1897,17 +2067,13 @@ void Qucs_S_SPAR_Viewer::updateMarkerTable(){
     QList<QAbstractSeries *> seriesList; // TO DO: Get the name of all traces displayed
 
     // Reset headers
-    QStringList header_Magnitude_Phase;
+    QStringList header_Magnitude_Phase, header_Smith, header_Polar, header_nu;
     header_Magnitude_Phase.clear();
     header_Magnitude_Phase.append("freq");
 
-    QStringList header_Smith;
-    header_Smith.clear();
-    header_Smith.append("freq");
-
-    QStringList header_Polar;
-    header_Polar.clear();
-    header_Polar.append("freq");
+    header_Smith = header_Magnitude_Phase;
+    header_Polar = header_Magnitude_Phase;
+    header_nu = header_Magnitude_Phase;
 
     // Build headers
     int n_traces = getNumberOfTraces();
@@ -1919,16 +2085,25 @@ void Qucs_S_SPAR_Viewer::updateMarkerTable(){
       TraceProperties trace_props;
       getTraceByPosition(i, trace_name, trace_props);
 
-      if (trace_name.endsWith("_dB") || trace_name.endsWith("_ang")) {
+      // Header
+      int lastUnderscorePos = trace_name.lastIndexOf('_');
+      QString suffix = trace_name.mid(lastUnderscorePos);
+
+      if (suffix.endsWith("_dB") || suffix.endsWith("_ang")) {
         // Magnitude / Phase
         header_Magnitude_Phase.append(trace_name);
       } else {
-        if (trace_name.endsWith("_Smith")) {
+        if (suffix.endsWith("_Smith")) {
         // Smith
         header_Smith.append(trace_name);
         } else {
-          // Polar
-          header_Polar.append(trace_name);
+          if (suffix.endsWith("_Polar")) {
+            // Polar
+            header_Polar.append(trace_name);
+          } else {
+            // Natural units
+            header_nu.append(trace_name);
+          }
         }
       }
     }
@@ -1938,15 +2113,17 @@ void Qucs_S_SPAR_Viewer::updateMarkerTable(){
     updateMarkerData(*tableMarkers_Magnitude_Phase, header_Magnitude_Phase); // Magnitude and phase table
     updateMarkerData(*tableMarkers_Smith, header_Smith); // Smith Chart table
     updateMarkerData(*tableMarkers_Polar, header_Polar); // Polar Chart table
+    updateMarkerData(*tableMarkers_nu, header_nu); // Polar Chart table
 
 
     // Update markers
     QStringList marker_list = markerMap.keys();
     for (const QString &str : marker_list) {
       double marker_freq = getMarkerFreq(str);
-      smithChart->updateMarkerFrequency(str, marker_freq); // Update Smith Chart widget markers
+      smithChart->updateMarkerFrequency(str + QString("_Smith"), marker_freq); // Update Smith Chart widget markers
       polarChart->updateMarkerFrequency(str, marker_freq); // Update Polar Chart widget markers
       Magnitude_PhaseChart->updateMarkerFrequency(str, marker_freq); // Update magnitude / phase widget markers
+      nuChart->updateMarkerFrequency(str, marker_freq); // Update natural units widget markers
     }
 }
 
@@ -1994,11 +2171,6 @@ void Qucs_S_SPAR_Viewer::updateMarkerData(QTableWidget& table, QStringList heade
       QString trace = parts[1];
 
       // Find data on the dataset
-      if (trace.endsWith("dB") || trace.endsWith("_ang")) {
-        // Go directly to the dataset for data
-        P = findClosestPoint(datasets[file]["frequency"], datasets[file][trace], targetX);
-        new_val = QStringLiteral("%1").arg(QString::number(P.y(), 'f', 2));
-      } else {
         if (trace.endsWith("Smith")){
           // Get R + j X
           QString sxx_re = trace;
@@ -2055,10 +2227,13 @@ void Qucs_S_SPAR_Viewer::updateMarkerData(QTableWidget& table, QStringList heade
             if (angle < 0) angle += 360;
 
             new_val = QStringLiteral("%1∠%2").arg(QString::number(radius, 'f', 2)).arg(QString::number(angle, 'f', 1));
+          } else {
+            // Go directly to the dataset for data
+            P = findClosestPoint(datasets[file]["frequency"], datasets[file][trace], targetX);
+            new_val = QStringLiteral("%1").arg(QString::number(P.y(), 'f', 2));
           }
         }
 
-      }
 
       QTableWidgetItem *new_item = new QTableWidgetItem(new_val);
       table.setItem(r, c, new_item);
@@ -2161,6 +2336,7 @@ void Qucs_S_SPAR_Viewer::removeMarker(const QString& markerName) {
     Magnitude_PhaseChart->removeMarker(markerName);
     smithChart->removeMarker(markerName);
     polarChart->removeMarker(markerName);
+    nuChart->removeMarker(markerName);
 
     updateMarkerTable();
     updateMarkerNames();
@@ -3031,12 +3207,12 @@ void Qucs_S_SPAR_Viewer::loadRecentFiles() {
   recentFiles = settings.value("recentFiles").value<std::vector<QString>>();
 }
 
-// This function is called when the user wants to see a trace which can be calculated from the S-parameters
+// This function is called when the user requests a trace which can be calculated from the S-parameters
 void Qucs_S_SPAR_Viewer::calculate_Sparameter_trace(QString file, QString metric){
 
 
   std::complex<double> s11, s12, s21, s22, s11_conj, s22_conj;
-  double Z0 = datasets[file]["Rn"].last();
+  double Z0 = datasets[file]["Z0"].last();
 
   for (int i = 0; i < datasets[file]["S11_re"].size(); i++) {
     // S-parameter data (n.u.)
@@ -3067,20 +3243,20 @@ void Qucs_S_SPAR_Viewer::calculate_Sparameter_trace(QString file, QString metric
         double K = (1 - abs(s11)*abs(s11) - abs(s22)*abs(s22) + delta*delta) / (2*abs(s12*s21)); // Rollet factor.
         datasets[file]["K"].append(K);
       } else {
-        if (!metric.compare("mu")) {
+        if (!metric.compare("μₛ")) {
           double mu = (1 - abs(s11)*abs(s11)) / (abs(s22-delta*s11_conj) + abs(s12*s21));
-          datasets[file]["mu"].append(mu);
+          datasets[file]["μₛ"].append(mu);
         } else {
-          if (!metric.compare("mu_p")) {
+          if (!metric.compare("μₚ")) {
             double mu_p = (1 - abs(s22)*abs(s22)) / (abs(s11-delta*s22_conj) + abs(s12*s21));
-            datasets[file]["mu_p"].append(mu_p);
+            datasets[file]["μₚ"].append(mu_p);
           } else {
             if (!metric.compare("MSG")) {
               double MSG = abs(s21) / abs(s12);
               MSG = 10*log10(MSG);
               datasets[file]["MSG"].append(MSG);
             } else {
-              if (!metric.compare("MSG")) {
+              if (!metric.compare("MAG")) {
                 double K = (1 - abs(s11)*abs(s11) - abs(s22)*abs(s22) + delta*delta) / (2*abs(s12*s21)); // Rollet factor.
                 double MSG = abs(s21) / abs(s12);
                 double MAG = MSG * (K - std::sqrt(K * K - 1));

@@ -161,7 +161,7 @@ class Qucs_S_SPAR_Viewer : public QMainWindow
   QMap<QString, TraceProperties> traceMap;
 
   QTabWidget *traceTabs;
-  QWidget *magnitudePhaseTab, *smithTab, *polarTab;
+  QWidget *magnitudePhaseTab, *smithTab, *polarTab, *nuTab;
   QGridLayout *magnitudePhaseLayout, *smithLayout, *polarLayout, *nuLayout;
 
   // Axis settings widgets
@@ -177,8 +177,7 @@ class Qucs_S_SPAR_Viewer : public QMainWindow
   // Scrollable trace areas
   void setupScrollableLayout();
   void setupScrollAreaForLayout(QGridLayout* &layout, QWidget* parentTab, const QString &objectName);
-  QScrollArea *magnitudePhaseScrollArea;
-  QScrollArea *smithScrollArea;
+  QScrollArea *magnitudePhaseScrollArea, *smithScrollArea, *polarScrollArea, *nuScrollArea;
 
   // Datasets
   QMap<QString, QMap<QString, QList<double>>> datasets;
@@ -211,6 +210,11 @@ class Qucs_S_SPAR_Viewer : public QMainWindow
   PolarPlotWidget *polarChart;
   QDockWidget *dockPolarChart;
   QList<PolarPlotWidget::Trace> PolarChartTraces;
+
+  // Natural units plot (Rectangular plot)
+  RectangularPlotWidget *nuChart;
+  QDockWidget *docknuChart;
+  QList<RectangularPlotWidget::Trace> nuChartTraces;
 
   // Markers
   QDockWidget *dockMarkers;

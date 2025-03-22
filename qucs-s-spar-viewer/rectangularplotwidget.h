@@ -25,9 +25,11 @@ public:
   struct Trace {
     QList<double> trace;
     QList<double> frequencies;
+    QString units;
     QPen pen;
     double Z0;
     int y_axis;
+    QString y_axis_title;
   };
 
   struct Marker {
@@ -69,6 +71,15 @@ public:
   double getXscale();
   QString getXunits();
   int getFreqIndex();
+
+  void change_Y_axis_title(QString title);
+  void change_Y_axis_units(QString title);
+  void change_Y2_axis_title(QString title);
+  void change_Y2_axis_units(QString title);
+  void change_X_axis_title(QString title);
+  void change_X_axis_label(QString title);
+
+  QLabel *xAxisLabel;
 
   bool addMarker(const QString& markerId, double frequency, const QPen& pen = QPen(Qt::red, 2));
   bool removeMarker(const QString& markerId);
