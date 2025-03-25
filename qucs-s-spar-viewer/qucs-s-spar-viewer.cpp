@@ -259,6 +259,7 @@ void Qucs_S_SPAR_Viewer::setTraceManagementDock(){
   DatasetsGrid->addWidget(displayTypeLabel, 0, 2, Qt::AlignCenter);
 
   QCombobox_traces = new QComboBox();
+  connect(QCombobox_traces, SIGNAL(currentIndexChanged(int)), SLOT(updateDisplayType()));
   DatasetsGrid->addWidget(QCombobox_traces, 1, 1);
 
   Button_add_trace = new QPushButton("Add trace");
@@ -525,7 +526,7 @@ void Qucs_S_SPAR_Viewer::setLimitManagementDock(){
   Limits_Offset->setSingleStep(0.1);
   Limits_Offset->setMaximum(1e4);
   Limits_Offset->setMinimum(-1e4);
-  connect(Limits_Offset, SIGNAL(valueChanged(double)), SLOT(updateTraces()));
+  connect(Limits_Offset, SIGNAL(valueChanged(double)), SLOT(updateLimits()));
   LimitsSettingLayout->addWidget(LimitsOffsetLabel, 0, 0);
   LimitsSettingLayout->addWidget(Limits_Offset, 0, 1);
 
@@ -1224,6 +1225,7 @@ void Qucs_S_SPAR_Viewer::removeTrace(const QString& trace_to_remove)
           nuChart->removeTrace(str);
         } else {
           // Magnitude and phase plot
+          Magnitude_PhaseChart->removeTrace(str);
           // Update the chart limits.
           this->f_max = -1;
           this->f_min = 1e30;
@@ -1654,6 +1656,29 @@ void Qucs_S_SPAR_Viewer::updateTracesCombo()
   }
 
   QCombobox_traces->addItems(traces);
+}
+
+// This function adjust the display types available depending on the trace selected
+void Qucs_S_SPAR_Viewer::updateDisplayType(){
+  QString trace_selected = QCombobox_traces->currentText();
+  QCombobox_display_mode->clear();
+  QStringList display_mode;
+  if (trace_selected.startsWith("S")) {
+    // Allow all modes
+    display_mode.append("dB");
+    display_mode.append("Phase");
+    display_mode.append("Smith");
+    display_mode.append("Polar");
+    display_mode.append("n.u.");
+
+  } else {
+    if ((!trace_selected.compare("MAG")) || (!trace_selected.compare("MSG"))) {
+      display_mode.append("dB");
+    } else {
+      display_mode.append("n.u.");
+    }
+  }
+  QCombobox_display_mode->addItems(display_mode);
 }
 
 // This is the handler that is triggered when the user hits the button to change the color of a given trace

@@ -101,6 +101,7 @@ class Qucs_S_SPAR_Viewer : public QMainWindow
   bool getTraceByPosition(int position, QString& outTraceName, TraceProperties& outProperties);
 
   void updateTracesCombo();
+  void updateDisplayType();
 
   void changeTraceColor();
   void changeTraceLineStyle();
