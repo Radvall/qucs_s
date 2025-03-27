@@ -60,6 +60,7 @@ public:
   double getYmax();
   double getYmin();
   double getYdiv();
+  void setYdiv(double);
 
   double getY2max();
   double getY2min();
@@ -71,6 +72,9 @@ public:
   double getXscale();
   QString getXunits();
   int getFreqIndex();
+
+  void setRightYAxisEnabled(bool enabled);
+  bool isRightYAxisEnabled() const;
 
   void change_Y_axis_title(QString title);
   void change_Y_axis_units(QString title);
@@ -124,6 +128,7 @@ private:
   QDoubleSpinBox *y2AxisMax;
   QDoubleSpinBox *y2AxisDiv;
   QLabel *y2AxisUnits;
+  QLabel *y2AxisLabel;
 
   QCheckBox *showValuesCheckbox;  // New checkbox for showing values
   bool showTraceValues;           // Flag to control value display

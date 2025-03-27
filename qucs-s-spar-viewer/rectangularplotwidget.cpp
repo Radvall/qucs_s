@@ -578,7 +578,7 @@ QGridLayout* RectangularPlotWidget::setupAxisSettings()
   axisLayout->addWidget(yAxisUnits, 1, 4);
 
          // Right Y-axis settings
-  QLabel *y2AxisLabel = new QLabel("<b>y2-axis</b>");
+  y2AxisLabel = new QLabel("<b>y2-axis</b>");
   axisLayout->addWidget(y2AxisLabel, 2, 0);
 
   y2AxisMin = new QDoubleSpinBox();
@@ -633,6 +633,10 @@ double RectangularPlotWidget::getYmax(){
 
 double RectangularPlotWidget::getYdiv(){
   return yAxisDiv->value();
+}
+
+void RectangularPlotWidget::setYdiv(double val){
+  yAxisDiv->setValue(val);
 }
 
 double RectangularPlotWidget::getY2min(){
@@ -839,4 +843,43 @@ void RectangularPlotWidget::change_Y2_axis_units(QString units) {
 
 void RectangularPlotWidget::change_X_axis_title(QString title) {
   xAxis->setTitleText(title);
+}
+
+
+void RectangularPlotWidget::setRightYAxisEnabled(bool enabled)
+{
+  // Hide or show the right y-axis
+  y2Axis->setVisible(enabled);
+
+         // Hide/show the y2-axis label and related controls
+  y2AxisLabel->setVisible(enabled);
+  y2AxisMin->setVisible(enabled);
+  y2AxisMax->setVisible(enabled);
+  y2AxisDiv->setVisible(enabled);
+  y2AxisUnits->setVisible(enabled);
+
+         // If disabling, remove all traces associated with the right y-axis
+  if (!enabled) {
+    QList<QAbstractSeries*> seriesToRemove;
+    for (QAbstractSeries* series : ChartWidget->series()) {
+      // Check if the series is attached to the right y-axis
+      if (series->attachedAxes().contains(y2Axis)) {
+        seriesToRemove.append(series);
+      }
+    }
+
+           // Remove identified series
+    for (QAbstractSeries* series : seriesToRemove) {
+      ChartWidget->removeSeries(series);
+      delete series;
+    }
+  }
+
+         // Redraw the plot to reflect changes
+  updatePlot();
+}
+
+bool RectangularPlotWidget::isRightYAxisEnabled() const
+{
+  return y2Axis->isVisible();
 }

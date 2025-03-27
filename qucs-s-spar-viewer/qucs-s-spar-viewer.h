@@ -162,8 +162,8 @@ class Qucs_S_SPAR_Viewer : public QMainWindow
   QMap<QString, TraceProperties> traceMap;
 
   QTabWidget *traceTabs;
-  QWidget *magnitudePhaseTab, *smithTab, *polarTab, *nuTab;
-  QGridLayout *magnitudePhaseLayout, *smithLayout, *polarLayout, *nuLayout;
+  QWidget *magnitudePhaseTab, *smithTab, *polarTab, *nuTab, *GroupDelayTab;
+  QGridLayout *magnitudePhaseLayout, *smithLayout, *polarLayout, *nuLayout, *GroupDelayLayout;
 
   // Axis settings widgets
   QPushButton *Lock_axis_settings_Button;
@@ -178,7 +178,7 @@ class Qucs_S_SPAR_Viewer : public QMainWindow
   // Scrollable trace areas
   void setupScrollableLayout();
   void setupScrollAreaForLayout(QGridLayout* &layout, QWidget* parentTab, const QString &objectName);
-  QScrollArea *magnitudePhaseScrollArea, *smithScrollArea, *polarScrollArea, *nuScrollArea;
+  QScrollArea *magnitudePhaseScrollArea, *smithScrollArea, *polarScrollArea, *nuScrollArea, *GroupDelayScrollArea;
 
   // Datasets
   QMap<QString, QMap<QString, QList<double>>> datasets;
@@ -217,12 +217,17 @@ class Qucs_S_SPAR_Viewer : public QMainWindow
   QDockWidget *docknuChart;
   QList<RectangularPlotWidget::Trace> nuChartTraces;
 
+  // Group delay plot (Rectangular plot)
+  RectangularPlotWidget *GroupDelayChart;
+  QDockWidget *dockGroupDelayChart;
+  QList<RectangularPlotWidget::Trace> GroupDelayTraces;
+
   // Markers
   QDockWidget *dockMarkers;
   QWidget *Marker_Widget;
   QGridLayout * MarkersGrid;
   QPushButton *Button_add_marker, *Button_Remove_All_Markers;
-  QTableWidget* tableMarkers_Magnitude_Phase,  *tableMarkers_Smith, *tableMarkers_Polar, *tableMarkers_nu;
+  QTableWidget* tableMarkers_Magnitude_Phase,  *tableMarkers_Smith, *tableMarkers_Polar, *tableMarkers_nu, *tableMarkers_GroupDelay;
   QMap<QString, MarkerProperties> markerMap; // All marker widgets are here. This way they can be accessed by the name of the marker
 
   double getMarkerFreq(QString);

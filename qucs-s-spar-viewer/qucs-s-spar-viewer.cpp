@@ -280,6 +280,7 @@ void Qucs_S_SPAR_Viewer::setTraceManagementDock(){
   QCombobox_display_mode->addItem("Phase");
   QCombobox_display_mode->addItem("Smith");
   QCombobox_display_mode->addItem("Polar");
+  QCombobox_display_mode->addItem("Group Delay");
   QCombobox_display_mode->addItem("n.u.");
   QCombobox_display_mode->setCurrentIndex(0); // Default to dB
   QCombobox_display_mode->setObjectName("DisplayTypeCombo");
@@ -300,24 +301,28 @@ void Qucs_S_SPAR_Viewer::setTraceManagementDock(){
   smithTab = new QWidget(traceTabs); // Parent is traceTabs
   polarTab = new QWidget(traceTabs); // Parent is traceTabs
   nuTab = new QWidget(traceTabs); // Parent is traceTabs
+  GroupDelayTab = new QWidget(traceTabs); // Parent is traceTabs
 
          // Add tabs to the tab widget
   traceTabs->addTab(magnitudePhaseTab, "Magnitude/Phase");
   traceTabs->addTab(smithTab, "Smith Chart");
   traceTabs->addTab(polarTab, "Polar Chart");
   traceTabs->addTab(nuTab, "Natural Units");
+  traceTabs->addTab(GroupDelayTab, "Group Delay");
 
          // Create layouts for each tab
   magnitudePhaseLayout = new QGridLayout(magnitudePhaseTab);
   smithLayout = new QGridLayout(smithTab);
   polarLayout = new QGridLayout(polarTab);
   nuLayout = new QGridLayout(polarTab);
+  GroupDelayLayout = new QGridLayout(GroupDelayTab);
 
          // Set the layouts on the tabs
   magnitudePhaseTab->setLayout(magnitudePhaseLayout);
   smithTab->setLayout(smithLayout);
   polarTab->setLayout(polarLayout);
   nuTab->setLayout(nuLayout);
+  GroupDelayTab->setLayout(GroupDelayLayout);
 
   // Set Magnitude tab
   QLabel * Label_Name_mag = new QLabel("<b>Name</b>");
@@ -370,6 +375,19 @@ void Qucs_S_SPAR_Viewer::setTraceManagementDock(){
   nuLayout->addWidget(Label_LineStyle_nu, 0, 2, Qt::AlignCenter);
   nuLayout->addWidget(Label_LineWidth_nu, 0, 3, Qt::AlignCenter);
   nuLayout->addWidget(Label_Remove_nu, 0, 4, Qt::AlignCenter);
+
+  // Set "Group delay" tab
+  QLabel * Label_Name_GD = new QLabel("<b>Name</b>");
+  QLabel * Label_Color_GD = new QLabel("<b>Color</b>");
+  QLabel * Label_LineStyle_GD = new QLabel("<b>Line Style</b>");
+  QLabel * Label_LineWidth_GD = new QLabel("<b>Width</b>");
+  QLabel * Label_Remove_GD = new QLabel("<b>Remove</b>");
+
+  GroupDelayLayout->addWidget(Label_Name_GD, 0, 0, Qt::AlignCenter);
+  GroupDelayLayout->addWidget(Label_Color_GD, 0, 1, Qt::AlignCenter);
+  GroupDelayLayout->addWidget(Label_LineStyle_GD, 0, 2, Qt::AlignCenter);
+  GroupDelayLayout->addWidget(Label_LineWidth_GD, 0, 3, Qt::AlignCenter);
+  GroupDelayLayout->addWidget(Label_Remove_GD, 0, 4, Qt::AlignCenter);
 
   setupScrollableLayout();
 
@@ -463,12 +481,14 @@ void Qucs_S_SPAR_Viewer::setMarkerManagementDock() {
   tableMarkers_Smith = new QTableWidget(1, 1, this);
   tableMarkers_Polar = new QTableWidget(1, 1, this);
   tableMarkers_nu = new QTableWidget(1, 1, this);
+  tableMarkers_GroupDelay = new QTableWidget(1, 1, this);
 
   // Add tables to tabs
   tabWidgetMarkers->addTab(tableMarkers_Magnitude_Phase, "Magnitude/Phase");
   tabWidgetMarkers->addTab(tableMarkers_Smith, "Smith Chart");
-  tabWidgetMarkers->addTab(tableMarkers_Polar, "Polar Chart");
-  tabWidgetMarkers->addTab(tableMarkers_nu, "Natural Units Chart");
+  tabWidgetMarkers->addTab(tableMarkers_Polar, "Polar");
+  tabWidgetMarkers->addTab(tableMarkers_nu, "Natural Units");
+  tabWidgetMarkers->addTab(tableMarkers_GroupDelay, "Group Delay");
 
   Markers_VBox->addWidget(MarkerSelection_Widget);
   Markers_VBox->addWidget(scrollArea_Marker);
@@ -593,16 +613,29 @@ void Qucs_S_SPAR_Viewer::CreateDisplayWidgets(){
   nuChart->change_Y2_axis_title(QString(""));
   nuChart->change_Y2_axis_units(QString(""));
 
+  // Group delay chart settings
+  GroupDelayChart = new RectangularPlotWidget(this);
+  dockGroupDelayChart = new QDockWidget("Group Delay", this);
+  dockGroupDelayChart->setWidget(GroupDelayChart);
+  dockGroupDelayChart->setAllowedAreas(Qt::AllDockWidgetAreas);
+  addDockWidget(Qt::LeftDockWidgetArea, dockGroupDelayChart);
+  GroupDelayChart->change_Y_axis_title(QString("Time (ns)")); // Remove default labels
+  GroupDelayChart->change_Y_axis_units(QString("ns"));
+  GroupDelayChart->setRightYAxisEnabled(false);
+  GroupDelayChart->setYdiv(50); // By default, 50 ns
+
   // Disable dock closing
   dockChart->setFeatures(dockChart->features() & ~QDockWidget::DockWidgetClosable);
   dockSmithChart->setFeatures(dockSmithChart->features() & ~QDockWidget::DockWidgetClosable);
   dockPolarChart->setFeatures(dockPolarChart->features() & ~QDockWidget::DockWidgetClosable);
   docknuChart->setFeatures(docknuChart->features() & ~QDockWidget::DockWidgetClosable);
+  dockGroupDelayChart->setFeatures(dockGroupDelayChart->features() & ~QDockWidget::DockWidgetClosable);
 
   // Tabify the chart docks
   tabifyDockWidget(dockChart, dockSmithChart);
   tabifyDockWidget(dockSmithChart, dockPolarChart);
   tabifyDockWidget(dockPolarChart, docknuChart);
+  tabifyDockWidget(docknuChart, dockGroupDelayChart);
 }
 
 void Qucs_S_SPAR_Viewer::setupScrollAreaForLayout(QGridLayout* &layout, QWidget* parentTab, const QString &objectName)
@@ -661,6 +694,8 @@ void Qucs_S_SPAR_Viewer::setupScrollAreaForLayout(QGridLayout* &layout, QWidget*
     polarScrollArea = scrollArea;
   } else if (objectName == "nuScrollArea") {
     nuScrollArea = scrollArea;
+  } else if (objectName == "GroupDelayScrollArea") {
+    GroupDelayScrollArea = scrollArea;
   }
 }
 
@@ -671,6 +706,7 @@ void Qucs_S_SPAR_Viewer::setupScrollableLayout()
   setupScrollAreaForLayout(smithLayout, smithTab, "smithScrollArea");
   setupScrollAreaForLayout(polarLayout, polarTab, "polarScrollArea");
   setupScrollAreaForLayout(nuLayout, nuTab, "nuScrollArea");
+  setupScrollAreaForLayout(GroupDelayLayout, GroupDelayTab, "GroupDelayScrollArea");
 }
 
 Qucs_S_SPAR_Viewer::~Qucs_S_SPAR_Viewer()
@@ -756,7 +792,6 @@ void Qucs_S_SPAR_Viewer::addFiles(QStringList fileNames)
             this,
             tr("Warning"),
             tr("This file is already in the dataset.") );
-
       }
     }
 
@@ -962,6 +997,8 @@ void Qucs_S_SPAR_Viewer::addFiles(QStringList fileNames)
 
         this->addTrace(filename, QStringLiteral("Re{Zin}"), Qt::darkBlue);
         this->addTrace(filename, QStringLiteral("Im{Zin}"), Qt::red);
+
+        this->addTrace(filename, QStringLiteral("S21_Group Delay"), Qt::darkBlue);
     }
 
     // Default behaviour: When adding multiple S2P file, then show the S21 of all traces
@@ -1184,6 +1221,10 @@ void Qucs_S_SPAR_Viewer::removeTrace(const QString& trace_to_remove)
         } else {
           if (trace_to_remove.endsWith("n.u.")) {
             targetLayout = nuLayout;
+          } else {
+            if (trace_to_remove.endsWith("GD")) {
+              targetLayout = GroupDelayLayout;
+            }
           }
         }
       }
@@ -1224,20 +1265,22 @@ void Qucs_S_SPAR_Viewer::removeTrace(const QString& trace_to_remove)
           str.chop(5); // Remove the "_n.u." suffix
           nuChart->removeTrace(str);
         } else {
-          // Magnitude and phase plot
-          Magnitude_PhaseChart->removeTrace(str);
-          // Update the chart limits.
-          this->f_max = -1;
-          this->f_min = 1e30;
-          updateGridLayout(TracesGrid);
+          if (trace_to_remove.endsWith("GD")){
+            str.chop(3); // Remove the "_GD" suffix
+            GroupDelayChart->removeTrace(str);
+          } else {
+            // Magnitude and phase plot
+            Magnitude_PhaseChart->removeTrace(str);
+            // Update the chart limits.
+            this->f_max = -1;
+            this->f_min = 1e30;
+            updateGridLayout(TracesGrid);
+          }
         }
       }
     }
-
-
   }
 }
-
 
 bool Qucs_S_SPAR_Viewer::removeSeriesByName(QChart* chart, const QString& name)
 {
@@ -1369,8 +1412,14 @@ void Qucs_S_SPAR_Viewer::addTrace(QString selected_dataset, QString selected_tra
         // Polar plot
         targetLayout = polarLayout;
       } else {
-        // Natural units
-        targetLayout = nuLayout;
+        if (selected_trace.endsWith("n.u.")) {
+          // Natural units
+          targetLayout = nuLayout;
+        } else {
+          if (selected_trace.endsWith("Group Delay")) {
+            targetLayout = GroupDelayLayout;
+          }
+        }
       }
     }
   }
@@ -1557,65 +1606,92 @@ void Qucs_S_SPAR_Viewer::addTrace(QString selected_dataset, QString selected_tra
         QString TraceName = selected_dataset + QString(".") + trace_dataset;
         polarChart->addTrace(TraceName, new_trace);
       } else {
-        // Natural units
-        QString trace_dataset = selected_trace.replace("_n.u.", "");
+        if (selected_trace.contains("Group Delay")) {
 
-        QList<double> frequencies = datasets[selected_dataset]["frequency"];
+          // Group Delay plot
+          QList<double> frequencies = datasets[selected_dataset]["frequency"];
 
-        // Check if the user wants to display a S-parameter. In that case, the real part will be displayed wrt the left y-axis and the
-        // imaginary part will be displayed wrt the right y-axis
-        if (selected_trace.startsWith("S")) {
-          // S-parameter. Real part -> left-y. Imaginary part -> right-y
-          QList<double> sij_re = datasets[selected_dataset][trace_dataset + QString("_re")];
-          QList<double> sij_im = datasets[selected_dataset][trace_dataset + QString("_im")];
-
-        } else {
-          // Not a S-parameter
-
-          // The traces derived from S-parameter data are not pre-calculated (e.g. K, MAG, etc). They are computed upon user request.
-          if (datasets[selected_dataset][trace_dataset].isEmpty()) {
-            calculate_Sparameter_trace(selected_dataset, trace_dataset);
+                 // The group delay is not automatically calculated when a dataset is loaded, so it is fairly possible that at this point
+                 // the group delay trace does not exist. In that case, we need to calculate it.
+          if (datasets[selected_dataset][selected_trace].isEmpty()) {
+            calculate_Sparameter_trace(selected_dataset, selected_trace);
           }
 
-          QList<double> trace_data = datasets[selected_dataset][trace_dataset];
-
-          // Get units
-          QString units = QString("");
-
-          // Set axis
-          int yaxis = 1;
-
-          // Set y-axis title
-          QString y_axis_title;
-          if (selected_trace.contains("Im{")) {
-            yaxis = 2;
-            units = QString("Ω");
-            y_axis_title = QString("Reactance (Ohm)");
-          } else {
-            if (selected_trace.contains("Re{")) {
-              y_axis_title = QString("Impedance (Ohm)");
-              units = QString("Ω");
-            }
-          }
+          QList<double> trace_data = datasets[selected_dataset][selected_trace];
 
           RectangularPlotWidget::Trace new_trace;
           new_trace.frequencies = frequencies;
           new_trace.trace = trace_data;
           new_trace.pen = pen;
-          new_trace.units = units;
-          new_trace.y_axis = yaxis;
-          new_trace.y_axis_title = y_axis_title;
+          new_trace.units = QString("ns");
+          new_trace.y_axis = 1;
+          new_trace.y_axis_title = QString("Time (ns)");
 
-          nuChartTraces.append(new_trace);
+          GroupDelayTraces.append(new_trace);
 
-          QString TraceName = selected_dataset + QString(".") + trace_dataset;
-          nuChart->addTrace(TraceName, new_trace);
+          QString TraceName = selected_dataset + QString(".") + selected_trace;
+          GroupDelayChart->addTrace(TraceName, new_trace);
+        } else {
+          // Natural units
+          QString trace_dataset = selected_trace.replace("_n.u.", "");
+
+          QList<double> frequencies = datasets[selected_dataset]["frequency"];
+
+                 // Check if the user wants to display a S-parameter. In that case, the real part will be displayed wrt the left y-axis and the
+                 // imaginary part will be displayed wrt the right y-axis
+          if (selected_trace.startsWith("S")) {
+            // S-parameter. Real part -> left-y. Imaginary part -> right-y
+            QList<double> sij_re = datasets[selected_dataset][trace_dataset + QString("_re")];
+            QList<double> sij_im = datasets[selected_dataset][trace_dataset + QString("_im")];
+
+          } else {
+            // Not a S-parameter
+
+                   // The traces derived from S-parameter data are not pre-calculated (e.g. K, MAG, etc). They are computed upon user request.
+            if (datasets[selected_dataset][trace_dataset].isEmpty()) {
+              calculate_Sparameter_trace(selected_dataset, trace_dataset);
+            }
+
+            QList<double> trace_data = datasets[selected_dataset][trace_dataset];
+
+                   // Get units
+            QString units = QString("");
+
+                   // Set axis
+            int yaxis = 1;
+
+                   // Set y-axis title
+            QString y_axis_title;
+            if (selected_trace.contains("Im{")) {
+              yaxis = 2;
+              units = QString("Ω");
+              y_axis_title = QString("Reactance (Ω)");
+            } else {
+              if (selected_trace.contains("Re{")) {
+                y_axis_title = QString("Impedance (Ω)");
+                units = QString("Ω");
+              }
+            }
+
+            RectangularPlotWidget::Trace new_trace;
+            new_trace.frequencies = frequencies;
+            new_trace.trace = trace_data;
+            new_trace.pen = pen;
+            new_trace.units = units;
+            new_trace.y_axis = yaxis;
+            new_trace.y_axis_title = y_axis_title;
+
+            nuChartTraces.append(new_trace);
+
+            QString TraceName = selected_dataset + QString(".") + trace_dataset;
+            nuChart->addTrace(TraceName, new_trace);
+          }
         }
       }
-
     }
-  }
+   }
 }
+
 
 // This function is used for setting the available traces depending on the selected dataset
 void Qucs_S_SPAR_Viewer::updateTracesCombo()
@@ -1669,6 +1745,9 @@ void Qucs_S_SPAR_Viewer::updateDisplayType(){
     display_mode.append("Phase");
     display_mode.append("Smith");
     display_mode.append("Polar");
+    if (trace_selected.at(1) != trace_selected.at(2)) {
+      display_mode.append("Group Delay");
+    }
     display_mode.append("n.u.");
 
   } else {
@@ -1752,10 +1831,17 @@ void Qucs_S_SPAR_Viewer::changeTraceColor()
                           nuChart->setTracePen(traceName, currentPen);
 
                         } else {
-                          // Magnitude / Phase chart
-                          QPen currentPen = Magnitude_PhaseChart->getTracePen(trace_name);
-                          currentPen.setColor(color);
-                          Magnitude_PhaseChart->setTracePen(trace_name, currentPen);
+                          if (trace_name.endsWith("_Group Delay")){
+                            // Group delay
+                            QPen currentPen = GroupDelayChart->getTracePen(trace_name);
+                            currentPen.setColor(color);
+                            GroupDelayChart->setTracePen(trace_name, currentPen);
+                          } else {
+                            // Magnitude / Phase chart
+                            QPen currentPen = Magnitude_PhaseChart->getTracePen(trace_name);
+                            currentPen.setColor(color);
+                            Magnitude_PhaseChart->setTracePen(trace_name, currentPen);
+                          }
                         }
                       }
                     }
@@ -1842,10 +1928,17 @@ void Qucs_S_SPAR_Viewer::changeTraceLineStyle()
             currentPen.setStyle(PenStyle);
             nuChart->setTracePen(traceName, currentPen);
           } else {
-            // Magnitude / Phase chart
-            QPen currentPen = Magnitude_PhaseChart->getTracePen(trace_name);
-            currentPen.setStyle(PenStyle);
-            Magnitude_PhaseChart->setTracePen(trace_name, currentPen);
+            if (trace_name.endsWith("_Group Delay")){
+              // Group delay
+              QPen currentPen = GroupDelayChart->getTracePen(trace_name);
+              currentPen.setStyle(PenStyle);
+              GroupDelayChart->setTracePen(trace_name, currentPen);
+            } else {
+              // Magnitude / Phase chart
+              QPen currentPen = Magnitude_PhaseChart->getTracePen(trace_name);
+              currentPen.setStyle(PenStyle);
+              Magnitude_PhaseChart->setTracePen(trace_name, currentPen);
+            }
           }
         }
       }
@@ -1891,10 +1984,17 @@ void Qucs_S_SPAR_Viewer::changeTraceWidth() {
         currentPen.setWidth(TraceWidth);
         nuChart->setTracePen(traceName, currentPen);
       } else {
+        if (trace_name.endsWith("_Group Delay")){
+          // Group delay
+          QPen currentPen = GroupDelayChart->getTracePen(trace_name);
+          currentPen.setWidth(TraceWidth);
+          GroupDelayChart->setTracePen(trace_name, currentPen);
+        } else {
         // Magnitude / Phase chart
         QPen currentPen = Magnitude_PhaseChart->getTracePen(trace_name);
         currentPen.setWidth(TraceWidth);
         Magnitude_PhaseChart->setTracePen(trace_name, currentPen);
+        }
       }
     }
   }
@@ -2044,6 +2144,11 @@ void Qucs_S_SPAR_Viewer::addMarker(double freq, QString Freq_Marker_Scale){
     tableMarkers_nu->setRowCount(n_markers);
     tableMarkers_nu->setItem(n_markers-1, 0, newfreq);
 
+    n_markers = tableMarkers_GroupDelay->rowCount() + 1;
+    tableMarkers_GroupDelay->setRowCount(n_markers);
+    tableMarkers_GroupDelay->setRowCount(n_markers);
+    tableMarkers_GroupDelay->setItem(n_markers-1, 0, newfreq);
+
     changeMarkerLimits(Combobox_name);
 
     f_marker = getMarkerFreq(new_marker_name);
@@ -2062,6 +2167,7 @@ void Qucs_S_SPAR_Viewer::addMarker(double freq, QString Freq_Marker_Scale){
     smithChart->addMarker(new_marker_name, f_marker); // Smith Chart
     polarChart->addMarker(new_marker_name, f_marker); // Polar plot
     nuChart->addMarker(new_marker_name, f_marker, pen); // Natural units plot
+    GroupDelayChart->addMarker(new_marker_name, f_marker, pen); // Group delay
 }
 
 
@@ -2085,6 +2191,10 @@ void Qucs_S_SPAR_Viewer::updateMarkerTable(){
         tableMarkers_nu->clear();
         tableMarkers_nu->setColumnCount(0);
         tableMarkers_nu->setRowCount(0);
+
+        tableMarkers_GroupDelay->clear();
+        tableMarkers_GroupDelay->setColumnCount(0);
+        tableMarkers_GroupDelay->setRowCount(0);
         return;
     }
 
@@ -2092,13 +2202,14 @@ void Qucs_S_SPAR_Viewer::updateMarkerTable(){
     QList<QAbstractSeries *> seriesList; // TO DO: Get the name of all traces displayed
 
     // Reset headers
-    QStringList header_Magnitude_Phase, header_Smith, header_Polar, header_nu;
+    QStringList header_Magnitude_Phase, header_Smith, header_Polar, header_nu, header_GroupDelay;
     header_Magnitude_Phase.clear();
     header_Magnitude_Phase.append("freq");
 
     header_Smith = header_Magnitude_Phase;
     header_Polar = header_Magnitude_Phase;
     header_nu = header_Magnitude_Phase;
+    header_GroupDelay = header_Magnitude_Phase;
 
     // Build headers
     int n_traces = getNumberOfTraces();
@@ -2126,8 +2237,12 @@ void Qucs_S_SPAR_Viewer::updateMarkerTable(){
             // Polar
             header_Polar.append(trace_name);
           } else {
+            if (suffix.endsWith("_Group Delay")) {
+              header_GroupDelay.append(trace_name);
+            } else {
             // Natural units
             header_nu.append(trace_name);
+            }
           }
         }
       }
@@ -2139,6 +2254,7 @@ void Qucs_S_SPAR_Viewer::updateMarkerTable(){
     updateMarkerData(*tableMarkers_Smith, header_Smith); // Smith Chart table
     updateMarkerData(*tableMarkers_Polar, header_Polar); // Polar Chart table
     updateMarkerData(*tableMarkers_nu, header_nu); // Polar Chart table
+    updateMarkerData(*tableMarkers_GroupDelay, header_GroupDelay); // Group Delay Chart table
 
 
     // Update markers
@@ -2149,6 +2265,7 @@ void Qucs_S_SPAR_Viewer::updateMarkerTable(){
       polarChart->updateMarkerFrequency(str, marker_freq); // Update Polar Chart widget markers
       Magnitude_PhaseChart->updateMarkerFrequency(str, marker_freq); // Update magnitude / phase widget markers
       nuChart->updateMarkerFrequency(str, marker_freq); // Update natural units widget markers
+      GroupDelayChart->updateMarkerFrequency(str, marker_freq); // Update Group Delay Chart
     }
 }
 
@@ -2256,6 +2373,11 @@ void Qucs_S_SPAR_Viewer::updateMarkerData(QTableWidget& table, QStringList heade
             // Go directly to the dataset for data
             P = findClosestPoint(datasets[file]["frequency"], datasets[file][trace], targetX);
             new_val = QStringLiteral("%1").arg(QString::number(P.y(), 'f', 2));
+
+            if (trace.endsWith("Group Delay")) {
+              // Add units
+              new_val += QString(" ns");
+            }
           }
         }
 
@@ -2362,6 +2484,7 @@ void Qucs_S_SPAR_Viewer::removeMarker(const QString& markerName) {
     smithChart->removeMarker(markerName);
     polarChart->removeMarker(markerName);
     nuChart->removeMarker(markerName);
+    GroupDelayChart->removeMarker(markerName);
 
     updateMarkerTable();
     updateMarkerNames();
@@ -3239,6 +3362,71 @@ void Qucs_S_SPAR_Viewer::calculate_Sparameter_trace(QString file, QString metric
   std::complex<double> s11, s12, s21, s22, s11_conj, s22_conj;
   double Z0 = datasets[file]["Z0"].last();
 
+  // Check if it must calculate the Group delay
+  if (metric.contains("Group Delay")) {
+    QString port_in = metric.at(1);
+    QString port_out = metric.at(2);
+
+    QString trace_phase = QString("S%1%2_ang").arg(port_in).arg(port_out);
+
+    QList<double> Sij_ang = datasets[file][trace_phase];
+    QList<double> freq = datasets[file]["frequency"];
+    QList<double> groupDelay;
+    const int numPoints = Sij_ang.size();
+
+
+           // Phase unwrapping
+    QList<double> unwrappedPhase = Sij_ang;
+    for(int n = 1; n < numPoints; ++n) {
+      double delta = unwrappedPhase[n] - unwrappedPhase[n-1];
+
+             // Remove 360° discontinuities
+      while(delta > 180.0) {
+        unwrappedPhase[n] -= 360.0;
+        delta = unwrappedPhase[n] - unwrappedPhase[n-1];
+      }
+      while(delta < -180.0) {
+        unwrappedPhase[n] += 360.0;
+        delta = unwrappedPhase[n] - unwrappedPhase[n-1];
+      }
+    }
+
+           // Group delay calculation
+    groupDelay.reserve(numPoints);
+
+           // First point (forward difference)
+    if(numPoints > 1) {
+      double df = freq[1] - freq[0];
+      double val = df != 0 ?
+                       -(unwrappedPhase[1] - unwrappedPhase[0]) / (360.0 * df) : 0;
+      val *= 1e9; // Convert to ns
+      groupDelay.append(val);
+    }
+
+           // Central differences for interior points
+    for(int n = 1; n < numPoints - 1; ++n) {
+      double df = freq[n+1] - freq[n-1];
+      double val = df != 0 ?
+                       -(unwrappedPhase[n+1] - unwrappedPhase[n-1]) / (360.0 * df) : 0;
+      val *= 1e9; // Convert to ns
+      groupDelay.append(val);
+    }
+
+           // Last point (backward difference)
+    if(numPoints > 1) {
+      double df = freq[numPoints-1] - freq[numPoints-2];
+      double val = df != 0 ?
+                       -(unwrappedPhase[numPoints-1] - unwrappedPhase[numPoints-2]) / (360.0 * df) : 0;
+      val *= 1e9; // Convert to ns
+      groupDelay.append(val);
+    }
+
+    QString trace_name_GD = QString("S%1%2_Group Delay").arg(port_in).arg(port_out);
+    datasets[file][trace_name_GD].append(groupDelay);
+    return;
+  }
+
+
   for (int i = 0; i < datasets[file]["S11_re"].size(); i++) {
     // S-parameter data (n.u.)
     double s11_re =  datasets[file]["S11_re"][i];
@@ -3261,48 +3449,48 @@ void Qucs_S_SPAR_Viewer::calculate_Sparameter_trace(QString file, QString metric
 
     double delta = abs(s11*s22 - s12*s21); // Determinant of the S matrix
 
-    if (!metric.compare("delta")) {
-      datasets[file]["delta"].append(delta);
-    } else {
-      if (!metric.compare("K")) {
-        double K = (1 - abs(s11)*abs(s11) - abs(s22)*abs(s22) + delta*delta) / (2*abs(s12*s21)); // Rollet factor.
-        datasets[file]["K"].append(K);
+      if (!metric.compare("delta")) {
+        datasets[file]["delta"].append(delta);
       } else {
-        if (!metric.compare("μₛ")) {
-          double mu = (1 - abs(s11)*abs(s11)) / (abs(s22-delta*s11_conj) + abs(s12*s21));
-          datasets[file]["μₛ"].append(mu);
+        if (!metric.compare("K")) {
+          double K = (1 - abs(s11)*abs(s11) - abs(s22)*abs(s22) + delta*delta) / (2*abs(s12*s21)); // Rollet factor.
+          datasets[file]["K"].append(K);
         } else {
-          if (!metric.compare("μₚ")) {
-            double mu_p = (1 - abs(s22)*abs(s22)) / (abs(s11-delta*s22_conj) + abs(s12*s21));
-            datasets[file]["μₚ"].append(mu_p);
+          if (!metric.compare("μₛ")) {
+            double mu = (1 - abs(s11)*abs(s11)) / (abs(s22-delta*s11_conj) + abs(s12*s21));
+            datasets[file]["μₛ"].append(mu);
           } else {
-            if (!metric.compare("MSG")) {
-              double MSG = abs(s21) / abs(s12);
-              MSG = 10*log10(MSG);
-              datasets[file]["MSG"].append(MSG);
+            if (!metric.compare("μₚ")) {
+              double mu_p = (1 - abs(s22)*abs(s22)) / (abs(s11-delta*s22_conj) + abs(s12*s21));
+              datasets[file]["μₚ"].append(mu_p);
             } else {
-              if (!metric.compare("MAG")) {
-                double K = (1 - abs(s11)*abs(s11) - abs(s22)*abs(s22) + delta*delta) / (2*abs(s12*s21)); // Rollet factor.
+              if (!metric.compare("MSG")) {
                 double MSG = abs(s21) / abs(s12);
-                double MAG = MSG * (K - std::sqrt(K * K - 1));
-                MAG = 10*log10(abs(MAG));
-                datasets[file]["MAG"].append(MAG);
+                MSG = 10*log10(MSG);
+                datasets[file]["MSG"].append(MSG);
               } else {
-                if (metric.contains("Zin")) {
-                  std::complex<double> Zin = std::complex<double>(Z0) * (1.0 + s11) / (1.0 - s11);
-                  datasets[file]["Re{Zin}"].append(Zin.real());
-                  datasets[file]["Im{Zin}"].append(Zin.imag());
+                if (!metric.compare("MAG")) {
+                  double K = (1 - abs(s11)*abs(s11) - abs(s22)*abs(s22) + delta*delta) / (2*abs(s12*s21)); // Rollet factor.
+                  double MSG = abs(s21) / abs(s12);
+                  double MAG = MSG * (K - std::sqrt(K * K - 1));
+                  MAG = 10*log10(abs(MAG));
+                  datasets[file]["MAG"].append(MAG);
                 } else {
-                  if (metric.contains("Zout")) {
-                    std::complex<double> Zout = std::complex<double>(Z0) * (1.0 + s22) / (1.0 - s22);
-                    datasets[file]["Re{Zout}"].append(Zout.real());
-                    datasets[file]["Im{Zout}"].append(Zout.imag());
+                  if (metric.contains("Zin")) {
+                    std::complex<double> Zin = std::complex<double>(Z0) * (1.0 + s11) / (1.0 - s11);
+                    datasets[file]["Re{Zin}"].append(Zin.real());
+                    datasets[file]["Im{Zin}"].append(Zin.imag());
+                  } else {
+                    if (metric.contains("Zout")) {
+                      std::complex<double> Zout = std::complex<double>(Z0) * (1.0 + s22) / (1.0 - s22);
+                      datasets[file]["Re{Zout}"].append(Zout.real());
+                      datasets[file]["Im{Zout}"].append(Zout.imag());
+                    }
                   }
                 }
               }
             }
           }
-        }
       }
     }
   }
