@@ -763,267 +763,266 @@ void Qucs_S_SPAR_Viewer::addFile()
 
 void Qucs_S_SPAR_Viewer::addFiles(QStringList fileNames)
 {
-    int existing_files = this->datasets.size(); // Get the number of entries in the map
+  int existing_files = this->datasets.size(); // Get the number of entries in the map
+  QString filename;
 
-    // Variables for reading the Touchstone data
-    QStringList values;
-    QString filename;
+  if (existing_files == 0) {
+    // Reset limits
+    this->f_max = -1;
+    this->f_min = 1e30;
+  }
 
-    if (existing_files == 0){
-        // Reset limits
-        this->f_max = -1;
-        this->f_min = 1e30;
+         // Remove from the list of files those that already exist in the database
+  QStringList files_dataset = datasets.keys();
+
+  for (int i = 0; i < fileNames.length(); i++) {
+    filename = QFileInfo(fileNames.at(i)).fileName();
+    // Check if this file already exists
+    QString new_filename = filename.left(filename.lastIndexOf('.'));
+    if (files_dataset.contains(new_filename)) {
+      // Remove it from the list of new files to load
+      fileNames.removeAt(i);
+
+             // Pop up a warning
+      QMessageBox::information(
+          this,
+          tr("Warning"),
+          tr("This file is already in the dataset."));
     }
+  }
+
+         // Read files
+  for (int i = existing_files; i < existing_files + fileNames.length(); i++) {
+    // Create the file name label
+    filename = QFileInfo(fileNames.at(i-existing_files)).fileName();
+    CreateFileWidgets(filename, i+1);
+
+           // Use the new function to read the Touchstone file
+    QMap<QString, QList<double>> file_data = readTouchstoneFile(fileNames.at(i-existing_files));
+
+    // Add data to the dataset
+    QString dataset_name = filename.left(filename.lastIndexOf('.')); // Remove file extension
+    datasets[dataset_name] = file_data;
+
+           // Add new dataset to the trace selection combobox
+    QCombobox_datasets->addItem(dataset_name);
+    // Update traces
+    updateTracesCombo();
+  }
+
+         // Apply default visualizations based on file types
+  applyDefaultVisualizations(fileNames);
+}
 
 
-    // Remove from the list of files those that already exist in the database
-    QStringList files_dataset = datasets.keys();
+// Given a string path to a file, it reads the Touchstone data into the main dataset
+QMap<QString, QList<double>> Qucs_S_SPAR_Viewer::readTouchstoneFile(const QString& filePath)
+{
+  QMap<QString, QList<double>> file_data; // Data structure to store the file data
+  QString frequency_unit, parameter, format;
+  double freq_scale = 1; // Hz
+  double Z0 = 50; // System impedance. Typically 50 Ohm
+  QStringList values;
 
-    for (int i = 0; i < fileNames.length(); i++){
-      filename = QFileInfo(fileNames.at(i)).fileName();
-      // Check if this file already exists
-      QString new_filename = filename.left(filename.lastIndexOf('.'));
-      if (files_dataset.contains(new_filename)){
-        // Remove it from the list of new files to load
-        fileNames.removeAt(i);
+  // Get the filename for extracting number of ports
+  QString filename = QFileInfo(filePath).fileName();
 
-        // Pop up a warning
-        QMessageBox::information(
-            this,
-            tr("Warning"),
-            tr("This file is already in the dataset.") );
+  // Get the number of ports
+  QString suffix = QFileInfo(filename).suffix();
+  QRegularExpression regex("(?i)[sp]");
+  QStringList numberParts = suffix.split(regex);
+  int number_of_ports = numberParts[1].toInt();
+  file_data["n_ports"].append(number_of_ports);
+
+         // 1) Open the file
+  QFile file(filePath);
+  if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+    qDebug() << "Cannot open the file";
+    return file_data;
+  }
+
+         // 2) Read data
+  QTextStream in(&file);
+  while (!in.atEnd()) {
+    QString line = in.readLine();
+    line = line.simplified();
+
+    if (line.isEmpty()) continue;
+        if ((line.at(0).isNumber() == false) && (line.at(0) != '#')) {
+      if (file_data["frequency"].size() == 0){
+        // There's still no data
+        continue;
+      } else {
+        //There's already data, so it's very likely that the S-par data has ended and
+        //the following lines contain noise data. We must stop at this point.
+        break;
       }
     }
 
-    // Read files
-    for (int i = existing_files; i < existing_files+fileNames.length(); i++)
-    {
-        // Create the file name label
-        filename = QFileInfo(fileNames.at(i-existing_files)).fileName();
-        CreateFileWidgets(filename, i+1);
+    // Check for the option line
+    if (line.at(0) == '#'){
+      QStringList info = line.split(" ");
+      frequency_unit = info.at(1); // Specifies the unit of frequency.
+                                   // Legal values are Hz, kHz, MHz, and GHz. The default value is GHz.
 
-        // Read the Touchstone file.
-        // Please see https://ibis.org/touchstone_ver2.0/touchstone_ver2_0.pdf
-        QMap<QString, QList<double>> file_data; // Data structure to store the file data
-        QString frequency_unit, parameter, format;
-        double freq_scale = 1; // Hz
-        double Z0=50; // System impedance. Typically 50 Ohm
+      frequency_unit = frequency_unit.toLower();
 
-        // Get the number of ports
-        QString suffix = QFileInfo(filename).suffix();
-        QRegularExpression regex("(?i)[sp]");
-        QStringList numberParts = suffix.split(regex);
-        int number_of_ports = numberParts[1].toInt();
-        file_data["n_ports"].append(number_of_ports);
-
-        // 1) Open the file
-        QFile file(fileNames.at(i-existing_files));
-        if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-            qDebug() << "Cannot open the file";
-            break;
+      if (frequency_unit == "khz"){
+        freq_scale = 1e3;
+      } else {
+        if (frequency_unit == "mhz"){
+          freq_scale = 1e6;
+        } else {
+          if (frequency_unit == "ghz"){
+            freq_scale = 1e9;
+          }
         }
+      }
 
-        // 2) Read data
-        QTextStream in(&file);
-        while (!in.atEnd()) {
-          QString line = in.readLine();
-          line = line.simplified();
-          //qDebug() << line;
+      parameter = info.at(2); // specifies what kind of network parameter data is contained in the file
+      format = info.at(3);    // Specifies the format of the network parameter data pairs
+      Z0 = info.at(5).toDouble();
+      file_data["Z0"].append(Z0);
 
-           if (line.isEmpty()) continue;
-           if ((line.at(0).isNumber() == false) && (line.at(0) != '#')) {
-               if (file_data["frequency"].size() == 0){
-                   // There's still no data
-                   continue;
-               }else{
-                   //There's already data, so it's very likely that the S-par data has ended and
-                   //the following lines contain noise data. We must stop at this point.
-                   break;
-               }
-
-           }
-           // Check for the option line
-           if (line.at(0) == '#'){
-
-               QStringList info = line.split(" ");
-               frequency_unit = info.at(1); // Specifies the unit of frequency.
-                                            // Legal values are Hz, kHz, MHz, and GHz. The default value is GHz.
-
-               frequency_unit = frequency_unit.toLower();
-
-               if (frequency_unit == "khz"){
-                   freq_scale = 1e3;
-               } else {
-                   if (frequency_unit == "mhz"){
-                       freq_scale = 1e6;
-                   } else {
-                       if (frequency_unit == "ghz"){
-                           freq_scale = 1e9;
-                       }
-                   }
-               }
-
-
-               parameter = info.at(2); // specifies what kind of network parameter data is contained in the file. Legal
-                                       // values are:
-                                       // S for Scattering parameters,
-                                       // Y for Admittance parameters,
-                                       // Z for Impedance parameters,
-                                       // H for Hybrid-h parameters,
-                                       // G for Hybrid-g parameters.
-                                       // The default value is S.
-
-               format = info.at(3);   // Specifies the format of the network parameter data pairs. Legal values are:
-                                      // DB for decibel-angle (decibel = 20 × log 10|magnitude|)
-                                      // MA for magnitude-angle,
-                                      // RI for real-imaginary.
-                                      // Angles are given in degrees. Note that this format does not apply to noise
-                                      // parameters (refer to the “Noise Parameter Data” section later in this
-                                      // specification). The default value is MA.
-
-               Z0 = info.at(5).toDouble();
-               file_data["Z0"].append(Z0); // Specifies the reference resistance in ohms, where n is a real, positive number of
-                                           // ohms. The default reference resistance is 50 ohms. Note that this is overridden
-                                           // by the [Reference] keyword, described below, for files of [Version] 2.0 and above
-
-           continue;
-           }
+      continue;
+    }
 
            // Split line by whitespace
-           values.clear();
-           values = line.split(' ');
+    values.clear();
+    values = line.split(' ');
 
-           file_data["frequency"].append(values[0].toDouble()*freq_scale); // in Hz
+    file_data["frequency"].append(values[0].toDouble()*freq_scale); // in Hz
 
-           double S_1, S_2, S_3, S_4;
-           QString s1, s2, s3, s4;
-           int index = 1, data_counter = 0;
+    double S_1, S_2, S_3, S_4;
+    QString s1, s2, s3, s4;
+    int index = 1, data_counter = 0;
 
-           for (int i = 1; i<=number_of_ports; i++){
-               for (int j = 1; j<=number_of_ports; j++){
-                   s1 = QStringLiteral("S") + QString::number(j) + QString::number(i) + QStringLiteral("_dB");
-                   s2 = s1.mid(0, s1.length() - 2).append("ang");
-                   s3 = s1.mid(0, s1.length() - 2).append("re");
-                   s4 = s1.mid(0, s1.length() - 2).append("im");
+    for (int i = 1; i<=number_of_ports; i++){
+      for (int j = 1; j<=number_of_ports; j++){
+        s1 = QStringLiteral("S") + QString::number(j) + QString::number(i) + QStringLiteral("_dB");
+        s2 = s1.mid(0, s1.length() - 2).append("ang");
+        s3 = s1.mid(0, s1.length() - 2).append("re");
+        s4 = s1.mid(0, s1.length() - 2).append("im");
 
-                   S_1 = values[index].toDouble();
-                   S_2 = values[index+1].toDouble();
+        S_1 = values[index].toDouble();
+        S_2 = values[index+1].toDouble();
 
-                   convert_MA_RI_to_dB(&S_1, &S_2, &S_3, &S_4, format);
+        convert_MA_RI_to_dB(&S_1, &S_2, &S_3, &S_4, format);
 
-                   file_data[s1].append(S_1);//dB
-                   file_data[s2].append(S_2);//ang
-                   file_data[s3].append(S_3);//re
-                   file_data[s4].append(S_4);//im
-                   index += 2;
-                   data_counter++;
+        file_data[s1].append(S_1);//dB
+        file_data[s2].append(S_2);//ang
+        file_data[s3].append(S_3);//re
+        file_data[s4].append(S_4);//im
+        index += 2;
+        data_counter++;
 
-                   // Check if the next values are in the new line
-                   if ((index >= values.length()) && (data_counter < number_of_ports*number_of_ports)){
-                       line = in.readLine();
-                       line = line.simplified();
-                       values = line.split(' ');
-                       index = 0; // Reset index (it's a new line)
-                   }
-               }
-           }
-           if (number_of_ports == 1){
-               double s11_re = file_data["S11_re"].last();
-               double s11_im = file_data["S11_im"].last();
-               std::complex<double> s11 (s11_re, s11_im);
-
-               // Optional traces. They are not computed now, but only if the user wants to display them
-               QStringList optional_traces;
-               optional_traces.append("Re{Zin}");
-               optional_traces.append("Im{Zin}");
-               for (int i = 0; i < optional_traces.size(); i++) {
-                 if (!file_data.contains(optional_traces[i])) {
-                   // If not, create an empty list
-                   file_data[optional_traces[i]] = QList<double>();
-                 }
-               }
-
-           }
-           if (number_of_ports == 2){
-               // Optional traces. They are not computed now, but only if the user wants to display them
-               QStringList optional_traces;
-               optional_traces.append("delta");
-               optional_traces.append("K");
-               optional_traces.append("mu");
-               optional_traces.append("mu_p");
-               optional_traces.append("MSG");
-               optional_traces.append("MAG");
-               optional_traces.append("Re{Zin}");
-               optional_traces.append("Im{Zin}");
-               optional_traces.append("Re{Zout}");
-               optional_traces.append("Im{Zout}");
-               for (int i = 0; i < optional_traces.size(); i++) {
-                 if (!file_data.contains(optional_traces[i])) {
-                   // If not, create an empty list
-                   file_data[optional_traces[i]] = QList<double>();
-                 }
-               }
-           }
+               // Check if the next values are in the new line
+        if ((index >= values.length()) && (data_counter < number_of_ports*number_of_ports)){
+          line = in.readLine();
+          line = line.simplified();
+          values = line.split(' ');
+          index = 0; // Reset index (it's a new line)
         }
-        // 3) Add data to the dataset
-        filename = filename.left(filename.lastIndexOf('.')); // Remove file extension
-        datasets[filename] = file_data;
-        file.close();
-
-        // 4) Add new dataset to the trace selection combobox
-        QCombobox_datasets->addItem(filename);
-        // Update traces
-        updateTracesCombo();
+      }
     }
 
-    // Default behavior: If there's no more data loaded and a single S1P file is selected, then automatically plot S11
-    if ((fileNames.length() == 1) && (fileNames.first().toLower().endsWith(".s1p")) && (datasets.size() == 1)){
-        this->addTrace(filename, QStringLiteral("S11_dB"), Qt::red);
-        this->addTrace(filename, QStringLiteral("S11_Smith"), Qt::darkBlue);
-        this->addTrace(filename, QStringLiteral("S11_Polar"), Qt::red);
+    // Add optional traces based on number of ports
+    addOptionalTraces(file_data, number_of_ports);
+  }
+
+  file.close();
+  return file_data;
+}
+
+// Once a file is loaded, this function adds to the display the default traces based in its nature
+void Qucs_S_SPAR_Viewer::applyDefaultVisualizations(const QStringList& fileNames)
+{
+  // Default behavior: If there's no more data loaded and a single S1P file is selected
+  if ((fileNames.length() == 1) && (fileNames.first().toLower().endsWith(".s1p")) && (datasets.size() == 1)) {
+    QString filename = QFileInfo(fileNames.first()).fileName();
+    filename = filename.left(filename.lastIndexOf('.'));
+
+    this->addTrace(filename, QStringLiteral("S11_dB"), Qt::red);
+    this->addTrace(filename, QStringLiteral("S11_Smith"), Qt::darkBlue);
+    this->addTrace(filename, QStringLiteral("S11_Polar"), Qt::red);
+  }
+
+         // Default behavior: If there's no more data loaded and a single S2P file is selected
+  if ((fileNames.length() == 1) && (fileNames.first().toLower().endsWith(".s2p")) && (datasets.size() == 1)) {
+    QString filename = QFileInfo(fileNames.first()).fileName();
+    filename = filename.left(filename.lastIndexOf('.'));
+
+    this->addTrace(filename, QStringLiteral("S21_dB"), Qt::red);
+    this->addTrace(filename, QStringLiteral("S11_dB"), Qt::darkBlue);
+    this->addTrace(filename, QStringLiteral("S22_dB"), Qt::darkGreen);
+
+    this->addTrace(filename, QStringLiteral("S11_Smith"), Qt::darkBlue);
+    this->addTrace(filename, QStringLiteral("S22_Smith"), Qt::darkGreen);
+
+    this->addTrace(filename, QStringLiteral("S11_Polar"), Qt::darkBlue);
+    this->addTrace(filename, QStringLiteral("S22_Polar"), Qt::darkGreen);
+
+    this->addTrace(filename, QStringLiteral("Re{Zin}"), Qt::darkBlue);
+    this->addTrace(filename, QStringLiteral("Im{Zin}"), Qt::red);
+
+    this->addTrace(filename, QStringLiteral("S21_Group Delay"), Qt::darkBlue);
+  }
+
+         // Default behaviour: When adding multiple S2P file, then show the S21 of all traces
+  if (fileNames.length() > 1) {
+    bool all_s2p = true;
+    for (int i = 0; i < fileNames.length(); i++) {
+      if (!fileNames.at(i).toLower().endsWith(".s2p")) {
+        all_s2p = false;
+        break;
+      }
     }
 
-    // Default behavior: If there's no more data loaded and a single S2P file is selected, then automatically plot S21, S11 and S22
-    if ((fileNames.length() == 1) && (fileNames.first().toLower().endsWith(".s2p")) && (datasets.size() == 1)){
-        this->addTrace(filename, QStringLiteral("S21_dB"), Qt::red);
-        this->addTrace(filename, QStringLiteral("S11_dB"), Qt::darkBlue);
-        this->addTrace(filename, QStringLiteral("S22_dB"), Qt::darkGreen);
-
-        this->addTrace(filename, QStringLiteral("S11_Smith"), Qt::darkBlue);
-        this->addTrace(filename, QStringLiteral("S22_Smith"), Qt::darkGreen);
-
-        this->addTrace(filename, QStringLiteral("S11_Polar"), Qt::darkBlue);
-        this->addTrace(filename, QStringLiteral("S22_Polar"), Qt::darkGreen);
-
-        this->addTrace(filename, QStringLiteral("Re{Zin}"), Qt::darkBlue);
-        this->addTrace(filename, QStringLiteral("Im{Zin}"), Qt::red);
-
-        this->addTrace(filename, QStringLiteral("S21_Group Delay"), Qt::darkBlue);
+    if (all_s2p == true) {
+      for (int i = 0; i < fileNames.length(); i++) {
+        QString filename = QFileInfo(fileNames.at(i)).fileName();
+        filename = filename.left(filename.lastIndexOf('.'));
+        // Pick a random color
+        QColor trace_color = QColor(QRandomGenerator::global()->bounded(256),
+                                    QRandomGenerator::global()->bounded(256),
+                                    QRandomGenerator::global()->bounded(256));
+        this->addTrace(filename, QStringLiteral("S21_dB"), trace_color);
+      }
     }
+  }
 
-    // Default behaviour: When adding multiple S2P file, then show the S21 of all traces
-    if (fileNames.length() > 1){
-        bool all_s2p = true;
-        for (int i = 0; i < fileNames.length(); i++){
-            if (!fileNames.at(i).toLower().endsWith(".s2p")){
-                all_s2p = false;
-                break;
-            }
-        }
-        if (all_s2p == true){
-            QString filename;
-            for (int i = 0; i < fileNames.length(); i++){
-                filename = QFileInfo(fileNames.at(i)).fileName();
-                filename = filename.left(filename.lastIndexOf('.'));
-                // Pick a random color
-                QColor trace_color = QColor(QRandomGenerator::global()->bounded(256), QRandomGenerator::global()->bounded(256), QRandomGenerator::global()->bounded(256));
-                this->addTrace(filename, QStringLiteral("S21_dB"), trace_color);
-            }
-        }
+         // Show the trace settings widget
+  dockTracesList->raise();
+}
+
+// Adds optional traces depending on the number of ports of the device
+void Qucs_S_SPAR_Viewer::addOptionalTraces(QMap<QString, QList<double>>& file_data, int number_of_ports)
+{
+  QStringList optional_traces;
+
+  if (number_of_ports == 1) {
+    optional_traces.append("Re{Zin}");
+    optional_traces.append("Im{Zin}");
+  }
+  else if (number_of_ports == 2) {
+    optional_traces.append("delta");
+    optional_traces.append("K");
+    optional_traces.append("mu");
+    optional_traces.append("mu_p");
+    optional_traces.append("MSG");
+    optional_traces.append("MAG");
+    optional_traces.append("Re{Zin}");
+    optional_traces.append("Im{Zin}");
+    optional_traces.append("Re{Zout}");
+    optional_traces.append("Im{Zout}");
+  }
+
+  for (int i = 0; i < optional_traces.size(); i++) {
+    if (!file_data.contains(optional_traces[i])) {
+      // If not, create an empty list
+      file_data[optional_traces[i]] = QList<double>();
     }
-
-    // Show the trace settings widget
-    dockTracesList->raise();
+  }
 }
 
 // This function creates the label and the button in the file list

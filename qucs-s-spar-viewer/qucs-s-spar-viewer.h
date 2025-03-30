@@ -87,6 +87,9 @@ class Qucs_S_SPAR_Viewer : public QMainWindow
 
   void addFile();
   void addFiles(QStringList);
+  QMap<QString, QList<double>> readTouchstoneFile(const QString& filePath);
+  void applyDefaultVisualizations(const QStringList& fileNames);
+  void addOptionalTraces(QMap<QString, QList<double>>& file_data, int number_of_ports);
   void removeFile();
   void removeFile(int);
   void removeAllFiles();
