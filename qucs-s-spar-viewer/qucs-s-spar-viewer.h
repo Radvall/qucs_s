@@ -69,6 +69,42 @@ struct LimitProperties {
   QPushButton* Couple_Value;
 };
 
+// Structures for trace management
+enum class DisplayMode {
+  Magnitude_dB,
+  Phase,
+  Smith,
+  Polar,
+  NaturalUnits,
+  GroupDelay
+};
+
+// Structure to hold trace information
+struct TraceInfo {
+  QString dataset;
+  QString parameter;     // e.g., "S11", "S21"
+  DisplayMode displayMode;
+
+  // Helper to generate a unique identifier for the trace
+  QString uniqueId() const {
+    return QString("%1.%2_%3").arg(dataset).arg(parameter).arg(static_cast<int>(displayMode));
+  }
+
+  // Helper to get a human-readable name for the trace
+  QString displayName() const {
+    QString modeName;
+    switch(displayMode) {
+    case DisplayMode::Magnitude_dB: modeName = "dB"; break;
+    case DisplayMode::Phase: modeName = "Phase"; break;
+    case DisplayMode::Smith: modeName = "Smith"; break;
+    case DisplayMode::Polar: modeName = "Polar"; break;
+    case DisplayMode::NaturalUnits: modeName = "n.u."; break;
+    case DisplayMode::GroupDelay: modeName = "Group Delay"; break;
+    }
+    return QString("%1.%2_%3").arg(dataset).arg(parameter).arg(modeName);
+  }
+};
+
 class Qucs_S_SPAR_Viewer : public QMainWindow
 {
  Q_OBJECT
@@ -96,7 +132,7 @@ class Qucs_S_SPAR_Viewer : public QMainWindow
   void CreateFileWidgets(QString filename, int position);
 
   void addTrace();
-  void addTrace(QString, QString, QColor, int trace_width = 1, QString trace_style = "Solid");
+  void addTrace(const TraceInfo& traceInfo, QColor trace_color, int trace_width, QString trace_style = "Solid");
   void removeTrace();
   void removeTrace(const QString& );
   void removeTrace(QStringList);

@@ -942,9 +942,15 @@ void Qucs_S_SPAR_Viewer::applyDefaultVisualizations(const QStringList& fileNames
     QString filename = QFileInfo(fileNames.first()).fileName();
     filename = filename.left(filename.lastIndexOf('.'));
 
-    this->addTrace(filename, QStringLiteral("S11_dB"), Qt::red);
-    this->addTrace(filename, QStringLiteral("S11_Smith"), Qt::darkBlue);
-    this->addTrace(filename, QStringLiteral("S11_Polar"), Qt::red);
+    // Create TraceInfo structs
+    TraceInfo s11_dB = {filename, "S11", DisplayMode::Magnitude_dB};
+    TraceInfo s11_Smith = {filename, "S11", DisplayMode::Smith};
+    TraceInfo s11_Polar = {filename, "S11", DisplayMode::Polar};
+
+    // Add traces with appropriate colors
+    this->addTrace(s11_dB, Qt::red, 1);
+    this->addTrace(s11_Smith, Qt::darkBlue, 1);
+    this->addTrace(s11_Polar, Qt::red, 1);
   }
 
          // Default behavior: If there's no more data loaded and a single S2P file is selected
@@ -952,20 +958,37 @@ void Qucs_S_SPAR_Viewer::applyDefaultVisualizations(const QStringList& fileNames
     QString filename = QFileInfo(fileNames.first()).fileName();
     filename = filename.left(filename.lastIndexOf('.'));
 
-    this->addTrace(filename, QStringLiteral("S21_dB"), Qt::red);
-    this->addTrace(filename, QStringLiteral("S11_dB"), Qt::darkBlue);
-    this->addTrace(filename, QStringLiteral("S22_dB"), Qt::darkGreen);
+    // Create TraceInfo structs for S-parameters in dB
+    TraceInfo s21_dB = {filename, "S21", DisplayMode::Magnitude_dB};
+    TraceInfo s11_dB = {filename, "S11", DisplayMode::Magnitude_dB};
+    TraceInfo s22_dB = {filename, "S22", DisplayMode::Magnitude_dB};
 
-    this->addTrace(filename, QStringLiteral("S11_Smith"), Qt::darkBlue);
-    this->addTrace(filename, QStringLiteral("S22_Smith"), Qt::darkGreen);
+    // Create TraceInfo structs for Smith chart
+    TraceInfo s11_Smith = {filename, "S11", DisplayMode::Smith};
+    TraceInfo s22_Smith = {filename, "S22", DisplayMode::Smith};
 
-    this->addTrace(filename, QStringLiteral("S11_Polar"), Qt::darkBlue);
-    this->addTrace(filename, QStringLiteral("S22_Polar"), Qt::darkGreen);
+    // Create TraceInfo structs for Polar display
+    TraceInfo s11_Polar = {filename, "S11", DisplayMode::Polar};
+    TraceInfo s22_Polar = {filename, "S22", DisplayMode::Polar};
 
-    this->addTrace(filename, QStringLiteral("Re{Zin}"), Qt::darkBlue);
-    this->addTrace(filename, QStringLiteral("Im{Zin}"), Qt::red);
+    // Create TraceInfo structs for impedance
+    TraceInfo reZin = {filename, "Re{Zin}", DisplayMode::NaturalUnits};
+    TraceInfo imZin = {filename, "Im{Zin}", DisplayMode::NaturalUnits};
 
-    this->addTrace(filename, QStringLiteral("S21_Group Delay"), Qt::darkBlue);
+    // Create TraceInfo struct for group delay
+    TraceInfo s21_GroupDelay = {filename, "S21", DisplayMode::GroupDelay};
+
+    // Add all traces with appropriate colors
+    this->addTrace(s21_dB, Qt::red, 1);
+    this->addTrace(s11_dB, Qt::darkBlue, 1);
+    this->addTrace(s22_dB, Qt::darkGreen, 1);
+    this->addTrace(s11_Smith, Qt::darkBlue, 1);
+    this->addTrace(s22_Smith, Qt::darkGreen, 1);
+    this->addTrace(s11_Polar, Qt::darkBlue, 1);
+    this->addTrace(s22_Polar, Qt::darkGreen, 1);
+    this->addTrace(reZin, Qt::darkBlue, 1);
+    this->addTrace(imZin, Qt::red, 1);
+    this->addTrace(s21_GroupDelay, Qt::darkBlue, 1);
   }
 
          // Default behaviour: When adding multiple S2P file, then show the S21 of all traces
@@ -982,11 +1005,17 @@ void Qucs_S_SPAR_Viewer::applyDefaultVisualizations(const QStringList& fileNames
       for (int i = 0; i < fileNames.length(); i++) {
         QString filename = QFileInfo(fileNames.at(i)).fileName();
         filename = filename.left(filename.lastIndexOf('.'));
+
         // Pick a random color
         QColor trace_color = QColor(QRandomGenerator::global()->bounded(256),
                                     QRandomGenerator::global()->bounded(256),
                                     QRandomGenerator::global()->bounded(256));
-        this->addTrace(filename, QStringLiteral("S21_dB"), trace_color);
+
+        // Create TraceInfo struct for S21 magnitude in dB
+        TraceInfo s21_dB = {filename, "S21", DisplayMode::Magnitude_dB};
+
+        // Add the trace with random color
+        this->addTrace(s21_dB, trace_color, 1);
       }
     }
   }
@@ -1345,102 +1374,101 @@ double Qucs_S_SPAR_Viewer::getFreqScale(QString frequency_unit)
 // This function is called when the user hits the button to add a trace
 void Qucs_S_SPAR_Viewer::addTrace()
 {
-    QString selected_dataset, selected_trace, selected_view;
-    selected_dataset = this->QCombobox_datasets->currentText();
-    selected_trace = this->QCombobox_traces->currentText();
-    selected_view = this->QCombobox_display_mode->currentText();
+  // Create a TraceInfo object from UI selections
+  TraceInfo traceInfo;
+  traceInfo.dataset = this->QCombobox_datasets->currentText();
+  traceInfo.parameter = this->QCombobox_traces->currentText();
 
-    QString suffix;
+  // Convert display mode selection to enum
+  QString displayModeText = this->QCombobox_display_mode->currentText();
+  if (displayModeText == "dB") {
+    traceInfo.displayMode = DisplayMode::Magnitude_dB;
+  } else if (displayModeText == "Phase") {
+    traceInfo.displayMode = DisplayMode::Phase;
+  } else if (displayModeText == "Smith") {
+    traceInfo.displayMode = DisplayMode::Smith;
+  } else if (displayModeText == "Polar") {
+    traceInfo.displayMode = DisplayMode::Polar;
+  } else if (displayModeText == "n.u.") {
+    traceInfo.displayMode = DisplayMode::NaturalUnits;
+  } else if (displayModeText == "Group Delay") {
+    traceInfo.displayMode = DisplayMode::GroupDelay;
+  }
 
-    if (!selected_view.compare("Phase")) {
-      selected_view = QString("ang");
-    }
-    selected_trace += QString("_") + selected_view;
+         // Set line width based on display mode
+  int linewidth = 1;
+  if (traceInfo.displayMode == DisplayMode::Smith) {
+    linewidth = 3;
+  }
 
+         // Color settings
+  QColor trace_color;
+  int num_traces = trace_list.size();
+  if (num_traces >= 3) {
+    trace_color = QColor(QRandomGenerator::global()->bounded(256),
+                         QRandomGenerator::global()->bounded(256),
+                         QRandomGenerator::global()->bounded(256));
+  } else {
+    trace_color = this->default_colors.at(num_traces);
+  }
 
-    int linewidth = 1;
-    if (!selected_view.compare("Smith")){
-      linewidth = 3;
-    }
-
-    // Color settings
-    QColor trace_color;
-    QPen pen;
-    int num_traces = trace_list.size();
-    if (num_traces >= 3){
-        trace_color = QColor(QRandomGenerator::global()->bounded(256), QRandomGenerator::global()->bounded(256), QRandomGenerator::global()->bounded(256));
-        pen.setColor(trace_color);
-    }
-    else {
-        trace_color = this->default_colors.at(num_traces);
-    }
-
-    addTrace(selected_dataset, selected_trace, trace_color, linewidth);
+         // Call the overloaded addTrace with the trace info
+  addTrace(traceInfo, trace_color, linewidth);
 }
 
 
-// Read the dataset and trace Comboboxes and add a trace to the display list
-void Qucs_S_SPAR_Viewer::addTrace(QString selected_dataset, QString selected_trace, QColor trace_color, int trace_width, QString trace_style)
+// Overloaded method that uses the TraceInfo structure
+void Qucs_S_SPAR_Viewer::addTrace(const TraceInfo& traceInfo, QColor trace_color, int trace_width, QString trace_style)
 {
   int n_trace = this->trace_list.size() + 1; // Number of displayed traces
 
-  // Get the name of the trace to plot
-  QString trace_name = selected_dataset;
-  trace_name.append("."); // Separate the dataset from the trace name with a point
-  trace_name.append(selected_trace);
+         // Get display name for the trace
+  QString trace_name = traceInfo.displayName();
 
+  // Check if the trace is already shown
   if (trace_list.contains(trace_name)) {
     QMessageBox::information(
         this,
         tr("Warning"),
         tr("This trace is already shown"));
     return;
-  } 
-
-  // Get the appropriate layout based on the trace type
-  QGridLayout *targetLayout;
-  if (selected_trace.endsWith("Smith")) {
-    // Select the layout where Smith Chart traces are shown
-    targetLayout = smithLayout;
-  } else {
-    if (selected_trace.endsWith("dB") || selected_trace.endsWith("ang")) {
-    // Select the layout where Magnitude and Phase traces are shown
-      targetLayout = magnitudePhaseLayout;
-    } else {
-      if (selected_trace.endsWith("Polar")) {
-        // Polar plot
-        targetLayout = polarLayout;
-      } else {
-        if (selected_trace.endsWith("n.u.")) {
-          // Natural units
-          targetLayout = nuLayout;
-        } else {
-          if (selected_trace.endsWith("Group Delay")) {
-            targetLayout = GroupDelayLayout;
-          }
-        }
-      }
-    }
   }
 
-  // Add the trace to the list of displayed list and create the widgets associated to the trace properties
+         // Get the appropriate layout based on the display mode
+  QGridLayout* targetLayout;
+  switch (traceInfo.displayMode) {
+  case DisplayMode::Smith:
+    targetLayout = smithLayout;
+    break;
+  case DisplayMode::Magnitude_dB:
+  case DisplayMode::Phase:
+    targetLayout = magnitudePhaseLayout;
+    break;
+  case DisplayMode::Polar:
+    targetLayout = polarLayout;
+    break;
+  case DisplayMode::NaturalUnits:
+    targetLayout = nuLayout;
+    break;
+  case DisplayMode::GroupDelay:
+    targetLayout = GroupDelayLayout;
+    break;
+  }
 
-  // Label
+         // Create UI widgets for the trace (mostly unchanged from original code)
+         // Label
   QLabel *new_trace_label = new QLabel(trace_name);
   new_trace_label->setObjectName(QStringLiteral("Trace_Name_") + trace_name);
-
   traceMap[trace_name].nameLabel = new_trace_label;
   targetLayout->addWidget(new_trace_label, n_trace, 0);
 
-  // Color picker
+         // Color picker
   QPushButton *new_trace_color = new QPushButton();
   new_trace_color->setObjectName(QStringLiteral("Trace_Color_") + trace_name);
   connect(new_trace_color, SIGNAL(clicked()), SLOT(changeTraceColor()));
   QString styleSheet = QStringLiteral("QPushButton { background-color: %1; }").arg(trace_color.name());
   new_trace_color->setStyleSheet(styleSheet);
-  new_trace_color->setAttribute(Qt::WA_TranslucentBackground); // Needed for Windows buttons to behave as they should
-
-
+  new_trace_color->setAttribute(Qt::WA_TranslucentBackground);
   traceMap[trace_name].colorButton = new_trace_color;
   targetLayout->addWidget(new_trace_color, n_trace, 1);
 
@@ -1455,11 +1483,10 @@ void Qucs_S_SPAR_Viewer::addTrace(QString selected_dataset, QString selected_tra
   int index = new_trace_linestyle->findText(trace_style);
   new_trace_linestyle->setCurrentIndex(index);
   connect(new_trace_linestyle, SIGNAL(currentIndexChanged(int)), SLOT(changeTraceLineStyle()));
-
   traceMap[trace_name].LineStyleComboBox = new_trace_linestyle;
   targetLayout->addWidget(new_trace_linestyle, n_trace, 2);
 
-         // Capture the pen style to correctly render the trace
+         // Determine pen style
   Qt::PenStyle pen_style;
   if (!trace_style.compare("Solid")) {
     pen_style = Qt::SolidLine;
@@ -1467,25 +1494,24 @@ void Qucs_S_SPAR_Viewer::addTrace(QString selected_dataset, QString selected_tra
     pen_style = Qt::DashLine;
   } else if (!trace_style.compare("·······")) {
     pen_style = Qt::DotLine;
-  } else if (!trace_style.compare("-·-·-·-")) {
+  } else if (!trace_style.compare("- · - · -")) {
     pen_style = Qt::DashDotLine;
   } else if (!trace_style.compare("-··-··-")) {
     pen_style = Qt::DashDotDotLine;
   }
 
-  // Line width
+         // Line width
   QSpinBox *new_trace_width = new QSpinBox();
   new_trace_width->setObjectName(QStringLiteral("Trace_Width_") + trace_name);
   new_trace_width->setValue(trace_width);
   connect(new_trace_width, SIGNAL(valueChanged(int)), SLOT(changeTraceWidth()));
-
   traceMap[trace_name].width = new_trace_width;
   targetLayout->addWidget(new_trace_width, n_trace, 3);
 
-  // Remove button
+         // Remove button
   QToolButton *new_trace_removebutton = new QToolButton();
   new_trace_removebutton->setObjectName(QStringLiteral("Trace_RemoveButton_") + trace_name);
-  QIcon icon(":/bitmaps/trash.png"); // Use a resource path or a relative path
+  QIcon icon(":/bitmaps/trash.png");
   new_trace_removebutton->setIcon(icon);
   new_trace_removebutton->setStyleSheet(R"(
             QToolButton {
@@ -1496,41 +1522,40 @@ void Qucs_S_SPAR_Viewer::addTrace(QString selected_dataset, QString selected_tra
             }
         )");
   connect(new_trace_removebutton, SIGNAL(clicked()), SLOT(removeTrace()));
-
   traceMap[trace_name].deleteButton = new_trace_removebutton;
   targetLayout->addWidget(new_trace_removebutton, n_trace, 4);
 
-  // Create the series for the trace
+         // Create the series for the trace
   QLineSeries* series = new QLineSeries();
   series->setName(trace_name);
   trace_list.append(trace_name);
 
-  // Color settings
+         // Color settings
   QPen pen;
   pen.setColor(trace_color);
   pen.setStyle(pen_style);
   pen.setWidth(trace_width);
   series->setPen(pen); // Apply the pen to the series
 
-  if (selected_trace.contains("dB") || selected_trace.contains("ang")){
-    // Magnitude / Phase rectangular diagram
-    QList<double> trace_data = datasets[selected_dataset][selected_trace];
-    QList<double> frequencies = datasets[selected_dataset]["frequency"];
-    double Z0 = datasets[selected_dataset]["Z0"].first();
+         // Create and add the appropriate trace based on display mode
+  QList<double> frequencies = datasets[traceInfo.dataset]["frequency"];
+  double Z0 = datasets[traceInfo.dataset]["Z0"].first();
 
-    // Get units,  set the y-axis and title
-    QString units;
-    QString yaxis_title;
-    int yaxis;
-    if (selected_trace.contains("dB"))  {
-      units = QString("dB");
-      yaxis = 1;
-      yaxis_title = QString("Magnitude (dB)");
-    } else {
-      units = QString("deg");
-      yaxis = 2;
-      yaxis_title = QString("Phase (deg)");
-    }
+  // Process the trace based on display mode
+  switch (traceInfo.displayMode) {
+  case DisplayMode::Magnitude_dB:
+  case DisplayMode::Phase: {
+    // Determine which data column to use
+    QString dataSuffix = (traceInfo.displayMode == DisplayMode::Magnitude_dB) ? "_dB" : "_ang";
+    QString fullParam = traceInfo.parameter + dataSuffix;
+
+    QList<double> trace_data = datasets[traceInfo.dataset][fullParam];
+
+    // Set up trace properties
+    QString units = (traceInfo.displayMode == DisplayMode::Magnitude_dB) ? "dB" : "deg";
+    int yaxis = (traceInfo.displayMode == DisplayMode::Magnitude_dB) ? 1 : 2;
+    QString yaxis_title = (traceInfo.displayMode == DisplayMode::Magnitude_dB) ?
+                              "Magnitude (dB)" : "Phase (deg)";
 
     // Add the trace to the chart
     RectangularPlotWidget::Trace new_trace;
@@ -1542,154 +1567,137 @@ void Qucs_S_SPAR_Viewer::addTrace(QString selected_dataset, QString selected_tra
     new_trace.y_axis = yaxis;
     new_trace.y_axis_title = yaxis_title;
     Magnitude_PhaseChart->addTrace(trace_name, new_trace);
+    break;
+  }
 
-  } else {
-    if (selected_trace.contains("Smith")){
-      // Smith Chart
-      // Convert S-parameters to impedances
-      QList<std::complex<double>> impedances;
-      QList<double> frequencies = datasets[selected_dataset]["frequency"];
+  case DisplayMode::Smith: {
+    // Convert S-parameters to impedances
+    QList<std::complex<double>> impedances;
 
-      QString trace_dataset = selected_trace.replace("_Smith", "");
+    QList<double> sii_re = datasets[traceInfo.dataset][traceInfo.parameter + "_re"];
+    QList<double> sii_im = datasets[traceInfo.dataset][traceInfo.parameter + "_im"];
 
-      QList<double> sii_re = datasets[selected_dataset][trace_dataset + QString("_re")];
-      QList<double> sii_im = datasets[selected_dataset][trace_dataset + QString("_im")];
-
-      double Z0 = datasets[selected_dataset]["Z0"].first();
-
-      for (int i = 0; i < frequencies.size(); i++) {
-        std::complex<double> sii(sii_re[i], sii_im[i]);
-        std::complex<double> gamma = sii; // Reflection coefficient
-        std::complex<double> impedance = Z0 * (1.0 + gamma) / (1.0 - gamma); // Convert to impedance
-        impedances.push_back(impedance);
-      }
-
-      // Set the impedance data to the Smith Chart widget
-      SmithChartWidget::Trace new_trace;
-      new_trace.impedances = impedances;
-      new_trace.frequencies = frequencies;
-      new_trace.pen = pen;
-      new_trace.Z0 = Z0;
-
-      SmithChartTraces.append(new_trace);
-
-      trace_dataset.chop(1);
-      QString TraceName = selected_dataset + QString(".") + trace_dataset;
-      smithChart->addTrace(TraceName, new_trace);
-
-    } else {
-      if (selected_trace.contains("Polar")) {
-
-        QString trace_dataset = selected_trace.replace("_Polar", "");
-
-        // Polar plot
-        QList<double> frequencies = datasets[selected_dataset]["frequency"];
-        QList<double> sij_re = datasets[selected_dataset][trace_dataset + QString("_re")];
-        QList<double> sij_im = datasets[selected_dataset][trace_dataset + QString("_im")];
-
-        QList<std::complex<double>> S;
-        for (int i = 0; i < frequencies.size(); i++) {
-          std::complex<double> sij(sij_re[i], sij_im[i]);
-          S.push_back(sij);
-        }
-
-        // Set the data to the Polar Chart widget
-        PolarPlotWidget::Trace new_trace;
-        new_trace.frequencies = frequencies;
-        new_trace.values = S;
-        new_trace.pen = pen;
-
-        PolarChartTraces.append(new_trace);
-
-        trace_dataset.chop(1);
-        QString TraceName = selected_dataset + QString(".") + trace_dataset;
-        polarChart->addTrace(TraceName, new_trace);
-      } else {
-        if (selected_trace.contains("Group Delay")) {
-
-          // Group Delay plot
-          QList<double> frequencies = datasets[selected_dataset]["frequency"];
-
-                 // The group delay is not automatically calculated when a dataset is loaded, so it is fairly possible that at this point
-                 // the group delay trace does not exist. In that case, we need to calculate it.
-          if (datasets[selected_dataset][selected_trace].isEmpty()) {
-            calculate_Sparameter_trace(selected_dataset, selected_trace);
-          }
-
-          QList<double> trace_data = datasets[selected_dataset][selected_trace];
-
-          RectangularPlotWidget::Trace new_trace;
-          new_trace.frequencies = frequencies;
-          new_trace.trace = trace_data;
-          new_trace.pen = pen;
-          new_trace.units = QString("ns");
-          new_trace.y_axis = 1;
-          new_trace.y_axis_title = QString("Time (ns)");
-
-          GroupDelayTraces.append(new_trace);
-
-          QString TraceName = selected_dataset + QString(".") + selected_trace;
-          GroupDelayChart->addTrace(TraceName, new_trace);
-        } else {
-          // Natural units
-          QString trace_dataset = selected_trace.replace("_n.u.", "");
-
-          QList<double> frequencies = datasets[selected_dataset]["frequency"];
-
-                 // Check if the user wants to display a S-parameter. In that case, the real part will be displayed wrt the left y-axis and the
-                 // imaginary part will be displayed wrt the right y-axis
-          if (selected_trace.startsWith("S")) {
-            // S-parameter. Real part -> left-y. Imaginary part -> right-y
-            QList<double> sij_re = datasets[selected_dataset][trace_dataset + QString("_re")];
-            QList<double> sij_im = datasets[selected_dataset][trace_dataset + QString("_im")];
-
-          } else {
-            // Not a S-parameter
-
-                   // The traces derived from S-parameter data are not pre-calculated (e.g. K, MAG, etc). They are computed upon user request.
-            if (datasets[selected_dataset][trace_dataset].isEmpty()) {
-              calculate_Sparameter_trace(selected_dataset, trace_dataset);
-            }
-
-            QList<double> trace_data = datasets[selected_dataset][trace_dataset];
-
-                   // Get units
-            QString units = QString("");
-
-                   // Set axis
-            int yaxis = 1;
-
-                   // Set y-axis title
-            QString y_axis_title;
-            if (selected_trace.contains("Im{")) {
-              yaxis = 2;
-              units = QString("Ω");
-              y_axis_title = QString("Reactance (Ω)");
-            } else {
-              if (selected_trace.contains("Re{")) {
-                y_axis_title = QString("Impedance (Ω)");
-                units = QString("Ω");
-              }
-            }
-
-            RectangularPlotWidget::Trace new_trace;
-            new_trace.frequencies = frequencies;
-            new_trace.trace = trace_data;
-            new_trace.pen = pen;
-            new_trace.units = units;
-            new_trace.y_axis = yaxis;
-            new_trace.y_axis_title = y_axis_title;
-
-            nuChartTraces.append(new_trace);
-
-            QString TraceName = selected_dataset + QString(".") + trace_dataset;
-            nuChart->addTrace(TraceName, new_trace);
-          }
-        }
-      }
+    for (int i = 0; i < frequencies.size(); i++) {
+      std::complex<double> sii(sii_re[i], sii_im[i]);
+      std::complex<double> gamma = sii; // Reflection coefficient
+      std::complex<double> impedance = Z0 * (1.0 + gamma) / (1.0 - gamma); // Convert to impedance
+      impedances.push_back(impedance);
     }
-   }
+
+    // Set the impedance data to the Smith Chart widget
+    SmithChartWidget::Trace new_trace;
+    new_trace.impedances = impedances;
+    new_trace.frequencies = frequencies;
+    new_trace.pen = pen;
+    new_trace.Z0 = Z0;
+
+    SmithChartTraces.append(new_trace);
+
+    QString TraceName = traceInfo.dataset + "." + traceInfo.parameter;
+    smithChart->addTrace(TraceName, new_trace);
+    break;
+  }
+
+  case DisplayMode::Polar: {
+    // Polar plot
+    QList<double> sij_re = datasets[traceInfo.dataset][traceInfo.parameter + "_re"];
+    QList<double> sij_im = datasets[traceInfo.dataset][traceInfo.parameter + "_im"];
+
+    QList<std::complex<double>> S;
+    for (int i = 0; i < frequencies.size(); i++) {
+      std::complex<double> sij(sij_re[i], sij_im[i]);
+      S.push_back(sij);
+    }
+
+    // Set the data to the Polar Chart widget
+    PolarPlotWidget::Trace new_trace;
+    new_trace.frequencies = frequencies;
+    new_trace.values = S;
+    new_trace.pen = pen;
+
+    PolarChartTraces.append(new_trace);
+
+    QString TraceName = traceInfo.dataset + "." + traceInfo.parameter;
+    polarChart->addTrace(TraceName, new_trace);
+    break;
+  }
+
+  case DisplayMode::GroupDelay: {
+    // Group Delay trace name
+    QString fullParam = traceInfo.parameter + "_Group Delay";
+
+    // Calculate if needed
+    if (datasets[traceInfo.dataset][fullParam].isEmpty()) {
+      calculate_Sparameter_trace(traceInfo.dataset, fullParam);
+    }
+
+    QList<double> trace_data = datasets[traceInfo.dataset][fullParam];
+
+    RectangularPlotWidget::Trace new_trace;
+    new_trace.frequencies = frequencies;
+    new_trace.trace = trace_data;
+    new_trace.pen = pen;
+    new_trace.units = "ns";
+    new_trace.y_axis = 1;
+    new_trace.y_axis_title = "Time (ns)";
+
+    GroupDelayTraces.append(new_trace);
+
+    QString TraceName = traceInfo.dataset + "." + fullParam;
+    GroupDelayChart->addTrace(TraceName, new_trace);
+    break;
+  }
+
+  case DisplayMode::NaturalUnits: {
+    // Handle natural units display
+    if (traceInfo.parameter.startsWith("S")) {
+      // S-parameter. Real part -> left-y. Imaginary part -> right-y
+      QList<double> sij_re = datasets[traceInfo.dataset][traceInfo.parameter + "_re"];
+      QList<double> sij_im = datasets[traceInfo.dataset][traceInfo.parameter + "_im"];
+
+      // Add appropriate handling for S-parameters in natural units
+      // (This part of the code wasn't fully implemented in the original)
+    } else {
+      // Other parameters (like Re{Zin}, Im{Zin}, etc.)
+      // Calculate if needed
+      if (datasets[traceInfo.dataset][traceInfo.parameter].isEmpty()) {
+        calculate_Sparameter_trace(traceInfo.dataset, traceInfo.parameter);
+      }
+
+      QList<double> trace_data = datasets[traceInfo.dataset][traceInfo.parameter];
+
+      // Determine display characteristics
+      QString units = "";
+      int yaxis = 1;
+      QString y_axis_title;
+
+      if (traceInfo.parameter.contains("Im{")) {
+        yaxis = 2;
+        units = "Ω";
+        y_axis_title = "Reactance (Ω)";
+      } else if (traceInfo.parameter.contains("Re{")) {
+        y_axis_title = "Impedance (Ω)";
+        units = "Ω";
+      }
+
+      RectangularPlotWidget::Trace new_trace;
+      new_trace.frequencies = frequencies;
+      new_trace.trace = trace_data;
+      new_trace.pen = pen;
+      new_trace.units = units;
+      new_trace.y_axis = yaxis;
+      new_trace.y_axis_title = y_axis_title;
+
+      nuChartTraces.append(new_trace);
+
+      QString TraceName = traceInfo.dataset + "." + traceInfo.parameter;
+      nuChart->addTrace(TraceName, new_trace);
+    }
+    break;
+  }
+  }
 }
+
 
 
 // This function is used for setting the available traces depending on the selected dataset
@@ -3222,8 +3230,44 @@ void Qucs_S_SPAR_Viewer::loadSession(QString session_file) {
             int width = xml.attributes().value("width").toString().toInt(); // Read width from attributes
             QString style = xml.attributes().value("style").toString(); // Read style from attributes
 
-                   // Add the trace
-            addTrace(dataset, traceName, color, width, style);
+            // Parse the traceName to determine parameter and display mode
+            QString parameter;
+            DisplayMode displayMode;
+
+            // Assuming the format is like "S11_dB", "S21_Smith", etc.
+            if (traceName.contains("_")) {
+              // Split parameter and mode
+              parameter = traceName.left(traceName.indexOf('_'));
+              QString modeName = traceName.mid(traceName.indexOf('_') + 1);
+
+              // Determine display mode from string
+              if (modeName == "dB") {
+                displayMode = DisplayMode::Magnitude_dB;
+              } else if (modeName == "Phase") {
+                displayMode = DisplayMode::Phase;
+              } else if (modeName == "Smith") {
+                displayMode = DisplayMode::Smith;
+              } else if (modeName == "Polar") {
+                displayMode = DisplayMode::Polar;
+              } else if (modeName == "n.u.") {
+                displayMode = DisplayMode::NaturalUnits;
+              } else if (modeName == "Group Delay") {
+                displayMode = DisplayMode::GroupDelay;
+              } else {
+                // Default case or handle error
+                displayMode = DisplayMode::Magnitude_dB;
+              }
+            } else {
+              // If no underscore, assume the whole name is the parameter and use Magnitude_dB as default
+              parameter = traceName;
+              displayMode = DisplayMode::NaturalUnits; // Assuming this is appropriate for parameters like "Re{Zin}"
+            }
+
+            // Create TraceInfo struct
+            TraceInfo traceInfo = {dataset, parameter, displayMode};
+
+            // Add the trace
+            addTrace(traceInfo, color, width, style);
           }
           xml.readNext();
         }
