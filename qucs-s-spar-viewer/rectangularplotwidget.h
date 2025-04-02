@@ -73,6 +73,8 @@ public:
   QString getXunits();
   int getFreqIndex();
 
+  void updatePlot();
+
   void setRightYAxisEnabled(bool enabled);
   bool isRightYAxisEnabled() const;
 
@@ -146,7 +148,6 @@ private:
   QList<QGraphicsTextItem*> intersectionLabels;
 
   QGridLayout* setupAxisSettings();
-  void updatePlot();
   void clearGraphicsItems();
 
   int getYAxisTraceCount() const;

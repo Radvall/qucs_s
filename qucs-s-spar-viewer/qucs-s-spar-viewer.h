@@ -125,12 +125,19 @@ class Qucs_S_SPAR_Viewer : public QMainWindow
   void addFile();
   void addFiles(QStringList);
   QMap<QString, QList<double>> readTouchstoneFile(const QString& filePath);
+  QMap<QString, QList<double>> readQucsDataset(const QString& filePath);
+  QString extractSParamIndices(const QString& sparam);
   void applyDefaultVisualizations(const QStringList& fileNames);
-  void addOptionalTraces(QMap<QString, QList<double>>& file_data, int number_of_ports);
+  void addOptionalTraces(QMap<QString, QList<double>>& file_data);
   void removeFile();
   void removeFile(int);
   void removeAllFiles();
   void CreateFileWidgets(QString filename, int position);
+
+  // File watching functions
+  void setupFileWatcher();
+  void fileChanged(const QString &path);
+  void directoryChanged(const QString &path);
 
   void addTrace();
   void addTrace(const TraceInfo& traceInfo, QColor trace_color, int trace_width, QString trace_style = "Solid");
@@ -171,6 +178,8 @@ class Qucs_S_SPAR_Viewer : public QMainWindow
   void coupleSpinBoxes();
 
   void updateGridLayout(QGridLayout*);
+  void updateAllPlots(const QString& datasetName);
+  void updateTracesInWidget(QWidget* widget, const QString& datasetName);
 
   void calculate_Sparameter_trace(QString, QString);
 
@@ -230,6 +239,10 @@ class Qucs_S_SPAR_Viewer : public QMainWindow
       ...       |          ...
   Filenamek.s3p | {"freq", "S11_dB", ..., "S33_ang"}
   */
+
+  // File watching variables
+  QFileSystemWatcher *fileWatcher;
+  QMap<QString, QString> watchedFilePaths;
 
   // Rectangular plot
   RectangularPlotWidget *Magnitude_PhaseChart;

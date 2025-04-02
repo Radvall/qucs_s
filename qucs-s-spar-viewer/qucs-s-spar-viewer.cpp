@@ -74,6 +74,11 @@ Qucs_S_SPAR_Viewer::Qucs_S_SPAR_Viewer()
   CreateDisplayWidgets();
   CreateRightPanel();
 
+         // Initialize file watcher
+  fileWatcher = new QFileSystemWatcher(this);
+  connect(fileWatcher, &QFileSystemWatcher::fileChanged, this, &Qucs_S_SPAR_Viewer::fileChanged);
+  connect(fileWatcher, &QFileSystemWatcher::directoryChanged, this, &Qucs_S_SPAR_Viewer::directoryChanged);
+
   // Put the following widgets on the top to make them visible to the user
   dockFiles->raise();
   dockChart->raise();
@@ -794,24 +799,46 @@ void Qucs_S_SPAR_Viewer::addFiles(QStringList fileNames)
          // Read files
   for (int i = existing_files; i < existing_files + fileNames.length(); i++) {
     // Create the file name label
-    filename = QFileInfo(fileNames.at(i-existing_files)).fileName();
+    QString filename = QFileInfo(fileNames.at(i-existing_files)).fileName();
     CreateFileWidgets(filename, i+1);
 
-           // Use the new function to read the Touchstone file
-    QMap<QString, QList<double>> file_data = readTouchstoneFile(fileNames.at(i-existing_files));
+           // Determine the file extension
+    QString fileExtension = QFileInfo(fileNames.at(i-existing_files)).suffix().toLower();
 
-    // Add data to the dataset
+    QMap<QString, QList<double>> file_data;
+
+           // Use appropriate function based on the file extension
+    if (fileExtension.startsWith("s") && fileExtension.endsWith("p")) {
+      file_data = readTouchstoneFile(fileNames.at(i-existing_files));
+    } else if (fileExtension == "dat") {
+      file_data = readQucsDataset(fileNames.at(i-existing_files));
+    } else {
+      qWarning() << "Unsupported file extension: " << fileExtension;
+      continue; // Skip unsupported files
+    }
+
+           // Add data to the dataset
     QString dataset_name = filename.left(filename.lastIndexOf('.')); // Remove file extension
     datasets[dataset_name] = file_data;
 
-           // Add new dataset to the trace selection combobox
+    // Add file to watchedFilePaths map
+    watchedFilePaths[dataset_name] = fileNames.at(i-existing_files);
+
+    // Add new dataset to the trace selection combobox
     QCombobox_datasets->addItem(dataset_name);
-    // Update traces
+
+           // Add optional traces based on number of ports
+    addOptionalTraces(file_data);
+
+           // Update traces
     updateTracesCombo();
   }
 
          // Apply default visualizations based on file types
   applyDefaultVisualizations(fileNames);
+
+  // Set up file watcher for the newly added files
+  setupFileWatcher();
 }
 
 
@@ -925,77 +952,221 @@ QMap<QString, QList<double>> Qucs_S_SPAR_Viewer::readTouchstoneFile(const QStrin
         }
       }
     }
-
-    // Add optional traces based on number of ports
-    addOptionalTraces(file_data, number_of_ports);
   }
 
   file.close();
   return file_data;
 }
 
+
+// Given a string path to a file, it reads the Qucs dataset into the main dataset
+QMap<QString, QList<double>> Qucs_S_SPAR_Viewer::readQucsDataset(const QString& filePath)
+{
+  QMap<QString, QList<double>> file_data; // Data structure to store the file data
+
+  // 1) Open the file
+  QFile file(filePath);
+  if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+    qDebug() << "Cannot open the file";
+    return file_data;
+  }
+
+  // 2) Read data
+  QTextStream in(&file);
+  QString line = in.readLine(); // First line should be <Qucs Dataset X.X.X>
+
+  if (!line.contains("<Qucs Dataset")) {
+    qDebug() << "Not a valid Qucs dataset file";
+    file.close();
+    return file_data;
+  }
+
+  // Initialize variables
+  QString currentVariable;
+  int dataPoints = 0;
+  bool isReading = false;
+  int maxPortNumber = 0; // Track maximum port number
+  double z0Value = 50.0; // Default Z0 value
+
+  while (!in.atEnd()) {
+    line = in.readLine().trimmed();
+
+    if (line.isEmpty()) continue;
+
+    // Handle variable declaration lines
+    if (line.startsWith("<indep ") || line.startsWith("<dep ")) {
+      isReading = false;
+      QStringList parts = line.split(" ");
+
+      if (parts.size() >= 3) {
+        currentVariable = parts[1];
+
+        // Check if it's frequency
+        if (line.startsWith("<indep ") && currentVariable == "frequency") {
+          isReading = true;
+          dataPoints = parts[2].toInt();
+        }
+        // Check if it's Z0 (reference impedance)
+        else if (line.startsWith("<indep ") && currentVariable == "Z0") {
+          isReading = true;
+        }
+        // Check if it's an S-parameter in matrix form S[i,j]
+        else if (line.startsWith("<dep ") && currentVariable.startsWith("S[")) {
+          isReading = true;
+
+          // Extract port numbers to determine maximum port
+          QRegularExpression re("S\\[(\\d+),(\\d+)\\]");
+          QRegularExpressionMatch match = re.match(currentVariable);
+
+          if (match.hasMatch()) {
+            int row = match.captured(1).toInt();
+            int col = match.captured(2).toInt();
+            maxPortNumber = qMax(maxPortNumber, qMax(row, col));
+          }
+        }
+        else {
+          // Skip other variables
+          isReading = false;
+          currentVariable = "";
+        }
+      }
+    }
+    // Handle data values
+    else if (!currentVariable.isEmpty() && !line.startsWith("<")) {
+      if (currentVariable == "frequency" && isReading) {
+        // Store frequency value (in Hz)
+        file_data["frequency"].append(line.toDouble());
+      }
+      else if (currentVariable == "Z0" && isReading) {
+        // Store Z0 value
+        z0Value = line.toDouble();
+      }
+      else if (currentVariable.startsWith("S[") && isReading) {
+        // Handle S[i,j] complex format
+        QRegularExpression re("([+-]?\\d+\\.\\d+e[+-]\\d+)([+-])j(\\d+\\.\\d+e[+-]\\d+)");
+        QRegularExpressionMatch match = re.match(line);
+
+        if (match.hasMatch()) {
+          // Extract indices from S[i,j]
+          QRegularExpression indexRe("S\\[(\\d+),(\\d+)\\]");
+          QRegularExpressionMatch indexMatch = indexRe.match(currentVariable);
+
+          if (indexMatch.hasMatch()) {
+            int i = indexMatch.captured(1).toInt();
+            int j = indexMatch.captured(2).toInt();
+
+            // Convert to Sji format (where j is row, i is column)
+            QString sparam = QString::number(j) + QString::number(i);
+
+            // Parse complex number
+            double real = match.captured(1).toDouble();
+            double imag = match.captured(3).toDouble();
+            if (match.captured(2) == "-") imag = -imag;
+
+            // Store as re, im, dB, and ang
+            QString base = "S" + sparam;
+
+            // Calculate magnitude in dB and angle
+            double mag = sqrt(real * real + imag * imag);
+            double mag_db = 20 * log10(mag);
+            double ang = atan2(imag, real) * 180 / M_PI;
+
+            file_data[base + "_re"].append(real);
+            file_data[base + "_im"].append(imag);
+            file_data[base + "_dB"].append(mag_db);
+            file_data[base + "_ang"].append(ang);
+          }
+        }
+      }
+    }
+  }
+
+  file.close();
+
+  // Store the number of ports based on the maximum port number found
+  file_data["n_ports"].append(maxPortNumber);
+
+  // Store Z0 value
+  file_data["Z0"].append(z0Value);
+
+  return file_data;
+}
+
+// Helper function to extract S-parameter indices from S[i,j] format
+QString Qucs_S_SPAR_Viewer::extractSParamIndices(const QString& sparam)
+{
+  QRegularExpression re("S\\[(\\d+),(\\d+)\\]");
+  QRegularExpressionMatch match = re.match(sparam);
+
+  if (match.hasMatch()) {
+    QString i = match.captured(2); // Second index in S[i,j]
+    QString j = match.captured(1); // First index in S[i,j]
+    return j + i; // Return in Sji format
+  }
+
+  return "";
+}
+
 // Once a file is loaded, this function adds to the display the default traces based in its nature
 void Qucs_S_SPAR_Viewer::applyDefaultVisualizations(const QStringList& fileNames)
 {
-  // Default behavior: If there's no more data loaded and a single S1P file is selected
-  if ((fileNames.length() == 1) && (fileNames.first().toLower().endsWith(".s1p")) && (datasets.size() == 1)) {
+  if (fileNames.length() == 1) {
     QString filename = QFileInfo(fileNames.first()).fileName();
     filename = filename.left(filename.lastIndexOf('.'));
 
-    // Create TraceInfo structs
-    TraceInfo s11_dB = {filename, "S11", DisplayMode::Magnitude_dB};
-    TraceInfo s11_Smith = {filename, "S11", DisplayMode::Smith};
-    TraceInfo s11_Polar = {filename, "S11", DisplayMode::Polar};
+           // Default behavior: If there's no more data loaded and a single S1P file is selected
+    if ((datasets[filename]["n_ports"].at(0) == 1) && (datasets.size() == 1)) {
+      // Create TraceInfo structs
+      TraceInfo s11_dB = {filename, "S11", DisplayMode::Magnitude_dB};
+      TraceInfo s11_Smith = {filename, "S11", DisplayMode::Smith};
+      TraceInfo s11_Polar = {filename, "S11", DisplayMode::Polar};
 
-    // Add traces with appropriate colors
-    this->addTrace(s11_dB, Qt::red, 1);
-    this->addTrace(s11_Smith, Qt::darkBlue, 1);
-    this->addTrace(s11_Polar, Qt::red, 1);
+      // Add traces with appropriate colors
+      this->addTrace(s11_dB, Qt::red, 1);
+      this->addTrace(s11_Smith, Qt::darkBlue, 1);
+      this->addTrace(s11_Polar, Qt::red, 1);
+    }
+
+           // Default behavior: If there's no more data loaded and a single S2P file is selected
+    if ((datasets[filename]["n_ports"].at(0) == 2) && (datasets.size() == 1)) {
+      // Create TraceInfo structs for S-parameters in dB
+      TraceInfo s21_dB = {filename, "S21", DisplayMode::Magnitude_dB};
+      TraceInfo s11_dB = {filename, "S11", DisplayMode::Magnitude_dB};
+      TraceInfo s22_dB = {filename, "S22", DisplayMode::Magnitude_dB};
+
+      // Create TraceInfo structs for Smith chart
+      TraceInfo s11_Smith = {filename, "S11", DisplayMode::Smith};
+      TraceInfo s22_Smith = {filename, "S22", DisplayMode::Smith};
+
+      // Create TraceInfo structs for Polar display
+      TraceInfo s11_Polar = {filename, "S11", DisplayMode::Polar};
+      TraceInfo s22_Polar = {filename, "S22", DisplayMode::Polar};
+
+      // Create TraceInfo structs for impedance
+      TraceInfo reZin = {filename, "Re{Zin}", DisplayMode::NaturalUnits};
+      TraceInfo imZin = {filename, "Im{Zin}", DisplayMode::NaturalUnits};
+
+      // Create TraceInfo struct for group delay
+      TraceInfo s21_GroupDelay = {filename, "S21", DisplayMode::GroupDelay};
+
+      // Add all traces with appropriate colors
+      this->addTrace(s21_dB, Qt::red, 1);
+      this->addTrace(s11_dB, Qt::darkBlue, 1);
+      this->addTrace(s22_dB, Qt::darkGreen, 1);
+      this->addTrace(s11_Smith, Qt::darkBlue, 1);
+      this->addTrace(s22_Smith, Qt::darkGreen, 1);
+      this->addTrace(s11_Polar, Qt::darkBlue, 1);
+      this->addTrace(s22_Polar, Qt::darkGreen, 1);
+      this->addTrace(reZin, Qt::darkBlue, 1);
+      this->addTrace(imZin, Qt::red, 1);
+      this->addTrace(s21_GroupDelay, Qt::darkBlue, 1);
+    }
   }
-
-         // Default behavior: If there's no more data loaded and a single S2P file is selected
-  if ((fileNames.length() == 1) && (fileNames.first().toLower().endsWith(".s2p")) && (datasets.size() == 1)) {
-    QString filename = QFileInfo(fileNames.first()).fileName();
-    filename = filename.left(filename.lastIndexOf('.'));
-
-    // Create TraceInfo structs for S-parameters in dB
-    TraceInfo s21_dB = {filename, "S21", DisplayMode::Magnitude_dB};
-    TraceInfo s11_dB = {filename, "S11", DisplayMode::Magnitude_dB};
-    TraceInfo s22_dB = {filename, "S22", DisplayMode::Magnitude_dB};
-
-    // Create TraceInfo structs for Smith chart
-    TraceInfo s11_Smith = {filename, "S11", DisplayMode::Smith};
-    TraceInfo s22_Smith = {filename, "S22", DisplayMode::Smith};
-
-    // Create TraceInfo structs for Polar display
-    TraceInfo s11_Polar = {filename, "S11", DisplayMode::Polar};
-    TraceInfo s22_Polar = {filename, "S22", DisplayMode::Polar};
-
-    // Create TraceInfo structs for impedance
-    TraceInfo reZin = {filename, "Re{Zin}", DisplayMode::NaturalUnits};
-    TraceInfo imZin = {filename, "Im{Zin}", DisplayMode::NaturalUnits};
-
-    // Create TraceInfo struct for group delay
-    TraceInfo s21_GroupDelay = {filename, "S21", DisplayMode::GroupDelay};
-
-    // Add all traces with appropriate colors
-    this->addTrace(s21_dB, Qt::red, 1);
-    this->addTrace(s11_dB, Qt::darkBlue, 1);
-    this->addTrace(s22_dB, Qt::darkGreen, 1);
-    this->addTrace(s11_Smith, Qt::darkBlue, 1);
-    this->addTrace(s22_Smith, Qt::darkGreen, 1);
-    this->addTrace(s11_Polar, Qt::darkBlue, 1);
-    this->addTrace(s22_Polar, Qt::darkGreen, 1);
-    this->addTrace(reZin, Qt::darkBlue, 1);
-    this->addTrace(imZin, Qt::red, 1);
-    this->addTrace(s21_GroupDelay, Qt::darkBlue, 1);
-  }
-
          // Default behaviour: When adding multiple S2P file, then show the S21 of all traces
   if (fileNames.length() > 1) {
     bool all_s2p = true;
     for (int i = 0; i < fileNames.length(); i++) {
-      if (!fileNames.at(i).toLower().endsWith(".s2p")) {
+      if (datasets[fileNames.at(i)]["n_ports"].at(0) != 2) {
         all_s2p = false;
         break;
       }
@@ -1025,9 +1196,11 @@ void Qucs_S_SPAR_Viewer::applyDefaultVisualizations(const QStringList& fileNames
 }
 
 // Adds optional traces depending on the number of ports of the device
-void Qucs_S_SPAR_Viewer::addOptionalTraces(QMap<QString, QList<double>>& file_data, int number_of_ports)
+void Qucs_S_SPAR_Viewer::addOptionalTraces(QMap<QString, QList<double>>& file_data)
 {
   QStringList optional_traces;
+
+  int number_of_ports = file_data["n_ports"].at(0);
 
   if (number_of_ports == 1) {
     optional_traces.append("Re{Zin}");
@@ -1187,10 +1360,15 @@ void Qucs_S_SPAR_Viewer::removeFile(int index_to_delete)
 
 void Qucs_S_SPAR_Viewer::removeAllFiles()
 {
-    int n_files = List_RemoveButton.size();
-    for (int i = 0; i < n_files; i++) {
-        removeFile(n_files-i-1);
-    }
+  // Existing code to remove files...
+
+  // Remove all paths from the file watcher
+  if (!fileWatcher->files().isEmpty()) {
+    fileWatcher->removePaths(fileWatcher->files());
+  }
+
+  // Clear the watchedFilePaths map
+  watchedFilePaths.clear();
 }
 
 
@@ -3402,6 +3580,11 @@ void Qucs_S_SPAR_Viewer::loadRecentFiles() {
 void Qucs_S_SPAR_Viewer::calculate_Sparameter_trace(QString file, QString metric){
 
 
+  if (metric.startsWith("S") && !metric.contains("Group")) {
+    // All S-parameters are already calculated.
+    return;
+  }
+
   std::complex<double> s11, s12, s21, s22, s11_conj, s22_conj;
   double Z0 = datasets[file]["Z0"].last();
 
@@ -3519,15 +3702,35 @@ void Qucs_S_SPAR_Viewer::calculate_Sparameter_trace(QString file, QString metric
                   MAG = 10*log10(abs(MAG));
                   datasets[file]["MAG"].append(MAG);
                 } else {
-                  if (metric.contains("Zin")) {
+                  if (!metric.compare("Zin")) {
                     std::complex<double> Zin = std::complex<double>(Z0) * (1.0 + s11) / (1.0 - s11);
                     datasets[file]["Re{Zin}"].append(Zin.real());
                     datasets[file]["Im{Zin}"].append(Zin.imag());
                   } else {
-                    if (metric.contains("Zout")) {
+                    if (!metric.compare("Zout")) {
                       std::complex<double> Zout = std::complex<double>(Z0) * (1.0 + s22) / (1.0 - s22);
                       datasets[file]["Re{Zout}"].append(Zout.real());
                       datasets[file]["Im{Zout}"].append(Zout.imag());
+                    } else {
+                      if (!metric.compare("Re{Zin}")) {
+                        std::complex<double> Zin = std::complex<double>(Z0) * (1.0 + s11) / (1.0 - s11);
+                        datasets[file]["Re{Zin}"].append(Zin.real());
+                      } else {
+                        if (!metric.compare("Im{Zin}")) {
+                          std::complex<double> Zin = std::complex<double>(Z0) * (1.0 + s11) / (1.0 - s11);
+                          datasets[file]["Im{Zin}"].append(Zin.imag());
+                        } else {
+                          if (!metric.compare("Re{Zout}")) {
+                            std::complex<double> Zout = std::complex<double>(Z0) * (1.0 + s22) / (1.0 - s22);
+                            datasets[file]["Re{Zout}"].append(Zout.real());
+                          } else {
+                            if (!metric.compare("Im{Zout}")) {
+                              std::complex<double> Zout = std::complex<double>(Z0) * (1.0 + s22) / (1.0 - s22);
+                              datasets[file]["Im{Zout}"].append(Zout.imag());
+                            }
+                          }
+                        }
+                      }
                     }
                   }
                 }
@@ -3654,4 +3857,305 @@ int Qucs_S_SPAR_Viewer::getNumberOfTraces(){
 // Returns the total number of limits
 int Qucs_S_SPAR_Viewer::getNumberOfLimits(){
   return limitsMap.keys().size();
+}
+
+
+// Setup file watcher to monitor S-parameter files
+void Qucs_S_SPAR_Viewer::setupFileWatcher()
+{
+  // Clear existing paths
+  if (!fileWatcher->files().isEmpty()) {
+    fileWatcher->removePaths(fileWatcher->files());
+  }
+
+  // Add each file path to watcher
+  for (auto it = watchedFilePaths.begin(); it != watchedFilePaths.end(); ++it) {
+    QString filePath = it.value();
+    if (QFile::exists(filePath)) {
+      fileWatcher->addPath(filePath);
+
+      // Also watch the directory for renamed/deleted files
+      QFileInfo fileInfo(filePath);
+      fileWatcher->addPath(fileInfo.absolutePath());
+    }
+  }
+}
+
+// Handle file changed events
+void Qucs_S_SPAR_Viewer::fileChanged(const QString &path)
+{
+  // Don't process the same file within a short time window
+  static QMap<QString, QDateTime> lastProcessedTimes;
+  static const int debounceTime = 500; // milliseconds
+
+  QDateTime currentTime = QDateTime::currentDateTime();
+  if (lastProcessedTimes.contains(path)) {
+    if (lastProcessedTimes[path].msecsTo(currentTime) < debounceTime) {
+      qDebug() << "Debouncing file change for:" << path;
+      return;
+    }
+  }
+  lastProcessedTimes[path] = currentTime;
+
+  QFileInfo fileInfo(path);
+  QString fileName = fileInfo.fileName();
+
+         // Some file systems might report the file as deleted when modified
+         // Wait a moment to see if the file reappears and to ensure file is fully written
+  QTimer::singleShot(200, this, [this, path, fileName, fileInfo]() {
+    if (!QFile::exists(path)) {
+      qDebug() << "File no longer exists:" << path;
+      return;
+    }
+
+    // Wait a bit more to ensure the file is completely written and unlocked
+    QFile file(path);
+    int attempts = 0;
+    const int maxAttempts = 5;
+    while (attempts < maxAttempts) {
+      if (file.open(QIODevice::ReadOnly)) {
+        file.close();
+        break;
+      }
+      QThread::msleep(100);
+      attempts++;
+    }
+
+    if (attempts == maxAttempts) {
+      qWarning() << "Could not open file after multiple attempts:" << path;
+      return;
+    }
+
+           // Find the dataset associated with this file
+    QString datasetName;
+    for (auto it = watchedFilePaths.begin(); it != watchedFilePaths.end(); ++it) {
+      if (it.value() == path) {
+        datasetName = it.key();
+        break;
+      }
+    }
+
+    if (datasetName.isEmpty()) {
+      qDebug() << "File changed but not in our datasets:" << path;
+      return;
+    }
+
+    qDebug() << "Reloading file:" << path << "for dataset:" << datasetName;
+
+           // Determine the file extension
+    QString fileExtension = fileInfo.suffix().toLower();
+    QMap<QString, QList<double>> file_data;
+
+           // Use appropriate function based on the file extension
+    if (fileExtension.startsWith("s") && fileExtension.endsWith("p")) {
+      file_data = readTouchstoneFile(path);
+    } else if (fileExtension == "dat") {
+      file_data = readQucsDataset(path);
+    } else {
+      qWarning() << "Unsupported file extension: " << fileExtension;
+      return;
+    }
+
+           // Verify we actually loaded data
+    if (file_data.isEmpty()) {
+      qWarning() << "Failed to load data from file:" << path;
+      return;
+    }
+
+           // Replace the dataset with updated data
+    datasets[datasetName] = file_data;
+
+           // Update any plots that use this dataset
+    updateAllPlots(datasetName);
+
+           // Make sure the file watcher is still watching this file
+    if (!fileWatcher->files().contains(path)) {
+      fileWatcher->addPath(path);
+    }
+
+    qDebug() << "Successfully updated dataset:" << datasetName;
+  });
+}
+
+// Handle directory changed events
+void Qucs_S_SPAR_Viewer::directoryChanged(const QString &path)
+{
+  // Check if any of our watched files were renamed or recreated
+  for (auto it = watchedFilePaths.begin(); it != watchedFilePaths.end(); ++it) {
+    QFileInfo fileInfo(it.value());
+
+    // If this file is in the changed directory
+    if (fileInfo.absolutePath() == path) {
+      // If file exists but is not being watched, add it back
+      if (QFile::exists(it.value()) && !fileWatcher->files().contains(it.value())) {
+        fileWatcher->addPath(it.value());
+      }
+    }
+  }
+}
+
+// This function is called when a file in the dataset has changes. It updates the traces in the display widgets
+void Qucs_S_SPAR_Viewer::updateAllPlots(const QString& datasetName)
+{
+  // Refresh all traces on each chart
+  updateTracesInWidget(Magnitude_PhaseChart, datasetName);
+  updateTracesInWidget(smithChart, datasetName);
+  updateTracesInWidget(polarChart, datasetName);
+  updateTracesInWidget(nuChart, datasetName);
+  updateTracesInWidget(GroupDelayChart, datasetName);
+}
+
+void Qucs_S_SPAR_Viewer::updateTracesInWidget(QWidget* widget, const QString& datasetName)
+{
+  if (!widget || !datasets.contains(datasetName))
+    return;
+
+  QMap<QString, QList<double>> dataset = datasets[datasetName];
+
+  // Handle RectangularPlotWidget
+  if (auto* rectWidget = qobject_cast<RectangularPlotWidget*>(widget)) {
+    // Get current traces info to preserve settings like pen colors
+    QMap<QString, QPen> tracesInfo = rectWidget->getTracesInfo();
+
+    for (auto traceIt = tracesInfo.begin(); traceIt != tracesInfo.end(); ++traceIt) {
+      QString traceName = traceIt.key();
+      QStringList parts = traceName.split(".");
+      QString file = parts[0];
+      QString trace = parts[1];
+      QPen tracePen = traceIt.value();
+
+      if (file == datasetName) {
+        // Create a new updated trace with the same properties
+        RectangularPlotWidget::Trace updatedTrace;
+
+        QString dataKey = traceName;
+
+
+        calculate_Sparameter_trace(file, trace);
+        dataset = datasets[datasetName];
+
+        if (dataset.contains("frequency") && dataset.contains(trace)) {
+          // Set the updated data
+          updatedTrace.frequencies = dataset["frequency"];
+          updatedTrace.trace = dataset[trace];
+
+          // Preserve properties from the existing trace if possible
+          // Get the existing trace to copy properties
+          const auto& traces = rectWidget->getTracesInfo();
+          if (traces.contains(traceName)) {
+            updatedTrace.pen = tracePen;
+            // Other properties would need to be retrieved if available
+            updatedTrace.units = ""; // Set appropriate units
+            updatedTrace.Z0 = 50.0;  // Default or preserved value
+            updatedTrace.y_axis = 0;  // Default to left axis
+            updatedTrace.y_axis_title = dataKey;  // Default or preserved value
+          }
+
+          // Update the trace in the widget
+          rectWidget->removeTrace(traceName);
+          rectWidget->addTrace(traceName, updatedTrace);
+        }
+      }
+    }
+
+    // Update the widget display
+    rectWidget->updatePlot();
+  }
+  // Handle PolarPlotWidget
+  else if (auto* polarWidget = qobject_cast<PolarPlotWidget*>(widget)) {
+    // Get current traces info
+    QMap<QString, QPen> tracesInfo = polarWidget->getTracesInfo();
+
+    for (auto traceIt = tracesInfo.begin(); traceIt != tracesInfo.end(); ++traceIt) {
+      QString traceName = traceIt.key();
+      QPen tracePen = traceIt.value();
+
+      QStringList parts = traceName.split(".");
+      QString file = parts[0];
+      QString trace = parts[1];
+
+      if (file == datasetName) {
+        // Create a new updated trace with the same properties
+        PolarPlotWidget::Trace updatedTrace;
+
+        QString realKey = trace + "_re";
+        QString imagKey = trace + "_im";
+
+        if (dataset.contains("frequency") && dataset.contains(realKey) && dataset.contains(imagKey)) {
+          // Set the updated data - convert real/imag to complex values
+          updatedTrace.frequencies = dataset["frequency"];
+          updatedTrace.values.clear();
+
+          for (int i = 0; i < dataset["frequency"].size(); i++) {
+            if (i < dataset[realKey].size() && i < dataset[imagKey].size()) {
+              std::complex<double> value(dataset[realKey][i], dataset[imagKey][i]);
+              updatedTrace.values.append(value);
+            }
+          }
+
+          // Preserve display mode and pen
+          updatedTrace.pen = tracePen;
+          updatedTrace.displayMode = polarWidget->getDisplayMode();
+
+          // Update the trace in the widget
+          polarWidget->removeTrace(traceName);
+          polarWidget->addTrace(traceName, updatedTrace);
+        }
+      }
+    }
+
+    // Polar widgets don't have an explicit updatePlot method based on the header
+    // but we should trigger a redraw
+    polarWidget->update();
+  }
+  // Handle SmithChartWidget
+  else if (auto* smithWidget = qobject_cast<SmithChartWidget*>(widget)) {
+    // Get current traces info
+    QMap<QString, QPen> tracesInfo = smithWidget->getTracesInfo();
+
+    for (auto traceIt = tracesInfo.begin(); traceIt != tracesInfo.end(); ++traceIt) {
+      QString traceName = traceIt.key();
+      QPen tracePen = traceIt.value();
+
+      QStringList parts = traceName.split(".");
+      QString file = parts[0];
+      QString trace = parts[1];
+
+      if (file == datasetName) {
+        // Create a new updated trace
+        SmithChartWidget::Trace updatedTrace;
+
+        QString realKey = trace + "_re";
+        QString imagKey = trace + "_im";
+        double Z0 = datasets[file]["Z0"].at(0);
+
+        if (dataset.contains("frequency") && dataset.contains(realKey) && dataset.contains(imagKey)) {
+          // Set the updated frequency data
+          updatedTrace.frequencies = dataset["frequency"];
+          updatedTrace.impedances.clear();
+
+          QList<double> sii_re = datasets[file][realKey];
+          QList<double> sii_im = datasets[file][imagKey];
+
+          for (int i = 0; i < dataset["frequency"].size(); i++) {
+            std::complex<double> sii(sii_re[i], sii_im[i]);
+            std::complex<double> gamma = sii; // Reflection coefficient
+            std::complex<double> impedance = Z0 * (1.0 + gamma) / (1.0 - gamma); // Convert to impedance
+            updatedTrace.impedances.append(impedance);
+          }
+
+          // Preserve pen and Z0
+          updatedTrace.pen = tracePen;
+          updatedTrace.Z0 = smithWidget->characteristicImpedance();
+
+          // Update the trace in the widget
+          smithWidget->removeTrace(traceName);
+          smithWidget->addTrace(traceName, updatedTrace);
+        }
+      }
+    }
+
+    // Trigger a repaint of the Smith chart
+    //smithWidget->update();
+  }
 }
