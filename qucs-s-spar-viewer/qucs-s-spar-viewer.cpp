@@ -258,7 +258,7 @@ void Qucs_S_SPAR_Viewer::setTraceManagementDock(){
   QLabel *displayTypeLabel = new QLabel("<b>Display Type</b>");
   DatasetsGrid->addWidget(displayTypeLabel, 0, 2, Qt::AlignCenter);
 
-  QCombobox_traces = new QComboBox();
+  QCombobox_traces = new MatrixComboBox();
   connect(QCombobox_traces, SIGNAL(currentIndexChanged(int)), SLOT(updateDisplayType()));
   DatasetsGrid->addWidget(QCombobox_traces, 1, 1);
 
@@ -1403,7 +1403,7 @@ void Qucs_S_SPAR_Viewer::addTrace()
 
          // Color settings
   QColor trace_color;
-  int num_traces = trace_list.size();
+  int num_traces = traceMap.size();
   if (num_traces >= 3) {
     trace_color = QColor(QRandomGenerator::global()->bounded(256),
                          QRandomGenerator::global()->bounded(256),
@@ -1420,13 +1420,13 @@ void Qucs_S_SPAR_Viewer::addTrace()
 // Overloaded method that uses the TraceInfo structure
 void Qucs_S_SPAR_Viewer::addTrace(const TraceInfo& traceInfo, QColor trace_color, int trace_width, QString trace_style)
 {
-  int n_trace = this->trace_list.size() + 1; // Number of displayed traces
+  int n_trace = this->traceMap.size() + 1; // Number of displayed traces
 
          // Get display name for the trace
   QString trace_name = traceInfo.displayName();
 
   // Check if the trace is already shown
-  if (trace_list.contains(trace_name)) {
+  if (traceMap.contains(trace_name)) {
     QMessageBox::information(
         this,
         tr("Warning"),
@@ -1528,7 +1528,6 @@ void Qucs_S_SPAR_Viewer::addTrace(const TraceInfo& traceInfo, QColor trace_color
          // Create the series for the trace
   QLineSeries* series = new QLineSeries();
   series->setName(trace_name);
-  trace_list.append(trace_name);
 
          // Color settings
   QPen pen;
@@ -1704,7 +1703,8 @@ void Qucs_S_SPAR_Viewer::addTrace(const TraceInfo& traceInfo, QColor trace_color
 void Qucs_S_SPAR_Viewer::updateTracesCombo()
 {
   QCombobox_traces->clear();
-  QStringList traces;
+  QStringList sParams;
+  QStringList otherParams;
   QString current_dataset = QCombobox_datasets->currentText();
   if (current_dataset.isEmpty()){
     return; // No datasets loaded. This happens if the user had one single file and deleted it
@@ -1714,31 +1714,31 @@ void Qucs_S_SPAR_Viewer::updateTracesCombo()
 
   for (int i = 1; i <= n_ports; i++) {
     for (int j = 1; j <= n_ports; j++) {
-      traces.append(QStringLiteral("S%1%2").arg(i).arg(j)); // Magnitude (dB)
+      sParams.append(QStringLiteral("S%1%2").arg(i).arg(j)); // Magnitude (dB)
     }
   }
 
   if (n_ports == 1) {
     // Additional traces
-    traces.append("Re{Zin}");
-    traces.append("Im{Zin}");
+    otherParams.append("Re{Zin}");
+    otherParams.append("Im{Zin}");
   }
 
   if (n_ports == 2) {
     // Additional traces
-    traces.append(QStringLiteral("|%1|").arg(QChar(0x0394)));
-    traces.append("K");
-    traces.append(QStringLiteral("%1%2").arg(QChar(0x03BC)).arg(QChar(0x209B)));
-    traces.append(QStringLiteral("%1%2").arg(QChar(0x03BC)).arg(QChar(0x209A)));
-    traces.append("MAG");
-    traces.append("MSG");
-    traces.append("Re{Zin}");
-    traces.append("Im{Zin}");
-    traces.append("Re{Zout}");
-    traces.append("Im{Zout}");
+    otherParams.append(QStringLiteral("|%1|").arg(QChar(0x0394)));
+    otherParams.append("K");
+    otherParams.append(QStringLiteral("%1%2").arg(QChar(0x03BC)).arg(QChar(0x209B)));
+    otherParams.append(QStringLiteral("%1%2").arg(QChar(0x03BC)).arg(QChar(0x209A)));
+    otherParams.append("MAG");
+    otherParams.append("MSG");
+    otherParams.append("Re{Zin}");
+    otherParams.append("Im{Zin}");
+    otherParams.append("Re{Zout}");
+    otherParams.append("Im{Zout}");
   }
 
-  QCombobox_traces->addItems(traces);
+  QCombobox_traces->setParameters(sParams, otherParams);
 }
 
 // This function adjust the display types available depending on the trace selected
@@ -2050,7 +2050,7 @@ int Qucs_S_SPAR_Viewer::findClosestIndex(const QList<double>& list, double value
 void Qucs_S_SPAR_Viewer::addMarker(double freq, QString Freq_Marker_Scale){
 
     // If there are no traces in the display, show a message and exit
-    if (trace_list.size() == 0){
+    if (traceMap.size() == 0){
       QMessageBox::information(
           this,
           tr("Warning"),
@@ -2713,7 +2713,7 @@ void Qucs_S_SPAR_Viewer::dropEvent(QDropEvent *event)
 void Qucs_S_SPAR_Viewer::addLimit(double f_limit1, QString f_limit1_unit, double f_limit2, QString f_limit2_unit, double y_limit1, double y_limit2, bool coupled)
 {
   // If there are no traces in the display, show a message and exit
-  if (trace_list.size() == 0){
+  if (traceMap.size() == 0){
     QMessageBox::information(
         this,
         tr("Warning"),

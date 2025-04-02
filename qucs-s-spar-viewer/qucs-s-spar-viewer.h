@@ -5,6 +5,7 @@
 #include "smithchartwidget.h"
 #include "rectangularplotwidget.h"
 #include "polarplotwidget.h"
+#include "matrixcombopopup.h"
 
 #include <QMainWindow>
 #include <QLabel>
@@ -210,7 +211,8 @@ class Qucs_S_SPAR_Viewer : public QMainWindow
   QStringList frequency_units;
 
   // Trace management widgets
-  QComboBox *QCombobox_datasets, *QCombobox_traces, *QCombobox_display_mode;
+  QComboBox *QCombobox_datasets, *QCombobox_display_mode;
+  MatrixComboBox *QCombobox_traces;
   QPushButton *Button_add_trace;
   QTableWidget *Traces_Widget;
 
@@ -228,10 +230,6 @@ class Qucs_S_SPAR_Viewer : public QMainWindow
       ...       |          ...
   Filenamek.s3p | {"freq", "S11_dB", ..., "S33_ang"}
   */
-
-  // Trace data
-  QList<QString> trace_list;
-  QMap<QString, QList<QString>> trace_properties;
 
   // Rectangular plot
   RectangularPlotWidget *Magnitude_PhaseChart;
