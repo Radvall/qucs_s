@@ -784,6 +784,13 @@ void Qucs_S_SPAR_Viewer::addFiles(QStringList fileNames)
     filename = QFileInfo(fileNames.at(i)).fileName();
     // Check if this file already exists
     QString new_filename = filename.left(filename.lastIndexOf('.'));
+
+    if (new_filename.endsWith(".dat")) {
+      // This file has extension .dat.ngspice
+      new_filename = new_filename.left(new_filename.length()-4);
+    }
+
+
     if (files_dataset.contains(new_filename)) {
       // Remove it from the list of new files to load
       fileNames.removeAt(i);
@@ -811,7 +818,9 @@ void Qucs_S_SPAR_Viewer::addFiles(QStringList fileNames)
     if (fileExtension.startsWith("s") && fileExtension.endsWith("p")) {
       file_data = readTouchstoneFile(fileNames.at(i-existing_files));
     } else if (fileExtension == "dat") {
-      file_data = readQucsDataset(fileNames.at(i-existing_files));
+      file_data = readQucsatorDataset(fileNames.at(i-existing_files));
+    } else if (fileExtension == "ngspice") {
+      file_data = readNGspiceData(fileNames.at(i-existing_files));
     } else {
       qWarning() << "Unsupported file extension: " << fileExtension;
       continue; // Skip unsupported files
@@ -819,6 +828,12 @@ void Qucs_S_SPAR_Viewer::addFiles(QStringList fileNames)
 
            // Add data to the dataset
     QString dataset_name = filename.left(filename.lastIndexOf('.')); // Remove file extension
+    if (fileExtension == "ngspice") {
+      // These files have extension .dat.ngspice. Remove the extension again to have only the file name
+      dataset_name = dataset_name.left(dataset_name.length()-4);
+    }
+
+
     datasets[dataset_name] = file_data;
 
     // Add file to watchedFilePaths map
@@ -960,7 +975,7 @@ QMap<QString, QList<double>> Qucs_S_SPAR_Viewer::readTouchstoneFile(const QStrin
 
 
 // Given a string path to a file, it reads the Qucs dataset into the main dataset
-QMap<QString, QList<double>> Qucs_S_SPAR_Viewer::readQucsDataset(const QString& filePath)
+QMap<QString, QList<double>> Qucs_S_SPAR_Viewer::readQucsatorDataset(const QString& filePath)
 {
   QMap<QString, QList<double>> file_data; // Data structure to store the file data
 
@@ -1092,6 +1107,147 @@ QMap<QString, QList<double>> Qucs_S_SPAR_Viewer::readQucsDataset(const QString& 
   return file_data;
 }
 
+
+QMap<QString, QList<double>> Qucs_S_SPAR_Viewer::readNGspiceData(const QString& filePath)
+{
+  QMap<QString, QList<double>> file_data; // Data structure to store the file data
+
+         // 1) Open the file
+  QFile file(filePath);
+  if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+    qDebug() << "Cannot open the file";
+    return file_data;
+  }
+
+         // 2) Read data
+  QTextStream in(&file);
+  QString line = in.readLine(); // First line should be <Qucs Dataset X.X.X>
+
+  if (!line.contains("<Qucs Dataset")) {
+    qDebug() << "Not a valid Qucs dataset file";
+    file.close();
+    return file_data;
+  }
+
+         // Initialize variables
+  QString currentVariable;
+  int dataPoints = 0;
+  bool isReading = false;
+  int maxPortNumber = 0; // Track maximum port number
+  double z0Value = 50.0; // Default Z0 value
+  bool z0Found = false;  // Flag to track if Z0 has been found
+
+  while (!in.atEnd()) {
+    line = in.readLine().trimmed();
+
+    if (line.isEmpty()) continue;
+
+           // Handle variable declaration lines
+    if (line.startsWith("<indep ") || line.startsWith("<dep ")) {
+      isReading = false;
+      QStringList parts = line.split(" ");
+
+      if (parts.size() >= 3) {
+        currentVariable = parts[1];
+
+               // Check if it's frequency
+        if (line.startsWith("<indep ") && currentVariable == "frequency") {
+          isReading = true;
+          dataPoints = parts[2].toInt();
+        }
+        // Check if it's the reference impedance Z0
+        else if (line.startsWith("<dep ") && currentVariable == "ac.z0") {
+          isReading = true;
+        }
+        // Check if it's an S-parameter in NGspice format ac.v(s_j_i)
+        else if (line.startsWith("<dep ") && currentVariable.contains("ac.v(s_")) {
+          isReading = true;
+
+                 // Extract port numbers to determine maximum port
+          QRegularExpression re("ac\\.v\\(s_(\\d+)_(\\d+)\\)");
+          QRegularExpressionMatch match = re.match(currentVariable);
+
+          if (match.hasMatch()) {
+            int row = match.captured(1).toInt();
+            int col = match.captured(2).toInt();
+            maxPortNumber = qMax(maxPortNumber, qMax(row, col));
+          }
+        }
+        else {
+          // Skip other variables (like y and z parameters)
+          isReading = false;
+          currentVariable = "";
+        }
+      }
+    }
+    // Handle data values
+    else if (!currentVariable.isEmpty() && !line.startsWith("<")) {
+      if (currentVariable == "frequency" && isReading) {
+        // Store frequency value (in Hz)
+        file_data["frequency"].append(line.toDouble());
+      }
+      else if (currentVariable == "ac.z0" && isReading && !z0Found) {
+        // Parse the Z0 value from complex format, only use the first value
+        QRegularExpression re("([+-]?\\d+\\.\\d+e[+-]\\d+)\\+j(\\d+\\.\\d+e[+-]\\d+)");
+        QRegularExpressionMatch match = re.match(line);
+
+        if (match.hasMatch()) {
+          // Only use the real part for Z0 (imaginary is typically 0)
+          z0Value = match.captured(1).toDouble();
+          z0Found = true; // Set flag to indicate Z0 has been found
+        }
+      }
+      else if (currentVariable.contains("ac.v(s_") && isReading) {
+        // Handle NGspice complex format for S-parameters
+        QRegularExpression re("([+-]?\\d+\\.\\d+e[+-]\\d+)([+-])j(\\d+\\.\\d+e[+-]\\d+)");
+        QRegularExpressionMatch match = re.match(line);
+
+        if (match.hasMatch()) {
+          // Extract indices from ac.v(s_j_i)
+          QRegularExpression indexRe("ac\\.v\\(s_(\\d+)_(\\d+)\\)");
+          QRegularExpressionMatch indexMatch = indexRe.match(currentVariable);
+
+          if (indexMatch.hasMatch()) {
+            int j = indexMatch.captured(1).toInt();
+            int i = indexMatch.captured(2).toInt();
+
+                   // Convert to Sji format (where j is row, i is column)
+            QString sparam = QString::number(j) + QString::number(i);
+
+                   // Parse complex number
+            double real = match.captured(1).toDouble();
+            double imag = match.captured(3).toDouble();
+            if (match.captured(2) == "-") imag = -imag;
+
+                   // Store as re, im, dB, and ang
+            QString base = "S" + sparam;
+
+                   // Calculate magnitude in dB and angle
+            double mag = sqrt(real * real + imag * imag);
+            double mag_db = 20 * log10(mag);
+            double ang = atan2(imag, real) * 180 / M_PI;
+
+            file_data[base + "_re"].append(real);
+            file_data[base + "_im"].append(imag);
+            file_data[base + "_dB"].append(mag_db);
+            file_data[base + "_ang"].append(ang);
+          }
+        }
+      }
+    }
+  }
+
+  file.close();
+
+         // Store the number of ports based on the maximum port number found
+  file_data["n_ports"].append(maxPortNumber);
+
+         // Store Z0 value
+  file_data["Z0"].append(z0Value);
+
+  return file_data;
+}
+
 // Helper function to extract S-parameter indices from S[i,j] format
 QString Qucs_S_SPAR_Viewer::extractSParamIndices(const QString& sparam)
 {
@@ -1113,6 +1269,11 @@ void Qucs_S_SPAR_Viewer::applyDefaultVisualizations(const QStringList& fileNames
   if (fileNames.length() == 1) {
     QString filename = QFileInfo(fileNames.first()).fileName();
     filename = filename.left(filename.lastIndexOf('.'));
+
+    if (filename.endsWith("dat")) {
+      // Then it must be a .dat.ngspice extension
+      filename = filename.left(filename.lastIndexOf('.'));
+    }
 
            // Default behavior: If there's no more data loaded and a single S1P file is selected
     if ((datasets[filename]["n_ports"].at(0) == 1) && (datasets.size() == 1)) {
@@ -3950,7 +4111,9 @@ void Qucs_S_SPAR_Viewer::fileChanged(const QString &path)
     if (fileExtension.startsWith("s") && fileExtension.endsWith("p")) {
       file_data = readTouchstoneFile(path);
     } else if (fileExtension == "dat") {
-      file_data = readQucsDataset(path);
+      file_data = readQucsatorDataset(path);
+    } else if (fileExtension == "ngspice") {
+      file_data = readNGspiceData(path);
     } else {
       qWarning() << "Unsupported file extension: " << fileExtension;
       return;
