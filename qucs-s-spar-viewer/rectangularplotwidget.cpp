@@ -52,10 +52,10 @@ void RectangularPlotWidget::addTrace(const QString& name, const Trace& trace)
   // Create a local copy of the trace that we can modify
   Trace traceCopy = trace;
 
-  // Store the (potentially modified) trace in the map
+         // Store the (potentially modified) trace in the map
   traces[name] = traceCopy;
 
-  // Update frequency range if this trace has data
+         // Update frequency range if this trace has data
   if (!traceCopy.frequencies.isEmpty()) {
     double traceMinFreq = traceCopy.frequencies.first();
     double traceMaxFreq = traceCopy.frequencies.last();
@@ -70,6 +70,15 @@ void RectangularPlotWidget::addTrace(const QString& name, const Trace& trace)
            // Update the axis limits with the scaled frequency values
     xAxisMin->setValue(fMin * freqScale);
     xAxisMax->setValue(fMax * freqScale);
+
+           // If this is the first trace being added, set a suitable division step
+    if (traces.size() == 1) {
+      // Calculate a nice step size based on the frequency range
+      double range = (fMax - fMin) * freqScale;
+      // Aim for approximately 8-10 divisions on the axis
+      double step = calculateNiceStep(range);
+      xAxisDiv->setValue(step);
+    }
 
            // Update the x-axis
     updateXAxis();
@@ -140,6 +149,35 @@ void RectangularPlotWidget::addTrace(const QString& name, const Trace& trace)
   }
 
   updatePlot();
+}
+
+
+// The first time a trace is added to the plot it is needed to find a suitable step. This function helps to do that
+double RectangularPlotWidget::calculateNiceStep(double range)
+{
+  // Target 8-10 divisions on the axis
+  double rawStep = range / 8.0;
+
+  // Find the magnitude of the step
+  double magnitude = pow(10, floor(log10(rawStep)));
+
+  // Normalize the step to a value between 1 and 10
+  double normalizedStep = rawStep / magnitude;
+
+  // Choose a nice step value (1, 2, 2.5, 5, or 10)
+  double niceStep;
+  if (normalizedStep < 1.5) {
+    niceStep = 1;
+  } else if (normalizedStep < 3) {
+    niceStep = 2;
+  } else if (normalizedStep < 7) {
+    niceStep = 5;
+  } else {
+    niceStep = 10;
+  }
+
+  // Return the nice step size
+  return niceStep * magnitude;
 }
 
 void RectangularPlotWidget::removeTrace(const QString& name)

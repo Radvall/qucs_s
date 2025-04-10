@@ -51,6 +51,7 @@ public:
   ~RectangularPlotWidget();
 
   void addTrace(const QString& name, const Trace& trace);
+  double calculateNiceStep(double range);
   void removeTrace(const QString& name);
   void clearTraces();
   QPen getTracePen(const QString& traceName) const;
