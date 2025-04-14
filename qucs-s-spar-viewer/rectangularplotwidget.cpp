@@ -1,7 +1,7 @@
 #include "rectangularplotwidget.h"
 
 RectangularPlotWidget::RectangularPlotWidget(QWidget *parent)
-    : QWidget(parent), fMin(1e20), fMax(-1), showTraceValues(true)
+    : QWidget(parent), fMin(1e20), fMax(-1), showTraceValues(true), axisSettingsLocked(false)
 {
   // Initialize the chart and chart view
   ChartWidget = new QChart();
@@ -52,26 +52,26 @@ void RectangularPlotWidget::addTrace(const QString& name, const Trace& trace)
   // Create a local copy of the trace that we can modify
   Trace traceCopy = trace;
 
-         // Store the (potentially modified) trace in the map
+  // Store the (potentially modified) trace in the map
   traces[name] = traceCopy;
 
-         // Update frequency range if this trace has data
-  if (!traceCopy.frequencies.isEmpty()) {
+  // Only update frequency range if not locked and this trace has data
+  if (!axisSettingsLocked && !traceCopy.frequencies.isEmpty()) {
     double traceMinFreq = traceCopy.frequencies.first();
     double traceMaxFreq = traceCopy.frequencies.last();
 
-           // Update global min/max frequency (stored in Hz)
+    // Update global min/max frequency (stored in Hz)
     if (traceMinFreq < fMin) fMin = traceMinFreq;
-    if (traceMaxFreq > fMax) fMax = traceMaxFreq;
+        if (traceMaxFreq > fMax) fMax = traceMaxFreq;
 
-           // Get current frequency scale factor based on selected units
+    // Get current frequency scale factor based on selected units
     double freqScale = getXscale();
 
-           // Update the axis limits with the scaled frequency values
+    // Update the axis limits with the scaled frequency values
     xAxisMin->setValue(fMin * freqScale);
     xAxisMax->setValue(fMax * freqScale);
 
-           // If this is the first trace being added, set a suitable division step
+    // If this is the first trace being added, set a suitable division step
     if (traces.size() == 1) {
       // Calculate a nice step size based on the frequency range
       double range = (fMax - fMin) * freqScale;
@@ -80,7 +80,7 @@ void RectangularPlotWidget::addTrace(const QString& name, const Trace& trace)
       xAxisDiv->setValue(step);
     }
 
-           // Update the x-axis
+    // Update the x-axis
     updateXAxis();
   }
 
@@ -113,22 +113,22 @@ void RectangularPlotWidget::addTrace(const QString& name, const Trace& trace)
     }
   }
 
-  // Adjust y-axis and y2-axis ranges based on trace data
-  if (!traceCopy.trace.isEmpty()) {
+  // Only adjust y-axis and y2-axis ranges if not locked and trace has data
+  if (!axisSettingsLocked && !traceCopy.trace.isEmpty()) {
     // Find min and max values in the trace data
     double traceMin = std::numeric_limits<double>::max();
     double traceMax = std::numeric_limits<double>::lowest();
 
     for (double value : traceCopy.trace) {
       if (value < traceMin) traceMin = value;
-      if (value > traceMax) traceMax = value;
-    }
+            if (value > traceMax) traceMax = value;
+        }
 
-           // Add some padding (5% of range)
+    // Add some padding (5% of range)
     double padding = (traceMax - traceMin) * 0.05;
     if (padding < 1.0) padding = 1.0; // Minimum padding
 
-           // Update appropriate y-axis based on the trace's y_axis value
+    // Update appropriate y-axis based on the trace's y_axis value
     if (traceCopy.y_axis == 2) {
       // Only adjust y2-axis if this is the first trace for y2 or if values exceed current range
       if (traceMin < y2AxisMin->value() || traceMax > y2AxisMax->value() ||
@@ -657,6 +657,12 @@ QGridLayout* RectangularPlotWidget::setupAxisSettings()
   connect(showValuesCheckbox, SIGNAL(toggled(bool)), this, SLOT(toggleShowValues(bool)));
   axisLayout->addWidget(showValuesCheckbox, 3, 1, 1, 2);  // Span 2 columns
 
+  // Lock Axis Settings checkbox
+  lockAxisCheckbox = new QCheckBox("Lock Axis Settings");
+  lockAxisCheckbox->setChecked(false);  // Default to unlocked
+  connect(lockAxisCheckbox, SIGNAL(toggled(bool)), this, SLOT(toggleLockAxisSettings(bool)));
+  axisLayout->addWidget(lockAxisCheckbox, 3, 3, 1, 2);  // Span 2 columns
+
   return axisLayout;
 }
 
@@ -920,4 +926,50 @@ void RectangularPlotWidget::setRightYAxisEnabled(bool enabled)
 bool RectangularPlotWidget::isRightYAxisEnabled() const
 {
   return y2Axis->isVisible();
+}
+
+
+// Handle lock axis checkbox
+void RectangularPlotWidget::toggleLockAxisSettings(bool locked)
+{
+  axisSettingsLocked = locked;
+
+  // Enable/disable all axis controls based on lock state
+  xAxisMin->setEnabled(!locked);
+  xAxisMax->setEnabled(!locked);
+  xAxisDiv->setEnabled(!locked);
+  xAxisUnits->setEnabled(!locked);
+
+  yAxisMin->setEnabled(!locked);
+  yAxisMax->setEnabled(!locked);
+  yAxisDiv->setEnabled(!locked);
+
+  y2AxisMin->setEnabled(!locked);
+  y2AxisMax->setEnabled(!locked);
+  y2AxisDiv->setEnabled(!locked);
+
+  // Visual feedback - change the appearance of labels when locked
+  QColor labelColor = locked ? QColor(120, 120, 120) : QColor(0, 0, 0);
+
+  QPalette pal = xAxisLabel->palette();
+  pal.setColor(QPalette::WindowText, labelColor);
+
+  xAxisLabel->setPalette(pal);
+  y2AxisLabel->setPalette(pal);
+
+  // Find the y-axis label and update its palette too
+  for (QObject* child : children()) {
+    QLabel* label = qobject_cast<QLabel*>(child);
+    if (label && label->text() == "<b>y-axis</b>") {
+      label->setPalette(pal);
+      break;
+    }
+  }
+}
+
+
+// Public function to let check whether the axes are locked or not
+bool RectangularPlotWidget::areAxisSettingsLocked() const
+{
+  return axisSettingsLocked;
 }

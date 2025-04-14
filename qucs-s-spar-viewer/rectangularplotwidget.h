@@ -76,6 +76,8 @@ public:
 
   void updatePlot();
 
+  bool areAxisSettingsLocked() const; // Public function to check whether the axes are locked or not
+
   void setRightYAxisEnabled(bool enabled);
   bool isRightYAxisEnabled() const;
 
@@ -108,7 +110,8 @@ private slots:
   void updateYAxis();
   void updateY2Axis();
   void changeFreqUnits();
-  void toggleShowValues(bool show);  // New slot for checkbox
+  void toggleShowValues(bool show);
+  void toggleLockAxisSettings(bool locked);
 
 private:
   QChart *ChartWidget;
@@ -133,8 +136,11 @@ private:
   QLabel *y2AxisUnits;
   QLabel *y2AxisLabel;
 
-  QCheckBox *showValuesCheckbox;  // New checkbox for showing values
+  QCheckBox *showValuesCheckbox;  // Checkbox for showing values
   bool showTraceValues;           // Flag to control value display
+
+  QCheckBox *lockAxisCheckbox;    // Checkbox for locking the axis settings
+  bool axisSettingsLocked;
 
   QStringList frequencyUnits;
   double fMin;
