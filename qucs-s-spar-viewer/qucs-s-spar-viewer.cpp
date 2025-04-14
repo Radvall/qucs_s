@@ -215,7 +215,25 @@ void Qucs_S_SPAR_Viewer::setFileManagementDock(){
                                   min-width: 10em;\
                                   padding: 6px;\
                               }");
+  QString tooltip_message = QString("Add single data file (.dat, .snp). You can also drag and drop it.");
+  Button_Add_File->setToolTip(tooltip_message);
   connect(Button_Add_File, SIGNAL(clicked()), SLOT(addFile()));
+
+  Button_Add_Project = new QPushButton("Add Qucs-S Project", this);
+  Button_Add_Project->setStyleSheet("QPushButton {background-color: orange;\
+                                  border-style: outset;\
+                                  border-width: 2px;\
+                                  border-radius: 10px;\
+                                  border-color: beige;\
+                                  font: bold 14px;\
+                                  color: white;\
+                                  min-width: 10em;\
+                                  padding: 6px;\
+                              }");
+  tooltip_message = QString("Open data files (.dat, .snp) from a Qucs-S project and monitor them for changes");
+  Button_Add_Project->setToolTip(tooltip_message);
+  connect(Button_Add_Project, SIGNAL(clicked()), SLOT(addProjectPath()));
+
 
   Delete_All_Files = new QPushButton("Delete all", this);
   Delete_All_Files->setStyleSheet("QPushButton {background-color: red;\
@@ -228,9 +246,12 @@ void Qucs_S_SPAR_Viewer::setFileManagementDock(){
                                   min-width: 10em;\
                                   padding: 6px;\
                               }");
+  tooltip_message = QString("Remove all data files.");
+  Button_Add_File->setToolTip(tooltip_message);
   connect(Delete_All_Files, SIGNAL(clicked()), SLOT(removeAllFiles()));
 
   hLayout_Files_Buttons->addWidget(Button_Add_File);
+  hLayout_Files_Buttons->addWidget(Button_Add_Project);
   hLayout_Files_Buttons->addWidget(Delete_All_Files);
 
   scrollArea_Files->setWidget(FileList_Widget);
@@ -1326,12 +1347,13 @@ void Qucs_S_SPAR_Viewer::applyDefaultVisualizations(const QStringList& fileNames
          // Default behaviour: When adding multiple S2P file, then show the S21 of all traces
   if (fileNames.length() > 1) {
     bool all_s2p = true;
-    for (int i = 0; i < fileNames.length(); i++) {
-      if (datasets[fileNames.at(i)]["n_ports"].at(0) != 2) {
+    for (const QString &key : datasets.keys()) { // Iterate over the keys of the map
+      if (datasets[key]["n_ports"].at(0) != 2) {
         all_s2p = false;
         break;
       }
     }
+
 
     if (all_s2p == true) {
       for (int i = 0; i < fileNames.length(); i++) {
@@ -1398,6 +1420,8 @@ void Qucs_S_SPAR_Viewer::CreateFileWidgets(QString filename, int position = 0) {
   QLabel * Filename_Label = new QLabel(filename.left(filename.lastIndexOf('.')));
   Filename_Label->setObjectName(QStringLiteral("File_") + QString::number(position));
   List_FileNames.append(Filename_Label);
+  filePaths.append(filename); // Add the file to the watchlist
+
   this->FilesGrid->addWidget(List_FileNames.last(), position,0,1,1);
 
   // Create the "Remove" button
@@ -1445,6 +1469,11 @@ void Qucs_S_SPAR_Viewer::removeFile()
 
 void Qucs_S_SPAR_Viewer::removeFile(int index_to_delete)
 {
+    // Remove the file for the watchlist
+    if (index_to_delete >= 0 && index_to_delete < filePaths.size()) {
+      filePaths.removeAt(index_to_delete);
+    }
+
     // Delete the label
     QLabel* labelToRemove = List_FileNames.at(index_to_delete);
     QString dataset_to_remove = labelToRemove->text();
@@ -4141,20 +4170,21 @@ void Qucs_S_SPAR_Viewer::fileChanged(const QString &path)
 }
 
 // Handle directory changed events
-void Qucs_S_SPAR_Viewer::directoryChanged(const QString &path)
-{
-  // Check if any of our watched files were renamed or recreated
-  for (auto it = watchedFilePaths.begin(); it != watchedFilePaths.end(); ++it) {
-    QFileInfo fileInfo(it.value());
+void Qucs_S_SPAR_Viewer::directoryChanged(const QString &path) {
+  qDebug() << "Directory changed:" << path;
 
-    // If this file is in the changed directory
-    if (fileInfo.absolutePath() == path) {
-      // If file exists but is not being watched, add it back
-      if (QFile::exists(it.value()) && !fileWatcher->files().contains(it.value())) {
-        fileWatcher->addPath(it.value());
-      }
+  // Scan for new S-parameter files
+  QDir dir(path);
+  const QStringList newFiles = dir.entryList({"*.dat", "*.s*", "*.dat.ngspice"}, QDir::Files);
+
+  QStringList paths;
+  for(const QString& file : newFiles) {
+    const QString fullPath = dir.absoluteFilePath(file);
+    if(!filePaths.contains(fullPath)) {
+      paths.append(fullPath);
     }
   }
+  this->addFiles(paths);
 }
 
 // This function is called when a file in the dataset has changes. It updates the traces in the display widgets
@@ -4322,3 +4352,58 @@ void Qucs_S_SPAR_Viewer::updateTracesInWidget(QWidget* widget, const QString& da
     //smithWidget->update();
   }
 }
+
+
+bool Qucs_S_SPAR_Viewer::isSparamFile(const QString& path) {
+  QFileInfo fi(path);
+  return fi.exists() &&
+         (path.endsWith(".dat", Qt::CaseInsensitive) ||
+          QRegularExpression(R"(\.s\d+p$)", QRegularExpression::CaseInsensitiveOption)
+              .match(path).hasMatch());
+}
+
+void Qucs_S_SPAR_Viewer::addProjectPath() {
+  QString startDir = QDir::homePath() + "/.qucs";
+
+  QString dir = QFileDialog::getExistingDirectory(this, "Choose Project Directory", startDir);
+  if (!dir.isEmpty()) {
+    // Check if the folder name ends with "_prj"
+    if (dir.endsWith("_prj")) {
+      addPathToWatcher(dir);
+    } else {
+      // Show an error message if the folder name doesn't end with "_prj"
+      QMessageBox::warning(this, "Invalid Directory", "The selected folder must be a Qucs-S project folder (ending in '_prj').");
+    }
+  }
+}
+
+void Qucs_S_SPAR_Viewer::addPathToWatcher(const QString &path) {
+  if (QFileInfo(path).isDir()) {
+    fileWatcher->addPath(path);
+    qDebug() << "Watching directory:" << path;
+
+           // Find all files ending with ".dat" or ".snp" (n is an integer)
+    QDir dir(path);
+    QStringList filters;
+    filters << "*.dat" << "*.s*"; // General filters for .dat and .snp files
+    dir.setNameFilters(filters);
+
+    QStringList matchingFiles;
+    QRegularExpression snpRegex(R"(\.s\d+p$)"); // Matches ".snp" where n is an integer
+
+           // Iterate through all files in the directory
+    for (const QString &fileName : dir.entryList(QDir::Files)) {
+      if (fileName.endsWith(".dat") || snpRegex.match(fileName).hasMatch()) {
+        matchingFiles.append(dir.absoluteFilePath(fileName)); // Add full path
+      }
+    }
+
+           // Add matching files to the program database
+    if (!matchingFiles.isEmpty()) {
+      addFiles(matchingFiles);
+      qDebug() << "Added files to database:" << matchingFiles;
+    }
+  }
+}
+
+

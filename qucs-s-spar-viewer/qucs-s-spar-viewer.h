@@ -184,6 +184,8 @@ class Qucs_S_SPAR_Viewer : public QMainWindow
 
   void calculate_Sparameter_trace(QString, QString);
 
+  void addProjectPath();
+
  protected:
   void dragEnterEvent(QDragEnterEvent *event) override;
   void dropEvent(QDropEvent *event) override;
@@ -191,7 +193,7 @@ class Qucs_S_SPAR_Viewer : public QMainWindow
  private:
   QDockWidget *dockFiles;
   QTableWidget * spar_files_Widget;
-  QPushButton *Button_Add_File, *Delete_All_Files;
+  QPushButton *Button_Add_File, *Delete_All_Files, *Button_Add_Project;
 
   // File list
   QList<QPushButton*> Button_DeleteFile;
@@ -330,6 +332,14 @@ class Qucs_S_SPAR_Viewer : public QMainWindow
   void adjust_x_axis_div();
   QPointF findClosestPoint(const QList<double>&, const QList<double>&, qreal);
   double getFreqFromText(QString);
+
+  // File monitoring
+  void setupSimulationWatcher();
+  QStringList getWatchDirectories() const;
+  void addPathToWatcher(const QString &path);
+  bool isSparamFile(const QString& path); // Used to accept only data files when scanning project directories
+  QStringList filePaths; // Full path of the files in the progrom. It's used for file monitoring.
 };
 
 #endif
+
