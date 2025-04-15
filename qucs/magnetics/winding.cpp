@@ -52,24 +52,10 @@ Winding::Winding()
   Lines.append(new qucs::Line(20,   -25, 20,   25,QPen(Qt::black,1)));
   Lines.append(new qucs::Line(24,   -25, 24,   25,QPen(Qt::black,1)));
 
-  //Lines.append(new qucs::Line(  40,  -40, 40,  -30,QPen(Qt::darkBlue,2)));  // L17
-  //Lines.append(new qucs::Line(  40,  -30, 40,  -20,QPen(Qt::blue,3)));      // L18
-  //Lines.append(new qucs::Line(  40,  -20, 20,    0,QPen(Qt::blue,3)));      // L19
-  //Lines.append(new qucs::Line(  20,    0, 40,   20,QPen(Qt::blue,3)));      // L20
-  //Lines.append(new qucs::Line(  40,   20, 60,    0,QPen(Qt::blue,3)));      // L21
-  //Lines.append(new qucs::Line(  60,   00, 40,  -20,QPen(Qt::blue,3)));      // L22
-  //Lines.append(new qucs::Line(  40,   20, 40,   30,QPen(Qt::blue,3)));      // L23
-  //Lines.append(new qucs::Line(  40,   30, 40,   40,QPen(Qt::darkBlue,2)));  // L24
-
-  //Lines.append(new qucs::Line( 20,  -20, 20,  -10,QPen(Qt::red,3)));        // +
-  //Lines.append(new qucs::Line( 15,  -15, 25,  -15,QPen(Qt::red,3)));
-  //Lines.append(new qucs::Line( 15,   20, 25,   20,QPen(Qt::black,3)));      // -
-
   Ports.append(new Port( -00,  -40));  // Pplus
   Ports.append(new Port( -00,   40));  // Pneg
   //Ports.append(new Port(  40,  -40));  // PVplus
   //Ports.append(new Port(  40,   40));  // PVneg
-
 
   x1 = -25; y1 = -45;
   x2 =  45; y2 =  45;
@@ -97,8 +83,8 @@ Component* Winding::newOne()
 
 Element* Winding::info(QString& Name, char* &BitmapFile, bool getNewOne)
 {
-  Name = QObject::tr("Icouple");
-  BitmapFile = (char *) "Icouple";
+  Name = QObject::tr("Winding");
+  BitmapFile = (char *) "winding";
 
   if(getNewOne)  return new Winding();
   return 0;

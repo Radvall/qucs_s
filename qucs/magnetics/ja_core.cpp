@@ -28,7 +28,7 @@
 
 JA_core::JA_core()
 {
-  Description = QObject::tr("Magnetic core");
+  Description = QObject::tr("Magnetic core\n");
   Simulator = spicecompat::simSpice;
 
   Lines.append(new qucs::Line(-40,   0,  -30,     0,QPen(Qt::darkRed,2)));  // L1
@@ -46,9 +46,6 @@ JA_core::JA_core()
 
   Texts.append(new Text(-50,-25,"H",Qt::black,18));
   Texts.append(new Text(35,-25,"B",Qt::black,18));
-  //Lines.append(new qucs::Line( -40,  -30, -40,  -20,QPen(Qt::red,3)));        // +
-  //Lines.append(new qucs::Line( -45,  -25, -35,  -25,QPen(Qt::red,3)));
-  //Lines.append(new qucs::Line(  45,  -25,  35,  -25,QPen(Qt::black,3)));      // -
 
   Ports.append(new Port( -40,    0));  // Pin
   Ports.append(new Port(  40,    0));  // Pout
@@ -91,7 +88,7 @@ Component* JA_core::newOne()
 
 Element* JA_core::info(QString& Name, char* &BitmapFile, bool getNewOne)
 {
-  Name = QObject::tr("core");
+  Name = QObject::tr("Magnetic core");
   BitmapFile = (char *) "core";
 
   if(getNewOne)  return new JA_core();
