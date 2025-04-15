@@ -246,6 +246,8 @@ REGISTER_COMP_2 (QObject::tr("microelectronics"),val,inf1,inf2)
   REGISTER_COMP_1 (QObject::tr("SPICE simulations"),val)
 #define REGISTER_XSPICE_1(val) \
   REGISTER_COMP_1 (QObject::tr("XSPICE devices"),val)
+#define REGISTER_MAGCORES_1(val) \
+REGISTER_COMP_1 (QObject::tr("magnetic cores"),val)
 #define REGISTER_QUCS_1(val) \
   REGISTER_COMP_1 (QObject::tr("Qucs legacy devices"),val)
 #define REGISTER_QUCS_2(val,inf1,inf2) \
@@ -431,6 +433,10 @@ void Module::registerModules (void) {
       REGISTER_NONLINEAR_1 (TunnelDiode);
   //}
 
+// Magnetic devices
+      REGISTER_MAGCORES_1 (Winding);
+      REGISTER_MAGCORES_1 (JA_core);
+
 // PDK devices
       REGISTER_MICROEL_1 (R_SPICE, info_R3);
       REGISTER_MICROEL_1 (C_SPICE, info_C3);
@@ -569,8 +575,8 @@ void Module::registerModules (void) {
 
   //if (QucsSettings.DefaultSimulator != spicecompat::simQucsator) {
       // XSPICE analogue component blocks
-      REGISTER_XSPICE_1 (Icouple);
-      REGISTER_XSPICE_1 (core);
+      REGISTER_XSPICE_1 (Winding);
+      REGISTER_XSPICE_1 (JA_core);
       REGISTER_XSPICE_1 (SDTF);
       REGISTER_XSPICE_1 (XAPWL);
 

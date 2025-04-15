@@ -1,0 +1,32 @@
+# qucs/components library
+
+INCLUDE_DIRECTORIES( ${CMAKE_CURRENT_SOURCE_DIR} )
+
+#INCLUDES = $(X11_INCLUDES) $(QT_INCLUDES) -I$(top_srcdir)/qucs
+
+SET(MAGNETICS_SRCS
+ja_core.cpp
+winding.cpp
+)
+
+SET(MAGNETICS_HDRS
+ja_core.h
+winding.h
+)
+
+
+
+#SET(MAGNETICS_MOC_HDRS
+#)
+
+
+#qt6_wrap_cpp(MAGNETICSS_MOC_SRCS ${MAGNETICS_MOC_HDRS})
+
+
+
+ADD_LIBRARY(magnetics STATIC ${MAGNETICS_HDRS} ${MAGNETICS_SRCS} ${MAGNETICS_MOC_SRCS} )
+
+
+
+
+
