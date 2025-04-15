@@ -4369,18 +4369,19 @@ void Qucs_S_SPAR_Viewer::addPathToWatcher(const QString &path) {
     fileWatcher->addPath(path);
     qDebug() << "Watching directory:" << path;
 
-           // Find all files ending with ".dat" or ".snp" (n is an integer)
+           // Find all files ending with ".dat" or ".snp" (n is an integer), case-insensitive
     QDir dir(path);
     QStringList filters;
-    filters << "*.dat" << "*.s*"; // General filters for .dat and .snp files
+    filters << "*.dat" << "*.DAT" << "*.s*" << "*.S*"; // Add uppercase patterns
     dir.setNameFilters(filters);
 
     QStringList matchingFiles;
-    QRegularExpression snpRegex(R"(\.s\d+p$)"); // Matches ".snp" where n is an integer
+    QRegularExpression snpRegex(R"(\.s\d+p$)", QRegularExpression::CaseInsensitiveOption); // Case-insensitive
 
            // Iterate through all files in the directory
     for (const QString &fileName : dir.entryList(QDir::Files)) {
-      if (fileName.endsWith(".dat") || snpRegex.match(fileName).hasMatch()) {
+      QString lowerFileName = fileName.toLower();
+      if (lowerFileName.endsWith(".dat") || snpRegex.match(fileName).hasMatch()) {
         matchingFiles.append(dir.absoluteFilePath(fileName)); // Add full path
       }
     }
@@ -4392,5 +4393,6 @@ void Qucs_S_SPAR_Viewer::addPathToWatcher(const QString &path) {
     }
   }
 }
+
 
 
