@@ -1084,39 +1084,57 @@ QMap<QString, QList<double>> Qucs_S_SPAR_Viewer::readQucsatorDataset(const QStri
       }
       else if (currentVariable.startsWith("S[") && isReading) {
         // Handle S[i,j] complex format
-        QRegularExpression re("([+-]?\\d+\\.\\d+e[+-]\\d+)([+-])j(\\d+\\.\\d+e[+-]\\d+)");
-        QRegularExpressionMatch match = re.match(line);
+        QRegularExpression reComplex("([+-]?\\d+\\.\\d+e[+-]\\d+)([+-])j(\\d+\\.\\d+e[+-]\\d+)");
+        QRegularExpressionMatch matchComplex = reComplex.match(line);
 
-        if (match.hasMatch()) {
-          // Extract indices from S[i,j]
-          QRegularExpression indexRe("S\\[(\\d+),(\\d+)\\]");
-          QRegularExpressionMatch indexMatch = indexRe.match(currentVariable);
+        // Handle S[i,j] real format
+        QRegularExpression reReal("([+-]?\\d+\\.\\d+e[+-]\\d+)");
+        QRegularExpressionMatch matchReal = reReal.match(line);
 
-          if (indexMatch.hasMatch()) {
-            int i = indexMatch.captured(1).toInt();
-            int j = indexMatch.captured(2).toInt();
+        // Extract indices from S[i,j]
+        QRegularExpression indexRe("S\\[(\\d+),(\\d+)\\]");
+        QRegularExpressionMatch indexMatch = indexRe.match(currentVariable);
 
-            // Convert to Sji format (where j is row, i is column)
-            QString sparam = QString::number(j) + QString::number(i);
+        if (indexMatch.hasMatch()) {
+          int i = indexMatch.captured(1).toInt();
+          int j = indexMatch.captured(2).toInt();
+          // Convert to Sji format (where j is row, i is column)
+          QString sparam = QString::number(j) + QString::number(i);
+          QString base = "S" + sparam;
 
+          double real, imag;
+
+          if (matchComplex.hasMatch()) {
             // Parse complex number
-            double real = match.captured(1).toDouble();
-            double imag = match.captured(3).toDouble();
-            if (match.captured(2) == "-") imag = -imag;
-
-            // Store as re, im, dB, and ang
-            QString base = "S" + sparam;
-
-            // Calculate magnitude in dB and angle
-            double mag = sqrt(real * real + imag * imag);
-            double mag_db = 20 * log10(mag);
-            double ang = atan2(imag, real) * 180 / M_PI;
-
-            file_data[base + "_re"].append(real);
-            file_data[base + "_im"].append(imag);
-            file_data[base + "_dB"].append(mag_db);
-            file_data[base + "_ang"].append(ang);
+            real = matchComplex.captured(1).toDouble();
+            imag = matchComplex.captured(3).toDouble();
+            if (matchComplex.captured(2) == "-") imag = -imag;
+  }
+          else if (matchReal.hasMatch()) {
+            // Parse real number (imaginary part is zero)
+            real = matchReal.captured(1).toDouble();
+            imag = 0.0;
           }
+          else {
+            // Skip if no match
+            continue;
+          }
+
+          // Calculate magnitude in dB and angle
+          double mag = sqrt(real * real + imag * imag);
+          double mag_db;
+          if (mag == 0) {
+            mag_db = -300;
+          } else {
+            mag_db = 20 * log10(mag);
+          }
+          double ang = atan2(imag, real) * 180 / M_PI;
+
+          // Store values
+          file_data[base + "_re"].append(real);
+          file_data[base + "_im"].append(imag);
+          file_data[base + "_dB"].append(mag_db);
+          file_data[base + "_ang"].append(ang);
         }
       }
     }
