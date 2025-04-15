@@ -484,6 +484,12 @@ void RectangularPlotWidget::updateXAxis()
   double xMax = xAxisMax->value();
   double xDiv = xAxisDiv->value();
 
+  double min_step = (xMax-xMin)/20;
+  if (xDiv < min_step) {
+    xDiv = min_step;
+    xAxisDiv->setValue(xDiv);
+  }
+
          // Set the axis range in display units
   xAxis->setRange(xMin, xMax);
   xAxis->setTickInterval(xDiv);
