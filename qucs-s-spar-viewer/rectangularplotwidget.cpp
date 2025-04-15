@@ -141,8 +141,14 @@ void RectangularPlotWidget::addTrace(const QString& name, const Trace& trace)
       // Only adjust y-axis if this is the first trace or if values exceed current range
       if (traceMin < yAxisMin->value() || traceMax > yAxisMax->value() ||
           (getYAxisTraceCount() == 1 && traces.size() == 1)) {
-        yAxisMin->setValue(floor((traceMin - padding) / 5) * 5); // Round to nearest 5 below
-        yAxisMax->setValue(ceil((traceMax + padding) / 5) * 5);  // Round to nearest 5 above
+        double y_min = floor((traceMin - padding) / 5) * 5; // Round to nearest 5 below
+        double y_max = ceil((traceMax + padding) / 5) * 5; // Round to nearest 5 above
+        yAxisMin->setValue(y_min);
+        yAxisMax->setValue(y_max);
+        double y_step = round((y_max - y_min)/10);
+        y_step = floor(y_step / 5) * 5; // round to 5
+        yAxisDiv->setValue(y_step);
+
       }
       updateYAxis();
     }
