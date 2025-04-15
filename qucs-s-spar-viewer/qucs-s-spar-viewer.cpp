@@ -219,22 +219,6 @@ void Qucs_S_SPAR_Viewer::setFileManagementDock(){
   Button_Add_File->setToolTip(tooltip_message);
   connect(Button_Add_File, SIGNAL(clicked()), SLOT(addFile()));
 
-  Button_Add_Project = new QPushButton("Add Qucs-S Project", this);
-  Button_Add_Project->setStyleSheet("QPushButton {background-color: orange;\
-                                  border-style: outset;\
-                                  border-width: 2px;\
-                                  border-radius: 10px;\
-                                  border-color: beige;\
-                                  font: bold 14px;\
-                                  color: white;\
-                                  min-width: 10em;\
-                                  padding: 6px;\
-                              }");
-  tooltip_message = QString("Open data files (.dat, .snp) from a Qucs-S project and monitor them for changes");
-  Button_Add_Project->setToolTip(tooltip_message);
-  connect(Button_Add_Project, SIGNAL(clicked()), SLOT(addProjectPath()));
-
-
   Delete_All_Files = new QPushButton("Delete all", this);
   Delete_All_Files->setStyleSheet("QPushButton {background-color: red;\
                                   border-style: outset;\
@@ -251,7 +235,6 @@ void Qucs_S_SPAR_Viewer::setFileManagementDock(){
   connect(Delete_All_Files, SIGNAL(clicked()), SLOT(removeAllFiles()));
 
   hLayout_Files_Buttons->addWidget(Button_Add_File);
-  hLayout_Files_Buttons->addWidget(Button_Add_Project);
   hLayout_Files_Buttons->addWidget(Delete_All_Files);
 
   scrollArea_Files->setWidget(FileList_Widget);
@@ -798,7 +781,7 @@ void Qucs_S_SPAR_Viewer::addFiles(QStringList fileNames)
     this->f_min = 1e30;
   }
 
-         // Remove from the list of files those that already exist in the database
+  // Remove from the list of files those that already exist in the database
   QStringList files_dataset = datasets.keys();
 
   for (int i = 0; i < fileNames.length(); i++) {
@@ -824,11 +807,14 @@ void Qucs_S_SPAR_Viewer::addFiles(QStringList fileNames)
     }
   }
 
-         // Read files
-  for (int i = existing_files; i < existing_files + fileNames.length(); i++) {
+  // Read files
+  int widget_counter = existing_files;
+  int n_files = fileNames.length(); // Number of files to be added
+  QStringList files_filtered; // Some of the files included may be discarded for not having s-parameter data. This list contain only the files to be added
+  for (int i = existing_files; i < existing_files + n_files; i++) {
     // Create the file name label
     QString filename = QFileInfo(fileNames.at(i-existing_files)).fileName();
-    CreateFileWidgets(filename, i+1);
+
 
            // Determine the file extension
     QString fileExtension = QFileInfo(fileNames.at(i-existing_files)).suffix().toLower();
@@ -846,6 +832,22 @@ void Qucs_S_SPAR_Viewer::addFiles(QStringList fileNames)
       qWarning() << "Unsupported file extension: " << fileExtension;
       continue; // Skip unsupported files
     }
+
+
+    if (file_data.isEmpty()) {
+      // Stop the load process and remove file from the list of files to be added
+      continue;
+    } else {
+      // It must contain basic S-parameter data
+      if (file_data["n_ports"].at(0) == 0) {
+        continue;
+      }
+    }
+    files_filtered.append(filename);
+
+    // Create widgets at this point. It's necessary to ensure that the files to be loaded contain S-parameter data
+    CreateFileWidgets(filename, widget_counter+1);
+    widget_counter++;
 
            // Add data to the dataset
     QString dataset_name = filename.left(filename.lastIndexOf('.')); // Remove file extension
@@ -871,7 +873,7 @@ void Qucs_S_SPAR_Viewer::addFiles(QStringList fileNames)
   }
 
          // Apply default visualizations based on file types
-  applyDefaultVisualizations(fileNames);
+  applyDefaultVisualizations(files_filtered);
 
   // Set up file watcher for the newly added files
   setupFileWatcher();
@@ -4360,21 +4362,6 @@ bool Qucs_S_SPAR_Viewer::isSparamFile(const QString& path) {
          (path.endsWith(".dat", Qt::CaseInsensitive) ||
           QRegularExpression(R"(\.s\d+p$)", QRegularExpression::CaseInsensitiveOption)
               .match(path).hasMatch());
-}
-
-void Qucs_S_SPAR_Viewer::addProjectPath() {
-  QString startDir = QDir::homePath() + "/.qucs";
-
-  QString dir = QFileDialog::getExistingDirectory(this, "Choose Project Directory", startDir);
-  if (!dir.isEmpty()) {
-    // Check if the folder name ends with "_prj"
-    if (dir.endsWith("_prj")) {
-      addPathToWatcher(dir);
-    } else {
-      // Show an error message if the folder name doesn't end with "_prj"
-      QMessageBox::warning(this, "Invalid Directory", "The selected folder must be a Qucs-S project folder (ending in '_prj').");
-    }
-  }
 }
 
 void Qucs_S_SPAR_Viewer::addPathToWatcher(const QString &path) {
