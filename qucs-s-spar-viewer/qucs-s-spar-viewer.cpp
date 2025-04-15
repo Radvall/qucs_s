@@ -1519,6 +1519,13 @@ void Qucs_S_SPAR_Viewer::removeFile(int index_to_delete)
 
           // Remove from the map
           traceMap.remove(trace_name);
+
+          // Remove this trace from the display widgets (if they contain such trace)
+          Magnitude_PhaseChart->removeTrace(trace_name);
+          smithChart->removeTrace(trace_name);
+          polarChart->removeTrace(trace_name);
+          GroupDelayChart->removeTrace(trace_name);
+          nuChart->removeTrace(trace_name);
         }
     }
 
@@ -1561,7 +1568,11 @@ void Qucs_S_SPAR_Viewer::removeFile(int index_to_delete)
 
 void Qucs_S_SPAR_Viewer::removeAllFiles()
 {
-  // Existing code to remove files...
+  // Remove files
+  int n_files = List_RemoveButton.size();
+  for (int i = 0; i < n_files; i++) {
+    removeFile(n_files-i-1);
+  }
 
   // Remove all paths from the file watcher
   if (!fileWatcher->files().isEmpty()) {
