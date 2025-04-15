@@ -490,8 +490,9 @@ void RectangularPlotWidget::updateXAxis()
   double xMax = xAxisMax->value();
   double xDiv = xAxisDiv->value();
 
-  double min_step = (xMax-xMin)/20;
+  double min_step = (xMax-xMin)/10;
   if (xDiv < min_step) {
+    // Avoid excessive ticking
     xDiv = min_step;
     xAxisDiv->setValue(xDiv);
   }
@@ -511,6 +512,14 @@ void RectangularPlotWidget::updateYAxis()
   double yMin = yAxisMin->value();
   double yMax = yAxisMax->value();
   double yDiv = yAxisDiv->value();
+
+  double min_step = (yMax-yMin)/10;
+
+  if (yDiv < min_step) {
+    // Avoid excessive ticking
+    yDiv = min_step;
+    yAxisDiv->setValue(yDiv);
+  }
 
   yAxis->setRange(yMin, yMax);
   yAxis->setTickInterval(yDiv);
