@@ -69,7 +69,10 @@ Qucs_S_SPAR_Viewer::Qucs_S_SPAR_Viewer()
   default_colors.append(QColor(Qt::red));
   default_colors.append(QColor(Qt::blue));
   default_colors.append(QColor(Qt::darkGreen));
-
+  default_colors.append(QColor(Qt::black));
+  default_colors.append(QColor(Qt::darkCyan));
+  default_colors.append(QColor(Qt::darkYellow));
+  default_colors.append(QColor(Qt::darkMagenta));
 
   CreateDisplayWidgets();
   CreateRightPanel();
@@ -1362,10 +1365,16 @@ void Qucs_S_SPAR_Viewer::applyDefaultVisualizations(const QStringList& fileNames
         QString filename = QFileInfo(fileNames.at(i)).fileName();
         filename = filename.left(filename.lastIndexOf('.'));
 
-        // Pick a random color
-        QColor trace_color = QColor(QRandomGenerator::global()->bounded(256),
-                                    QRandomGenerator::global()->bounded(256),
-                                    QRandomGenerator::global()->bounded(256));
+        // Color settings. The color of the first traces match the default policy
+        QColor trace_color;
+        if (i < default_colors.size()-1) {
+          trace_color = default_colors[i];
+        } else {
+          // Pick a random color
+          trace_color = QColor(QRandomGenerator::global()->bounded(256),
+                                      QRandomGenerator::global()->bounded(256),
+                                      QRandomGenerator::global()->bounded(256));
+        }
 
         // Create TraceInfo struct for S21 magnitude in dB
         TraceInfo s21_dB = {filename, "S21", DisplayMode::Magnitude_dB};
