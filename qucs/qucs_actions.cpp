@@ -881,8 +881,18 @@ void QucsApp::slotCallPwrComb()
 
 void QucsApp::slotCallSPAR_Viewer()
 {
-  auto currentStyle = QApplication::style()->objectName();
-  launchTool(QUCS_NAME "spar-viewer", "s-parameter viewer",(QStringList() << "-style" << currentStyle));
+
+  QString project_name = this->ProjName;
+  QString project_path;
+  QStringList args; // Arguments to pass to the tool, i.e. the project folder to monitor files
+
+  if (!project_name.isEmpty()) {
+    project_path = QucsSettings.projsDir.filePath(this->ProjName);
+    project_path += QString("_prj");
+    args.append(project_path);
+  }
+
+  launchTool(QUCS_NAME "spar-viewer", "s-parameter viewer", args);
 }
 
 
