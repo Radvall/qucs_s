@@ -2104,7 +2104,7 @@ void Qucs_S_SPAR_Viewer::addTrace(const TraceInfo& traceInfo, QColor trace_color
         units = "Ω";
         y_axis_title = "Reactance (Ω)";
       } else if (traceInfo.parameter.contains("Re{")) {
-        y_axis_title = "Impedance (Ω)";
+        y_axis_title = "Resistance (Ω)";
         units = "Ω";
       }
 
