@@ -1844,24 +1844,36 @@ void Qucs_S_SPAR_Viewer::addTrace(const TraceInfo& traceInfo, QColor trace_color
 
          // Get the appropriate layout based on the display mode
   QGridLayout* targetLayout;
+  QString displayMode;
   switch (traceInfo.displayMode) {
   case DisplayMode::Smith:
     targetLayout = smithLayout;
+    displayMode = QString("Smith");
     break;
   case DisplayMode::Magnitude_dB:
+    displayMode = QString("Magnitude");
+    targetLayout = magnitudePhaseLayout;
+    break;
   case DisplayMode::Phase:
+    displayMode = QString("Phase");
     targetLayout = magnitudePhaseLayout;
     break;
   case DisplayMode::Polar:
+    displayMode = QString("Polar");
     targetLayout = polarLayout;
     break;
   case DisplayMode::NaturalUnits:
+    displayMode = QString("Natural Units");
     targetLayout = nuLayout;
     break;
   case DisplayMode::GroupDelay:
+    displayMode = QString("Group Delay");
     targetLayout = GroupDelayLayout;
     break;
   }
+
+
+  traceMap[trace_name].display_mode = displayMode; // This is needed in case of saving session.
 
          // Create UI widgets for the trace (mostly unchanged from original code)
          // Label
@@ -3507,9 +3519,19 @@ bool Qucs_S_SPAR_Viewer::save() {
     xml.writeStartElement("traces");
     for (const QString& traceName : traceMap.keys()) {
       TraceProperties props = traceMap[traceName];
+      int dotIndex = traceName.indexOf('.');
+
+      QString dataset = traceName.left(dotIndex);
+      QString trace = traceName.mid(dotIndex + 1);
+
+      if (trace.endsWith("_n.u.")) {
+        trace.chop(5);
+      }
+
       xml.writeStartElement("trace");
-      xml.writeAttribute("name", traceName);
-      xml.writeAttribute("dataset", traceName.section('.', 0, -2)); // Extract dataset name
+      xml.writeAttribute("display", props.display_mode);
+      xml.writeAttribute("dataset", dataset); // Extract dataset name
+      xml.writeAttribute("name", trace);
       xml.writeAttribute("color", props.colorButton->palette().color(QPalette::Button).name());
       xml.writeAttribute("width", QString::number(props.width->value()));
       xml.writeAttribute("style", props.LineStyleComboBox->currentText());
@@ -3634,6 +3656,7 @@ void Qucs_S_SPAR_Viewer::loadSession(QString session_file) {
             QString traceName = xml.attributes().value("name").toString();
             traceName = traceName.mid(traceName.indexOf('.') + 1); // Remove all that comes before the dot, including the dot.
             QString dataset = xml.attributes().value("dataset").toString(); // Read dataset from attributes
+            QString modeName = xml.attributes().value("display").toString(); // Display mode (e.g. rectangular, polar, Smith, etc.)
             QColor color(xml.attributes().value("color").toString()); // Read color from attributes
             int width = xml.attributes().value("width").toString().toInt(); // Read width from attributes
             QString style = xml.attributes().value("style").toString(); // Read style from attributes
@@ -3646,10 +3669,9 @@ void Qucs_S_SPAR_Viewer::loadSession(QString session_file) {
             if (traceName.contains("_")) {
               // Split parameter and mode
               parameter = traceName.left(traceName.indexOf('_'));
-              QString modeName = traceName.mid(traceName.indexOf('_') + 1);
 
               // Determine display mode from string
-              if (modeName == "dB") {
+              if (modeName == "Magnitude") {
                 displayMode = DisplayMode::Magnitude_dB;
               } else if (modeName == "Phase") {
                 displayMode = DisplayMode::Phase;
@@ -3657,7 +3679,7 @@ void Qucs_S_SPAR_Viewer::loadSession(QString session_file) {
                 displayMode = DisplayMode::Smith;
               } else if (modeName == "Polar") {
                 displayMode = DisplayMode::Polar;
-              } else if (modeName == "n.u.") {
+              } else if (modeName == "Natural Units") {
                 displayMode = DisplayMode::NaturalUnits;
               } else if (modeName == "Group Delay") {
                 displayMode = DisplayMode::GroupDelay;

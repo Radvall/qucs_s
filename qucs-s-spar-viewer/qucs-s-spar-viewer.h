@@ -45,6 +45,16 @@ struct MarkerProperties {
   QToolButton* deleteButton;
 };
 
+// Structures for trace management
+enum class DisplayMode {
+  Magnitude_dB,
+  Phase,
+  Smith,
+  Polar,
+  NaturalUnits,
+  GroupDelay
+};
+
 // Struct to hold all the widgets related a trace
 struct TraceProperties {
   QLabel* nameLabel;
@@ -52,6 +62,7 @@ struct TraceProperties {
   QPushButton * colorButton;
   QComboBox* LineStyleComboBox;
   QToolButton* deleteButton;
+  QString display_mode;
 };
 
 
@@ -68,16 +79,6 @@ struct LimitProperties {
   QToolButton * Button_Delete_Limit;
   QFrame* Separator;
   QPushButton* Couple_Value;
-};
-
-// Structures for trace management
-enum class DisplayMode {
-  Magnitude_dB,
-  Phase,
-  Smith,
-  Polar,
-  NaturalUnits,
-  GroupDelay
 };
 
 // Structure to hold trace information
