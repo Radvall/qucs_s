@@ -2599,11 +2599,25 @@ void Qucs_S_SPAR_Viewer::addMarker(double freq, QString Freq_Marker_Scale){
     pen.setCosmetic(true);
 
     // Add marker to the charts
+    // IMPORTANT TO NOTE: There's an issue with the Qt Charts: If the marker is drawn when the dock is behind others, the position
+    // of the dot marker will be wrong, For fixing that, it is needed to raise the dock before adding the marker. This doesn't happen
+    // with the Smith Chart widget as it was developed from scratch
+
+    dockChart->raise();
     Magnitude_PhaseChart->addMarker(new_marker_name, f_marker, pen); // Magnitude & Phase
+
     smithChart->addMarker(new_marker_name, f_marker); // Smith Chart
+
+    dockPolarChart->raise();
     polarChart->addMarker(new_marker_name, f_marker); // Polar plot
+
+    docknuChart->raise();
     nuChart->addMarker(new_marker_name, f_marker, pen); // Natural units plot
+
+    dockGroupDelayChart->raise();
     GroupDelayChart->addMarker(new_marker_name, f_marker, pen); // Group delay
+
+    dockChart->raise();
 }
 
 
@@ -2936,6 +2950,7 @@ void Qucs_S_SPAR_Viewer::removeAllMarkers()
       QString marker_to_remove = QString("Mkr%1").arg(n_markers-i);
       removeMarker(marker_to_remove);
     }
+    traceMap.clear();
 }
 
 // After removing a marker, the names of the other markers must be updated
