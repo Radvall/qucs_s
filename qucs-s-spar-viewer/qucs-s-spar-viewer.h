@@ -124,6 +124,8 @@ class Qucs_S_SPAR_Viewer : public QMainWindow
   void slotSaveAs();
   void slotLoadSession();
 
+  void raiseWidgetsOnTabSelection(int index);
+
   void addFile();
   void addFiles(QStringList);
   QMap<QString, QList<double>> readTouchstoneFile(const QString& filePath);

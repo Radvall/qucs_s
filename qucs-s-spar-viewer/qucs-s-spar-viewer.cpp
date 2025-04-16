@@ -304,9 +304,9 @@ void Qucs_S_SPAR_Viewer::setTraceManagementDock(){
   DatasetsGrid->addWidget(QCombobox_datasets, 1, 0);
   connect(QCombobox_datasets, SIGNAL(currentIndexChanged(int)), SLOT(updateTracesCombo())); // Each time the dataset is changed it is needed to update the traces combo.
                                                                                             // This is needed when the user has data with different number of ports.
-
-
   traceTabs = new QTabWidget(this); // Ensure 'this' is the parent
+  connect(traceTabs, SIGNAL(currentChanged(int)), this, SLOT(raiseWidgetsOnTabSelection(int)));
+
 
   // Create tabs for Magnitude/Phase and Smith Chart
   magnitudePhaseTab = new QWidget(traceTabs); // Parent is traceTabs
@@ -487,6 +487,8 @@ void Qucs_S_SPAR_Viewer::setMarkerManagementDock() {
 
   // Create tab widget to hold the two marker tables
   QTabWidget* tabWidgetMarkers = new QTabWidget();
+  connect(tabWidgetMarkers, SIGNAL(currentChanged(int)), this, SLOT(raiseWidgetsOnTabSelection(int)));
+
 
   // Create the two tables for different marker types
   tableMarkers_Magnitude_Phase = new QTableWidget(1, 1, this);
@@ -1326,10 +1328,17 @@ void Qucs_S_SPAR_Viewer::applyDefaultVisualizations(const QStringList& fileNames
       TraceInfo s11_Smith = {filename, "S11", DisplayMode::Smith};
       TraceInfo s11_Polar = {filename, "S11", DisplayMode::Polar};
 
+      // Create TraceInfo structs for impedance
+      TraceInfo reZin = {filename, "Re{Zin}", DisplayMode::NaturalUnits};
+      TraceInfo imZin = {filename, "Im{Zin}", DisplayMode::NaturalUnits};
+
       // Add traces with appropriate colors
       this->addTrace(s11_dB, Qt::red, 1);
       this->addTrace(s11_Smith, Qt::darkBlue, 1);
       this->addTrace(s11_Polar, Qt::red, 1);
+
+      this->addTrace(reZin, Qt::darkBlue, 1);
+      this->addTrace(imZin, Qt::red, 1);
     }
 
            // Default behavior: If there's no more data loaded and a single S2P file is selected
@@ -2688,7 +2697,7 @@ void Qucs_S_SPAR_Viewer::updateMarkerTable(){
     QStringList marker_list = markerMap.keys();
     for (const QString &str : marker_list) {
       double marker_freq = getMarkerFreq(str);
-      smithChart->updateMarkerFrequency(str + QString("_Smith"), marker_freq); // Update Smith Chart widget markers
+      smithChart->updateMarkerFrequency(str, marker_freq); // Update Smith Chart widget markers
       polarChart->updateMarkerFrequency(str, marker_freq); // Update Polar Chart widget markers
       Magnitude_PhaseChart->updateMarkerFrequency(str, marker_freq); // Update magnitude / phase widget markers
       nuChart->updateMarkerFrequency(str, marker_freq); // Update natural units widget markers
@@ -2924,7 +2933,7 @@ void Qucs_S_SPAR_Viewer::removeAllMarkers()
 {
     int n_markers = getNumberOfMarkers();
     for (int i = 0; i < n_markers; i++) {
-      QString marker_to_remove = QString("Mkr%1").arg(n_markers-i-1);
+      QString marker_to_remove = QString("Mkr%1").arg(n_markers-i);
       removeMarker(marker_to_remove);
     }
 }
@@ -4455,4 +4464,34 @@ void Qucs_S_SPAR_Viewer::addPathToWatcher(const QString &path) {
 }
 
 
+// This function is triggered when a trace-type tab is clicked in the trace management tab
+void Qucs_S_SPAR_Viewer::raiseWidgetsOnTabSelection(int index) {
+  switch (index){
+    case 0:
+      // Magnitude / phase tab
+      dockChart->raise();
+      QCombobox_display_mode->setCurrentText("dB");
+      break;
+    case 1:
+      // Smith Chart
+      dockSmithChart->raise();
+      QCombobox_display_mode->setCurrentText("Smith");
+      break;
+    case 2:
+      // Polar Chart
+      dockPolarChart->raise();
+      QCombobox_display_mode->setCurrentText("Polar");
+      break;
+    case 3:
+      // Natural Units Chart
+      docknuChart->raise();
+      QCombobox_display_mode->setCurrentText("n.u.");
+      break;
+    case 4:
+      // Group Delay Chart
+      dockGroupDelayChart->raise();
+      QCombobox_display_mode->setCurrentText("Group Delay");
+      break;
+  }
+}
 
