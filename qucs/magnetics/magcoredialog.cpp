@@ -49,6 +49,11 @@ MagCoreDialog::MagCoreDialog(Component *pc, Schematic *sch) : QDialog(sch) {
   edtGap->setText(comp->getProperty("GAP")->Value);
   vl1->addWidget(edtGap);
   cbHBProbes = new QCheckBox(tr("H and B probe pins"));
+  if (comp->getProperty("BHprobes")->Value == "true"){
+    cbHBProbes->setChecked(true);
+  } else {
+    cbHBProbes->setChecked(false);
+  }
   vl1->addWidget(cbHBProbes);
   vl1->addStretch();
   gpbParams->setLayout(vl1);
@@ -270,6 +275,14 @@ void MagCoreDialog::slotApply()
   comp->getProperty("D4")->Value = edtD4->text().trimmed();
   comp->getProperty("D5")->Value = edtD5->text().trimmed();
   comp->getProperty("D6")->Value = edtD6->text().trimmed();
+
+  if (cbHBProbes->isChecked()) {
+    comp->getProperty("BHprobes")->Value = "true";
+  } else {
+    comp->getProperty("BHprobes")->Value = "false";
+  }
+
+  Sch->recreateComponent(comp);
   Sch->viewport()->repaint();
   Sch->setChanged(true,true);
 }

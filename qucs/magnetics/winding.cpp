@@ -112,8 +112,14 @@ QString Winding::spice_netlist(spicecompat::SpiceDialect dialect /* = spicecompa
     QString H_node, B_node;
     for (Component *pc: *containingSchematic->a_Components) {
       if (pc->Name == CORE) {
-        H_node = pc->Ports.at(0)->Connection->Name;
-        B_node = pc->Ports.at(1)->Connection->Name;
+        QString BH = pc->getProperty("BHprobes")->Value;
+        if (BH == "true") {
+          H_node = pc->Ports.at(0)->Connection->Name;
+          B_node = pc->Ports.at(1)->Connection->Name;
+        } else {
+          H_node = "net_" + pc->Name + "_H_node";
+          B_node = "net_" + pc->Name + "_B_node";
+        }
       }
     }
 
