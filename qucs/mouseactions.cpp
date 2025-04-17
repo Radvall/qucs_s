@@ -1270,7 +1270,17 @@ void MouseActions::MPressWire2(Schematic *Doc, QMouseEvent *Event, float fX, flo
 {
     switch (Event->button()) {
     case Qt::LeftButton: {
-        auto [hasChanges, lastNode] = Doc->connectWithWire({MAx3, MAy3}, {MAx2, MAy2});
+        const QPoint from{MAx3, MAy3};
+        const QPoint to{MAx2, MAy2};
+
+        if (from == to) {
+            QucsMain->MouseMoveAction = &MouseActions::MMoveWire1;
+            QucsMain->MousePressAction = &MouseActions::MPressWire1;
+            QucsMain->MouseDoubleClickAction = 0;
+            break;
+        }
+
+        auto [hasChanges, lastNode] = Doc->connectWithWire(from, to);
 
         if (lastNode == nullptr || lastNode->conn_count() > 1) {
             // if last port is connected, then...
