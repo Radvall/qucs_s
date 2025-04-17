@@ -59,11 +59,12 @@ endif()
 add_compile_definitions(HAVE_CONFIG_H)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Svg Xml PrintSupport)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Svg SvgWidgets Xml PrintSupport)
 include_directories(
       ${Qt6Core_INCLUDE_DIRS}
       ${Qt6Widgets_INCLUDE_DIRS}
       ${Qt6Svg_INCLUDE_DIRS}
+      ${Qt6SvgWidgets_INCLUDE_DIRS}
       ${Qt6Xml_INCLUDE_DIRS}
       ${Qt6PrintSupport_INCLUDE_DIRS}
       )
@@ -263,7 +264,7 @@ ADD_EXECUTABLE( ${QUCS_NAME} MACOSX_BUNDLE WIN32
 #
 TARGET_LINK_LIBRARIES( ${QUCS_NAME}
     components diagrams dialogs geometry paintings extsimkernels spicecomponents magnetics qt3_compat
-    Qt6::Core  Qt6::Gui  Qt6::Widgets Qt6::Svg  Qt6::Xml  Qt6::PrintSupport )
+    Qt6::Core  Qt6::Gui  Qt6::Widgets Qt6::Svg  Qt6::SvgWidgets Qt6::Xml  Qt6::PrintSupport )
 SET_TARGET_PROPERTIES(${QUCS_NAME} PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
 #
 # Prepare the installation
