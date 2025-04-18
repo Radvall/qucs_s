@@ -2648,9 +2648,6 @@ void Qucs_S_SPAR_Viewer::updateMarkerTable(){
         return;
     }
 
-    //Ensure that the size of the table is correct
-    QList<QAbstractSeries *> seriesList; // TO DO: Get the name of all traces displayed
-
     // Reset headers
     QStringList header_Magnitude_Phase, header_Smith, header_Polar, header_nu, header_GroupDelay;
     header_Magnitude_Phase.clear();
@@ -2691,7 +2688,8 @@ void Qucs_S_SPAR_Viewer::updateMarkerTable(){
               header_GroupDelay.append(trace_name);
             } else {
             // Natural units
-            header_nu.append(trace_name);
+              trace_name.chop(5); // Remove the "_n.u." suffix
+              header_nu.append(trace_name);
             }
           }
         }
