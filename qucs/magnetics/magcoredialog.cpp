@@ -15,47 +15,80 @@ MagCoreDialog::MagCoreDialog(Component *pc, Schematic *sch) : QDialog(sch) {
 
   QGroupBox *gpbParams = new QGroupBox;
   gpbParams->setTitle("Model parameters");
-  QVBoxLayout *vl1 = new QVBoxLayout;
-  vl1->addWidget(new QLabel(tr("Domains wall density, A (A/m)")));
+  QGridLayout *vl1 = new QGridLayout;
+
+  vl1->addWidget(new QLabel(tr("Domains wall density, A (A/m)")),0,0,1,2);
   edtA = new QLineEdit;
   edtA->setText(comp->getProperty("A")->Value);
-  vl1->addWidget(edtA);
-  vl1->addWidget(new QLabel(tr("Domains pinning, K (A/m)")));
+  vl1->addWidget(edtA,1,0,1,2);
+  cbShowA = new QCheckBox(tr("Show"));
+  cbShowA->setChecked(comp->getProperty("A")->display);
+  vl1->addWidget(cbShowA,1,2,1,1);
+
+  vl1->addWidget(new QLabel(tr("Domains pinning, K (A/m)")),2,0,1,2);
   edtK = new QLineEdit;
   edtK->setText(comp->getProperty("K")->Value);
-  vl1->addWidget(edtK);
-  vl1->addWidget(new QLabel(tr("Magnetization reversibility, C")));
+  vl1->addWidget(edtK,3,0,1,2);
+  cbShowK = new QCheckBox(tr("Show"));
+  cbShowK->setChecked(comp->getProperty("K")->display);
+  vl1->addWidget(cbShowK,3,2,1,1);
+
+  vl1->addWidget(new QLabel(tr("Magnetization reversibility, C")),4,0,1,2);
   edtC = new QLineEdit;
   edtC->setText(comp->getProperty("C")->Value);
-  vl1->addWidget(edtC);
-  vl1->addWidget(new QLabel(tr("Saturation magnetization, MS (A/m)")));
+  vl1->addWidget(edtC,5,0,1,2);
+  cbShowC = new QCheckBox(tr("Show"));
+  cbShowC->setChecked(comp->getProperty("C")->display);
+  vl1->addWidget(cbShowC,5,2,1,1);
+
+  vl1->addWidget(new QLabel(tr("Saturation magnetization, MS (A/m)")),6,0,1,2);
   edtMs = new QLineEdit;
   edtMs->setText(comp->getProperty("Ms")->Value);
-  vl1->addWidget(edtMs);
-  vl1->addWidget(new QLabel(tr("Interdomain coupling, α")));
+  vl1->addWidget(edtMs,7,0,1,2);
+  cbShowMs = new QCheckBox(tr("Show"));
+  cbShowMs->setChecked(comp->getProperty("Ms")->display);
+  vl1->addWidget(cbShowMs,7,2,1,1);
+
+  vl1->addWidget(new QLabel(tr("Interdomain coupling, α")),8,0,1,2);
   edtAlpha = new QLineEdit;
   edtAlpha->setText(comp->getProperty("alpha")->Value);
-  vl1->addWidget(edtAlpha);
-  vl1->addWidget(new QLabel(tr("Magnetic path length (m)")));
+  vl1->addWidget(edtAlpha,9,0,1,2);
+  cbShowAlpha = new QCheckBox(tr("Show"));
+  cbShowAlpha->setChecked(comp->getProperty("alpha")->display);
+  vl1->addWidget(cbShowAlpha,9,2,1,1);
+
+  vl1->addWidget(new QLabel(tr("Magnetic path length (m)")),10,0,1,2);
   edtPath = new QLineEdit;
   edtPath->setText(comp->getProperty("PATH")->Value);
-  vl1->addWidget(edtPath);
-  vl1->addWidget(new QLabel(tr("Core cross section area (m^2)")));
+  vl1->addWidget(edtPath,11,0,1,2);
+  cbShowPath = new QCheckBox(tr("Show"));
+  cbShowPath->setChecked(comp->getProperty("PATH")->display);
+  vl1->addWidget(cbShowPath,11,2,1,1);
+
+  vl1->addWidget(new QLabel(tr("Core cross section area (m^2)")),12,0,1,2);
   edtArea = new QLineEdit;
   edtArea->setText(comp->getProperty("AREA")->Value);
-  vl1->addWidget(edtArea);
-  vl1->addWidget(new QLabel(tr("Air gap length (m)")));
+  vl1->addWidget(edtArea,13,0,1,2);
+  cbShowArea = new QCheckBox(tr("Show"));
+  cbShowArea->setChecked(comp->getProperty("AREA")->display);
+  vl1->addWidget(cbShowArea,13,2,1,1);
+
+  vl1->addWidget(new QLabel(tr("Air gap length (m)")),14,0,1,2);
   edtGap = new QLineEdit;
   edtGap->setText(comp->getProperty("GAP")->Value);
-  vl1->addWidget(edtGap);
+  vl1->addWidget(edtGap,15,0,1,2);
+  cbShowGap = new QCheckBox(tr("Show"));
+  cbShowGap->setChecked(comp->getProperty("GAP")->display);
+  vl1->addWidget(cbShowGap,15,2,1,1);
+
   cbHBProbes = new QCheckBox(tr("H and B probe pins"));
   if (comp->getProperty("BHprobes")->Value == "true"){
     cbHBProbes->setChecked(true);
   } else {
     cbHBProbes->setChecked(false);
   }
-  vl1->addWidget(cbHBProbes);
-  vl1->addStretch();
+  vl1->addWidget(cbHBProbes,16,0,1,3);
+  //vl1->addStretch();
   gpbParams->setLayout(vl1);
 
   cbxCoreType = new QComboBox;
@@ -275,6 +308,15 @@ void MagCoreDialog::slotApply()
   comp->getProperty("D4")->Value = edtD4->text().trimmed();
   comp->getProperty("D5")->Value = edtD5->text().trimmed();
   comp->getProperty("D6")->Value = edtD6->text().trimmed();
+
+  comp->getProperty("A")->display = cbShowA->isChecked();
+  comp->getProperty("C")->display = cbShowC->isChecked();
+  comp->getProperty("K")->display = cbShowK->isChecked();
+  comp->getProperty("Ms")->display = cbShowMs->isChecked();
+  comp->getProperty("alpha")->display = cbShowAlpha->isChecked();
+  comp->getProperty("PATH")->display = cbShowPath->isChecked();
+  comp->getProperty("AREA")->display = cbShowArea->isChecked();
+  comp->getProperty("GAP")->display = cbShowGap->isChecked();
 
   if (cbHBProbes->isChecked()) {
     comp->getProperty("BHprobes")->Value = "true";

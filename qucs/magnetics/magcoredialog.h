@@ -27,6 +27,8 @@ private:
   QLabel *lblD1, *lblD2, *lblD3, *lblD4, *lblD5, *lblD6;
   QComboBox *cbxCoreType;
   QPushButton *btnOK, *btnApply, *btnCancel;
+  QCheckBox *cbShowA, *cbShowK, *cbShowC, *cbShowAlpha, *cbShowMs,
+      *cbShowArea, *cbShowPath, *cbShowGap;
 
   QSvgWidget *coreImg;
 
