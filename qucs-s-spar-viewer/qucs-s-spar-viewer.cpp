@@ -2603,6 +2603,12 @@ void Qucs_S_SPAR_Viewer::addMarker(double freq, QString Freq_Marker_Scale){
     // of the dot marker will be wrong, For fixing that, it is needed to raise the dock before adding the marker. This doesn't happen
     // with the Smith Chart widget as it was developed from scratch
 
+    // Find which of the docks is raised to restore that at the end
+    bool isDockMagPhaseRaised = !dockChart->visibleRegion().isEmpty();
+    bool isDockSmithRaised = !dockSmithChart->visibleRegion().isEmpty();
+    bool isDockPolarRaised = !dockPolarChart->visibleRegion().isEmpty();
+    bool isDocknuRaised = !docknuChart->visibleRegion().isEmpty();
+
     dockChart->raise();
     Magnitude_PhaseChart->addMarker(new_marker_name, f_marker, pen); // Magnitude & Phase
 
@@ -2617,7 +2623,22 @@ void Qucs_S_SPAR_Viewer::addMarker(double freq, QString Freq_Marker_Scale){
     dockGroupDelayChart->raise();
     GroupDelayChart->addMarker(new_marker_name, f_marker, pen); // Group delay
 
-    dockChart->raise();
+    // Restore original situation
+    if (isDockMagPhaseRaised) {
+      dockChart->raise();
+    } else {
+      if (isDockSmithRaised) {
+        dockSmithChart->raise();
+      } else {
+        if (isDockPolarRaised) {
+          dockPolarChart->raise();
+        } else {
+          if (isDocknuRaised) {
+            docknuChart->raise();
+          }
+        }
+      }
+    }
 }
 
 
