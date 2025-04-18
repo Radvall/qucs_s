@@ -332,7 +332,7 @@ Node* Schematic::provideNode(int x, int y)
     // Check if the new node lies upon an existing wire
     for (auto* wire : *a_Wires)
     {
-        if (qucs_s::geom::is_between(new_node, QPoint{wire->x1, wire->y1}, QPoint{wire->x2, wire->y2})) {
+        if (qucs_s::geom::is_between(new_node, wire->P1(), wire->P2())) {
             // split the wire into two wires
             splitWire(wire, new_node);
             return new_node;
@@ -454,10 +454,8 @@ Wire* merge_wires_at_node(Node* node) {
     if (!extended_wire->isSelected) extended_wire->isSelected = dissapearing_wire->isSelected;
 
     // Update wire dimensions
-    extended_wire->x1 = extended_wire->Port1->x();
-    extended_wire->y1 = extended_wire->Port1->y();
-    extended_wire->x2 = extended_wire->Port2->x();
-    extended_wire->y2 = extended_wire->Port2->y();
+    extended_wire->setP1(extended_wire->Port1->center());
+    extended_wire->setP2(extended_wire->Port2->center());
 
     if (label != extended_wire->Label) {
         delete extended_wire->Label;
@@ -1545,8 +1543,8 @@ bool Schematic::elementsOnGrid()
     std::ranges::for_each(selection.labels, onGridSetter);
     std::ranges::for_each(selection.markers, onGridSetter);
     std::ranges::for_each(selection.wires, [&any_set, this](Wire* w) {
-        auto p1_moved = w->setP1(setOnGrid(QPoint{w->x1, w->y1}));
-        auto p2_moved = w->setP2(setOnGrid(QPoint{w->x2, w->y2}));
+        auto p1_moved = w->setP1(setOnGrid(w->P1()));
+        auto p2_moved = w->setP2(setOnGrid(w->P2()));
         any_set = p1_moved || p2_moved || any_set;
     });
 
@@ -2377,10 +2375,8 @@ std::pair<bool,Node*> Schematic::installWire(Wire* wire)
             wire->Port1->connect(wire);
             wire->Port2 = node_pair.second;
             wire->Port2->connect(wire);
-            wire->x1 = wire->Port1->x();
-            wire->y1 = wire->Port1->y();
-            wire->x2 = wire->Port2->x();
-            wire->y2 = wire->Port2->y();
+            wire->setP1(wire->Port1->center());
+            wire->setP2(wire->Port2->center());
             a_Wires->push_back(wire);
             has_been_used = true;
             has_changes = true;
@@ -2438,10 +2434,8 @@ std::pair<bool,Node*> Schematic::installWire(Wire* wire)
         wire->Port2->connect(wire);
 
         // Update given wire dimensions
-        wire->x1 = wire->Port1->x();
-        wire->y1 = wire->Port1->y();
-        wire->x2 = wire->Port2->x();
-        wire->y2 = wire->Port2->y();
+        wire->setP1(wire->Port1->center());
+        wire->setP2(wire->Port2->center());
 
         a_Wires->push_back(wire);
     }

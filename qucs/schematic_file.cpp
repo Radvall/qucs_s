@@ -878,7 +878,7 @@ void Schematic::simpleInsertWire(Wire *pw)
 {
   Node* pn = provideNode(pw->x1, pw->y1);
 
-  if(pw->x1 == pw->x2) if(pw->y1 == pw->y2) {
+  if(pw->P1() == pw->P2()) {
     pn->Label = pw->Label;   // wire with length zero are just node labels
     if (pn->Label) {
       pn->Label->Type = isNodeLabel;
@@ -922,7 +922,7 @@ bool Schematic::loadWires(QTextStream *stream, std::list<Element*> *List)
       // Only the label is kept, so it becomes "free" i.e. not having
       // a host element like wire or node. We must be careful to treat
       // such labels in a special way in other parts of the codebase.
-      if (w->x1 == w->x2 && w->y1 == w->y2 && w->Label) {
+      if (w->P1() == w->P2() && w->Label) {
         w->Label->Type = isNodeLabel;
         List->push_back(w->Label);
         w->Label->pOwner = nullptr;
