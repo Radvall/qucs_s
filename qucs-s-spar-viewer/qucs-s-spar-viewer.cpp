@@ -1026,7 +1026,6 @@ QMap<QString, QList<double>> Qucs_S_SPAR_Viewer::readQucsatorDataset(const QStri
 
   // Initialize variables
   QString currentVariable;
-  int dataPoints = 0;
   bool isReading = false;
   int maxPortNumber = 0; // Track maximum port number
   double z0Value = 50.0; // Default Z0 value
@@ -1047,7 +1046,6 @@ QMap<QString, QList<double>> Qucs_S_SPAR_Viewer::readQucsatorDataset(const QStri
         // Check if it's frequency
         if (line.startsWith("<indep ") && currentVariable == "frequency") {
           isReading = true;
-          dataPoints = parts[2].toInt();
         }
         // Check if it's Z0 (reference impedance)
         else if (line.startsWith("<indep ") && currentVariable == "Z0") {
@@ -1158,14 +1156,14 @@ QMap<QString, QList<double>> Qucs_S_SPAR_Viewer::readNGspiceData(const QString& 
 {
   QMap<QString, QList<double>> file_data; // Data structure to store the file data
 
-         // 1) Open the file
+  // 1) Open the file
   QFile file(filePath);
   if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
     qDebug() << "Cannot open the file";
     return file_data;
   }
 
-         // 2) Read data
+  // 2) Read data
   QTextStream in(&file);
   QString line = in.readLine(); // First line should be <Qucs Dataset X.X.X>
 
@@ -1175,9 +1173,8 @@ QMap<QString, QList<double>> Qucs_S_SPAR_Viewer::readNGspiceData(const QString& 
     return file_data;
   }
 
-         // Initialize variables
+  // Initialize variables
   QString currentVariable;
-  int dataPoints = 0;
   bool isReading = false;
   int maxPortNumber = 0; // Track maximum port number
   double z0Value = 50.0; // Default Z0 value
@@ -1199,7 +1196,6 @@ QMap<QString, QList<double>> Qucs_S_SPAR_Viewer::readNGspiceData(const QString& 
                // Check if it's frequency
         if (line.startsWith("<indep ") && currentVariable == "frequency") {
           isReading = true;
-          dataPoints = parts[2].toInt();
         }
         // Check if it's the reference impedance Z0
         else if (line.startsWith("<dep ") && currentVariable == "ac.z0") {

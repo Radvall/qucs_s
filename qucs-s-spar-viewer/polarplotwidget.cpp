@@ -190,8 +190,6 @@ void PolarPlotWidget::updatePlot() {
     delete series;
   }
 
-  int displayMode = displayModeCombo->currentIndex();
-
   for (auto it = traces.constBegin(); it != traces.constEnd(); ++it) {
     const QString &name = it.key();
     const Trace &trace = it.value();
@@ -238,7 +236,7 @@ void PolarPlotWidget::updateAngleAxis()
   updatePlot();
 }
 
-void PolarPlotWidget::toggleDisplayMode(int mode)
+void PolarPlotWidget::toggleDisplayMode()
 {
   updatePlot();
 }
@@ -574,7 +572,7 @@ void PolarPlotWidget::onFMaxChanged(double value) {
   updatePlot();
 }
 
-void PolarPlotWidget::onFUnitChanged(int index) {
+void PolarPlotWidget::onFUnitChanged() {
   fMin = fMinSpinBox->value() * getFrequencyMultiplier();
   fMax = fMaxSpinBox->value() * getFrequencyMultiplier();
   updatePlot();

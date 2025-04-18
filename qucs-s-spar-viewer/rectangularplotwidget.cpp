@@ -1,7 +1,7 @@
 #include "rectangularplotwidget.h"
 
 RectangularPlotWidget::RectangularPlotWidget(QWidget *parent)
-    : QWidget(parent), fMin(1e20), fMax(-1), showTraceValues(true), axisSettingsLocked(false)
+    : QWidget(parent), showTraceValues(true), axisSettingsLocked(false), fMin(1e20), fMax(-1)
 {
   // Initialize the chart and chart view
   ChartWidget = new QChart();

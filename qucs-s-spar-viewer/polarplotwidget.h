@@ -71,11 +71,11 @@ public:
 private slots:
   void updateRAxis();
   void updateAngleAxis();
-  void toggleDisplayMode(int mode);
+  void toggleDisplayMode();
 
   void onFMinChanged(double value);
   void onFMaxChanged(double value);
-  void onFUnitChanged(int index);
+  void onFUnitChanged();
   double getFrequencyMultiplier() const;
 
 private:
