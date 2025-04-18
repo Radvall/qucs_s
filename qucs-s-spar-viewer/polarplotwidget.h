@@ -73,6 +73,11 @@ private slots:
   void updateAngleAxis();
   void toggleDisplayMode(int mode);
 
+  void onFMinChanged(double value);
+  void onFMaxChanged(double value);
+  void onFUnitChanged(int index);
+  double getFrequencyMultiplier() const;
+
 private:
   QPolarChart *polarChart;
   QChartView *chartView;
@@ -84,9 +89,13 @@ private:
   QDoubleSpinBox *rAxisDiv;
   QComboBox *displayModeCombo;
 
-  QStringList frequencyUnits;
+  QDoubleSpinBox *fMinSpinBox;
+  QDoubleSpinBox *fMaxSpinBox;
+  QComboBox *fUnitComboBox;
   double fMin;
   double fMax;
+  QStringList frequencyUnits;
+  void updateFrequencyRange();
 
   QMap<QString, Trace> traces;
   QMap<QString, Marker> markers;

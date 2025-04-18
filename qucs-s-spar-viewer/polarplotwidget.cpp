@@ -58,23 +58,33 @@ PolarPlotWidget::~PolarPlotWidget()
   delete polarChart;
 }
 
-void PolarPlotWidget::addTrace(const QString& name, const Trace& trace)
-{
-  // Store the trace in the map
+void PolarPlotWidget::addTrace(const QString& name, const Trace& trace) {
   traces[name] = trace;
+  updateFrequencyRange(); // Update frequency range based on new trace
+  updatePlot();
+}
 
-         // Update frequency range if this trace has data
-  if (!trace.frequencies.isEmpty()) {
-    double traceMinFreq = trace.frequencies.first();
-    double traceMaxFreq = trace.frequencies.last();
+void PolarPlotWidget::updateFrequencyRange() {
+  fMin = 1e20;
+  fMax = -1;
 
-           // Update global min/max frequency
-    if (traceMinFreq < fMin) fMin = traceMinFreq;
-    if (traceMaxFreq > fMax) fMax = traceMaxFreq;
+  for (const auto& trace : traces) {
+    if (!trace.frequencies.isEmpty()) {
+      double traceMinFreq = trace.frequencies.first();
+      double traceMaxFreq = trace.frequencies.last();
+
+      if (traceMinFreq < fMin) fMin = traceMinFreq;
+            if (traceMaxFreq > fMax) fMax = traceMaxFreq;
+        }
   }
 
-         // Update the plot with the new trace
-  updatePlot();
+         // Update spin box values
+  double freqMultiplier = getFrequencyMultiplier();
+  fMinSpinBox->setValue(fMin / freqMultiplier);
+  fMinSpinBox->setMinimum(fMin / freqMultiplier);
+
+  fMaxSpinBox->setValue(fMax / freqMultiplier);
+  fMaxSpinBox->setMaximum(fMax / freqMultiplier);
 }
 
 void PolarPlotWidget::removeTrace(const QString& name)
@@ -171,66 +181,41 @@ QMap<QString, double> PolarPlotWidget::getMarkers() const
   return markerFrequencies;
 }
 
-void PolarPlotWidget::updatePlot()
-{
-  // Clear existing graphics items
+void PolarPlotWidget::updatePlot() {
   clearGraphicsItems();
 
-         // Remove all existing series from the chart
-  QList<QAbstractSeries*> oldSeries = polarChart->series();
-  for (QAbstractSeries* series : oldSeries) {
+  QList<QAbstractSeries *> oldSeries = polarChart->series();
+  for (QAbstractSeries *series : oldSeries) {
     polarChart->removeSeries(series);
     delete series;
   }
 
-         // Get current display mode
   int displayMode = displayModeCombo->currentIndex();
 
-         // Add each trace as a new series
   for (auto it = traces.constBegin(); it != traces.constEnd(); ++it) {
-    const QString& name = it.key();
-    const Trace& trace = it.value();
+    const QString &name = it.key();
+    const Trace &trace = it.value();
 
-           // Create a new line series for the trace
-    QLineSeries* series = new QLineSeries();
+    QLineSeries *series = new QLineSeries();
     series->setPen(trace.pen);
     series->setName(name);
 
-           // Add data points to the series
     for (int i = 0; i < trace.values.size() && i < trace.frequencies.size(); ++i) {
-      std::complex<double> value = trace.values[i];
-
-      if (displayMode == 0) {
-        // Magnitude/Phase mode - convert to polar
+      double frequency = trace.frequencies[i];
+      if (frequency >= fMin && frequency <= fMax) {  // Filter frequency
+        std::complex value = trace.values[i];
         double magnitude = std::abs(value);
-        double phase = std::arg(value) * 180.0 / M_PI;  // Convert rad to deg
-        if (phase < 0) phase += 360;  // Normalize to 0-360
-
-        // Add to series using polar coordinates (angle, radius)
-        series->append(phase, magnitude);
-      } else {
-        // Real/Imaginary mode - plot directly
-        // For polar charts, we convert real/imag to angle/radius
-        double angle = std::atan2(value.imag(), value.real()) * 180.0 / M_PI;
-        if (angle < 0) angle += 360;
-        double radius = std::sqrt(value.real()*value.real() + value.imag()*value.imag());
-
-        series->append(angle, radius);
+        double phase = std::arg(value) * 180.0 / M_PI;
+        if (phase < 0) phase += 360;
+                series->append(phase, magnitude);
       }
     }
 
-           // Add the series to the chart
     polarChart->addSeries(series);
-
-           // Attach to axes
     series->attachAxis(angleAxis);
     series->attachAxis(radiusAxis);
   }
-
-  // Draw markers if any
   drawCustomMarkers();
-
-  // Refresh the chart
   polarChart->update();
 }
 
@@ -255,13 +240,6 @@ void PolarPlotWidget::updateAngleAxis()
 
 void PolarPlotWidget::toggleDisplayMode(int mode)
 {
-  // Update display based on mode: 0=Mag/Phase, 1=Real/Imag
-  if (mode == 0) {
-    radiusAxis->setTitleText("Magnitude");
-  } else {
-    radiusAxis->setTitleText("Value");
-  }
-
   updatePlot();
 }
 
@@ -324,9 +302,34 @@ QGridLayout* PolarPlotWidget::setupAxisSettings()
 {
   QGridLayout *axisLayout = new QGridLayout();
 
+  fMin = 1e20;
+  fMax = -1;
+
+  QLabel *FreqLabel = new QLabel("<b>Frequency</b>");
+  axisLayout->addWidget(FreqLabel, 0, 0);
+
+  // Create frequency controls
+  fMinSpinBox = new QDoubleSpinBox;
+  fMinSpinBox->setRange(0, 1e12);
+  fMinSpinBox->setSingleStep(10);
+  connect(fMinSpinBox, SIGNAL(valueChanged(double)), this, SLOT(onFMinChanged(double)));
+  axisLayout->addWidget(fMinSpinBox, 0, 1);
+
+  fMaxSpinBox = new QDoubleSpinBox;
+  fMaxSpinBox->setRange(0, 1e12);
+  fMaxSpinBox->setSingleStep(10);
+  connect(fMaxSpinBox, SIGNAL(valueChanged(double)), this, SLOT(onFMaxChanged(double)));
+  axisLayout->addWidget(fMaxSpinBox, 0, 2);
+
+  fUnitComboBox = new QComboBox;
+  fUnitComboBox->addItems(frequencyUnits);
+  fUnitComboBox->setCurrentIndex(2); // MHz
+  connect(fUnitComboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(onFUnitChanged(int)));
+  axisLayout->addWidget(fUnitComboBox, 0, 3);
+
          // Radius axis settings
   QLabel *rAxisLabel = new QLabel("<b>Radius</b>");
-  axisLayout->addWidget(rAxisLabel, 0, 0);
+  axisLayout->addWidget(rAxisLabel, 1, 0);
 
   rAxisMin = new QDoubleSpinBox();
   rAxisMin->setMinimum(0.0);
@@ -335,7 +338,7 @@ QGridLayout* PolarPlotWidget::setupAxisSettings()
   rAxisMin->setDecimals(2);
   rAxisMin->setSingleStep(0.1);
   connect(rAxisMin, SIGNAL(valueChanged(double)), this, SLOT(updateRAxis()));
-  axisLayout->addWidget(rAxisMin, 0, 1);
+  axisLayout->addWidget(rAxisMin, 1, 1);
 
   rAxisMax = new QDoubleSpinBox();
   rAxisMax->setMinimum(0.1);
@@ -344,7 +347,7 @@ QGridLayout* PolarPlotWidget::setupAxisSettings()
   rAxisMax->setDecimals(2);
   rAxisMax->setSingleStep(0.1);
   connect(rAxisMax, SIGNAL(valueChanged(double)), this, SLOT(updateRAxis()));
-  axisLayout->addWidget(rAxisMax, 0, 2);
+  axisLayout->addWidget(rAxisMax, 1, 2);
 
   rAxisDiv = new QDoubleSpinBox();
   rAxisDiv->setMinimum(0.1);
@@ -353,17 +356,17 @@ QGridLayout* PolarPlotWidget::setupAxisSettings()
   rAxisDiv->setDecimals(2);
   rAxisDiv->setSingleStep(0.1);
   connect(rAxisDiv, SIGNAL(valueChanged(double)), this, SLOT(updateRAxis()));
-  axisLayout->addWidget(rAxisDiv, 0, 3);
+  axisLayout->addWidget(rAxisDiv, 1, 3);
 
          // Display mode
-  QLabel *modeLabel = new QLabel("<b>Display Mode</b>");
-  axisLayout->addWidget(modeLabel, 1, 0);
+  QLabel *modeLabel = new QLabel("<b>Marker format</b>");
+  axisLayout->addWidget(modeLabel, 2, 0);
 
   displayModeCombo = new QComboBox();
   displayModeCombo->addItem("Magnitude/Phase");
   displayModeCombo->addItem("Real/Imaginary");
   connect(displayModeCombo, SIGNAL(currentIndexChanged(int)), this, SLOT(toggleDisplayMode(int)));
-  axisLayout->addWidget(displayModeCombo, 1, 1, 1, 2);
+  axisLayout->addWidget(displayModeCombo, 2, 1, 1, 2);
 
   return axisLayout;
 }
@@ -559,3 +562,32 @@ void PolarPlotWidget::drawCustomMarkers()
     }
   }
 }
+
+
+void PolarPlotWidget::onFMinChanged(double value) {
+  fMin = value * getFrequencyMultiplier();
+  updatePlot();
+}
+
+void PolarPlotWidget::onFMaxChanged(double value) {
+  fMax = value * getFrequencyMultiplier();
+  updatePlot();
+}
+
+void PolarPlotWidget::onFUnitChanged(int index) {
+  fMin = fMinSpinBox->value() * getFrequencyMultiplier();
+  fMax = fMaxSpinBox->value() * getFrequencyMultiplier();
+  updatePlot();
+}
+
+double PolarPlotWidget::getFrequencyMultiplier() const {
+  int index = fUnitComboBox->currentIndex();
+  switch (index) {
+  case 0: return 1.0;   // Hz
+  case 1: return 1e3;  // kHz
+  case 2: return 1e6;  // MHz
+  case 3: return 1e9;  // GHz
+  default: return 1.0;
+  }
+}
+
