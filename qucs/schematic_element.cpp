@@ -2336,8 +2336,8 @@ std::pair<bool,Node*> Schematic::installWire(Wire* wire)
     assert(wire->Port1 == nullptr);
     assert(wire->Port2 == nullptr);
 
-    auto* port1 = provideNode(wire->x1, wire->y1);
-    auto* port2 = provideNode(wire->x2, wire->y2);
+    auto* port1 = provideNode(wire->P1());
+    auto* port2 = provideNode(wire->P2());
 
     auto crossed_nodes =
         qucs_s::geom::on_line(port1, port2, a_Nodes->begin(), a_Nodes->end());
@@ -2546,7 +2546,7 @@ public:
     }
 
     void replaceNode(qucs_s::GenericPort* port) override {
-        port->replaceNodeWith(sch->provideNode(port->center().x(), port->center().y()));
+        port->replaceNodeWith(sch->provideNode(port->center()));
     }
 };
 

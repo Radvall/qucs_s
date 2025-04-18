@@ -876,7 +876,7 @@ bool Schematic::loadComponents(QTextStream *stream, std::list<Component*> *List)
 // Inserts a wire without performing logic for optimizing.
 void Schematic::simpleInsertWire(Wire *pw)
 {
-  Node* pn = provideNode(pw->x1, pw->y1);
+  Node* pn = provideNode(pw->P1());
 
   if(pw->P1() == pw->P2()) {
     pn->Label = pw->Label;   // wire with length zero are just node labels
@@ -891,7 +891,7 @@ void Schematic::simpleInsertWire(Wire *pw)
   pn->connect(pw);  // connect schematic node to component node
   pw->Port1 = pn;
 
-  pn = provideNode(pw->x2, pw->y2);
+  pn = provideNode(pw->P2());
   pn->connect(pw);  // connect schematic node to component node
   pw->Port2 = pn;
 
