@@ -61,6 +61,9 @@ public:
 
   void connectPort1(Node* n);
   void connectPort2(Node* n);
+
+private:
+  void updateCenter() noexcept;
 };
 
 #endif

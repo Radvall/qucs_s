@@ -28,9 +28,7 @@ Wire::Wire(int _x1, int _y1, int _x2, int _y2)
   x2 = _x2;
   y2 = _y2;
 
-  // Update center
-  cx = (x1 + x2) / 2;
-  cy = (y1 + y2) / 2;
+  updateCenter();
 
   Port1 = nullptr;
   Port2 = nullptr;
@@ -197,9 +195,7 @@ bool Wire::load(const QString& _s)
     std::swap(y1, y2);
   }
 
-  // Update center
-  cx = (x1 + x2) / 2;
-  cy = (y1 + y2) / 2;
+  updateCenter();
 
   n = s.section('"',1,1);
   if(!n.isEmpty()) {     // is wire labeled ?
@@ -256,9 +252,7 @@ bool Wire::setP1(const QPoint& new_p1)
   x1 = new_p1.x();
   y1 = new_p1.y();
 
-  // Update center
-  cx = std::midpoint(x1, x2);
-  cy = std::midpoint(y1, y2);
+  updateCenter();
 
   return true;
 }
@@ -284,9 +278,7 @@ bool Wire::setP2(const QPoint& new_p2)
   x2 = new_p2.x();
   y2 = new_p2.y();
 
-  // Update center
-  cx = std::midpoint(x1, x2);
-  cy = std::midpoint(y1, y2);
+  updateCenter();
 
   return true;
 }
@@ -323,4 +315,9 @@ void Wire::connectPort2(Node* n)
   n->connect(this);
   Port2 = n;
   setP2(Port2->center());
+}
+
+inline void Wire::updateCenter() noexcept {
+  cx = std::midpoint(x1, x2);
+  cy = std::midpoint(y1, y2);
 }
