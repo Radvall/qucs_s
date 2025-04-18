@@ -21,7 +21,7 @@
 
 #include <QPainter>
 
-Wire::Wire(int _x1, int _y1, int _x2, int _y2, Node *n1, Node *n2)
+Wire::Wire(int _x1, int _y1, int _x2, int _y2)
 {
   x1 = _x1;
   y1 = _y1;
@@ -32,12 +32,18 @@ Wire::Wire(int _x1, int _y1, int _x2, int _y2, Node *n1, Node *n2)
   cx = (x1 + x2) / 2;
   cy = (y1 + y2) / 2;
 
-  Port1 = n1;
-  Port2 = n2;
+  Port1 = nullptr;
+  Port2 = nullptr;
   Label = nullptr;
 
   Type = isWire;
   isSelected = false;
+}
+
+Wire::Wire(Node* n1, Node* n2)
+{
+  connectPort1(n1);
+  connectPort2(n2);
 }
 
 Wire::~Wire()

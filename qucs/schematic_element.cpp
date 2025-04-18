@@ -540,14 +540,9 @@ Wire* Schematic::selectedWire(int x, int y)
 // Splits the wire "*pw" into two pieces by the node "*pn".
 Wire* Schematic::splitWire(Wire *source_wire, Node *splitter_node)
 {
-    Wire *new_wire = new Wire(splitter_node->cx, splitter_node->cy, source_wire->x2, source_wire->y2, splitter_node, source_wire->Port2);
+    Wire *new_wire = new Wire(splitter_node, source_wire->Port2);
     new_wire->isSelected = source_wire->isSelected;
-
     source_wire->connectPort2(splitter_node);
-
-    new_wire->Port2->connect(new_wire);
-    splitter_node->connect(new_wire);
-    new_wire->Port2->disconnect(source_wire);
     a_Wires->push_back(new_wire);
 
     if(source_wire->Label)
@@ -2374,12 +2369,7 @@ std::pair<bool,Node*> Schematic::installWire(Wire* wire)
         } else {
             // … the given wire has been already used to fill another gap.
             // Fill this gap with a brand new wire.
-	        auto* w = new Wire(node_pair.first->x(), node_pair.first->y(),
-			                   node_pair.second->x(), node_pair.second->y());
-            w->Port1 = node_pair.first;
-            w->Port1->connect(w);
-            w->Port2 = node_pair.second;
-            w->Port2->connect(w);
+	        auto* w = new Wire(node_pair.first, node_pair.second);
             a_Wires->push_back(w);
             has_changes = true;
         }
@@ -2793,15 +2783,9 @@ void Schematic::dumbConnectWithWire(const QPoint& a, const QPoint& b) noexcept {
         auto m = points[i-1];
         auto n = points[i];
 
-        auto* wire = new Wire(m.x(), m.y(), n.x(), n.y());
+        auto* wire = new Wire(new Node(m.x(), m.y()), new Node(n.x(), n.y()));
         a_Wires->push_back(wire);
-
-        wire->Port1 = new Node(m.x(), m.y());
-        wire->Port1->connect(wire);
         a_Nodes->push_back(wire->Port1);
-
-        wire->Port2 = new Node(n.x(), n.y());
-        wire->Port2->connect(wire);
         a_Nodes->push_back(wire->Port2);
     }
 }
