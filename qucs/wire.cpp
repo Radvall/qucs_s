@@ -183,6 +183,20 @@ bool Wire::load(const QString& _s)
   y2 = n.toInt(&ok);
   if(!ok) return false;
 
+  // Quick fix for ra3xdh#1273 (25.03.25)
+  //
+  // A wire whose (x1,y1) coordinates are not less than (x2,y2)
+  // coordinates somehow deals some damage like crashes or funny behaviour.
+  //
+  // I wasn't able to understand how exactly this happens, i.e. why it's
+  // important to have x1 less than x2 for a wire, so I decided to fix this
+  // in a most straightforward way by "normalizing" the wire before installing
+  // it into schematic
+  if (x1 > x2 || (x1 == x2 && y1 > y2)) {
+    std::swap(x1, x2);
+    std::swap(y1, y2);
+  }
+
   // Update center
   cx = (x1 + x2) / 2;
   cy = (y1 + y2) / 2;
