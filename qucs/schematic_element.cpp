@@ -543,14 +543,9 @@ Wire* Schematic::splitWire(Wire *source_wire, Node *splitter_node)
     Wire *new_wire = new Wire(splitter_node->cx, splitter_node->cy, source_wire->x2, source_wire->y2, splitter_node, source_wire->Port2);
     new_wire->isSelected = source_wire->isSelected;
 
-    source_wire->x2 = splitter_node->cx;
-    source_wire->y2 = splitter_node->cy;
-    source_wire->cx = (source_wire->x1 + source_wire->x2) / 2;
-    source_wire->cy = (source_wire->y1 + source_wire->y2) / 2;
-    source_wire->Port2 = splitter_node;
+    source_wire->connectPort2(splitter_node);
 
     new_wire->Port2->connect(new_wire);
-    splitter_node->connect(source_wire);
     splitter_node->connect(new_wire);
     new_wire->Port2->disconnect(source_wire);
     a_Wires->push_back(new_wire);
@@ -2371,12 +2366,8 @@ std::pair<bool,Node*> Schematic::installWire(Wire* wire)
 
         if (!has_been_used) {
             // … the given wire hasn't been used yet. Fill the gap with it.
-            wire->Port1 = node_pair.first;
-            wire->Port1->connect(wire);
-            wire->Port2 = node_pair.second;
-            wire->Port2->connect(wire);
-            wire->setP1(wire->Port1->center());
-            wire->setP2(wire->Port2->center());
+            wire->connectPort1(node_pair.first);
+            wire->connectPort2(node_pair.second);
             a_Wires->push_back(wire);
             has_been_used = true;
             has_changes = true;
@@ -2428,14 +2419,8 @@ std::pair<bool,Node*> Schematic::installWire(Wire* wire)
         delete existing_wire;
 
         // Put the given wire in place of deleted one
-        wire->Port1 = last_pair.first;
-        wire->Port1->connect(wire);
-        wire->Port2 = last_pair.second;
-        wire->Port2->connect(wire);
-
-        // Update given wire dimensions
-        wire->setP1(wire->Port1->center());
-        wire->setP2(wire->Port2->center());
+        wire->connectPort1(last_pair.first);
+        wire->connectPort2(last_pair.second);
 
         a_Wires->push_back(wire);
     }

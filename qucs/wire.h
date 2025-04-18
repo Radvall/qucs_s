@@ -58,6 +58,8 @@ public:
   QPoint P1() const { return {x1, y1}; }
   QPoint P2() const { return {x2, y2}; }
 
+  void connectPort1(Node* n);
+  void connectPort2(Node* n);
 };
 
 #endif

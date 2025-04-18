@@ -270,3 +270,37 @@ bool Wire::setP2(const QPoint& new_p2)
 
   return true;
 }
+
+void Wire::connectPort1(Node* n)
+{
+  assert(n != nullptr);
+
+  if (n == Port1) {
+    return;
+  }
+
+  if (Port1 != nullptr) {
+    Port1->disconnect(this);
+  }
+
+  n->connect(this);
+  Port1 = n;
+  setP1(Port1->center());
+}
+
+void Wire::connectPort2(Node* n)
+{
+  assert(n != nullptr);
+
+  if (n == Port2) {
+    return;
+  }
+
+  if (Port2 != nullptr) {
+    Port2->disconnect(this);
+  }
+
+  n->connect(this);
+  Port2 = n;
+  setP2(Port2->center());
+}
