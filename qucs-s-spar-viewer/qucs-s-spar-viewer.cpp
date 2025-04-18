@@ -1747,8 +1747,8 @@ void Qucs_S_SPAR_Viewer::convert_MA_RI_to_dB(double * S_1, double * S_2, double 
     if (format == "MA"){
         S_dB = 20*log10(*S_1);
         S_ang = *S_2;
-        S_re = *S_1 * std::cos(*S_2);
-        S_im = *S_1 * std::sin(*S_2);
+        S_re = *S_1 * std::cos(*S_2 * M_PI/180);
+        S_im = *S_1 * std::sin(*S_2 * M_PI/180);
     }else{
         if (format == "RI"){
         S_dB = 20*log10(sqrt((*S_1)*(*S_1) + (*S_2)*(*S_2)));
