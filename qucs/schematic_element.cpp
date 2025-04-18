@@ -538,32 +538,32 @@ Wire* Schematic::selectedWire(int x, int y)
 
 // ---------------------------------------------------
 // Splits the wire "*pw" into two pieces by the node "*pn".
-Wire* Schematic::splitWire(Wire *pw, Node *pn)
+Wire* Schematic::splitWire(Wire *source_wire, Node *splitter_node)
 {
-    Wire *newWire = new Wire(pn->cx, pn->cy, pw->x2, pw->y2, pn, pw->Port2);
-    newWire->isSelected = pw->isSelected;
+    Wire *new_wire = new Wire(splitter_node->cx, splitter_node->cy, source_wire->x2, source_wire->y2, splitter_node, source_wire->Port2);
+    new_wire->isSelected = source_wire->isSelected;
 
-    pw->x2 = pn->cx;
-    pw->y2 = pn->cy;
-    pw->cx = (pw->x1 + pw->x2) / 2;
-    pw->cy = (pw->y1 + pw->y2) / 2;
-    pw->Port2 = pn;
+    source_wire->x2 = splitter_node->cx;
+    source_wire->y2 = splitter_node->cy;
+    source_wire->cx = (source_wire->x1 + source_wire->x2) / 2;
+    source_wire->cy = (source_wire->y1 + source_wire->y2) / 2;
+    source_wire->Port2 = splitter_node;
 
-    newWire->Port2->connect(newWire);
-    pn->connect(pw);
-    pn->connect(newWire);
-    newWire->Port2->disconnect(pw);
-    a_Wires->push_back(newWire);
+    new_wire->Port2->connect(new_wire);
+    splitter_node->connect(source_wire);
+    splitter_node->connect(new_wire);
+    new_wire->Port2->disconnect(source_wire);
+    a_Wires->push_back(new_wire);
 
-    if(pw->Label)
-        if((pw->Label->cx > pn->cx) || (pw->Label->cy > pn->cy))
+    if(source_wire->Label)
+        if((source_wire->Label->cx > splitter_node->cx) || (source_wire->Label->cy > splitter_node->cy))
         {
-            newWire->Label = pw->Label;   // label goes to the new wire
-            pw->Label = 0;
-            newWire->Label->pOwner = newWire;
+            new_wire->Label = source_wire->Label;   // label goes to the new wire
+            source_wire->Label = 0;
+            new_wire->Label->pOwner = new_wire;
         }
 
-    return newWire;
+    return new_wire;
 }
 
 // Deletes the wire and the nodes it was connected to if they
