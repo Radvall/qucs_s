@@ -147,7 +147,7 @@ QString JA_core::spice_netlist(spicecompat::SpiceDialect dialect /* = spicecompa
 
 QString JA_core::getSpiceLibrary()
 {
-  QString f = QucsSettings.LibDir + QDir::toNativeSeparators("/magnetics/core.cir");
+  QString f = QucsSettings.SpiceLibDir + QDir::toNativeSeparators("/core.cir");
   QString s = QString (".INCLUDE \"%1\"\n").arg(f);
   return s;
 }

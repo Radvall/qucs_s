@@ -58,6 +58,7 @@ struct tQucsSettings {
   QString BinDir;
   QString LangDir;
   QString LibDir;
+  QString SpiceLibDir;
   QString OctaveDir;  // m-files location
   QString ExamplesDir;
   QString DocDir;

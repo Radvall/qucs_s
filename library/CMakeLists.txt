@@ -67,7 +67,7 @@ INSTALL( DIRECTORY "symbols" DESTINATION share/${QUCS_NAME}/ )
 INSTALL( DIRECTORY "TubesExtended" DESTINATION share/${QUCS_NAME}/library)
 INSTALL( DIRECTORY "Optocoupler" DESTINATION share/${QUCS_NAME}/library )
 INSTALL( DIRECTORY "DualGateMOSFET" DESTINATION share/${QUCS_NAME}/library )
-INSTALL( DIRECTORY "magnetics" DESTINATION share/${QUCS_NAME}/library )
+INSTALL( DIRECTORY "spicelibrary" DESTINATION share/${QUCS_NAME}/ )
 
 ADD_SUBDIRECTORY( XyceDigital)
 
