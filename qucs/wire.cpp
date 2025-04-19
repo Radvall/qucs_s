@@ -39,6 +39,7 @@ Wire::Wire(int _x1, int _y1, int _x2, int _y2)
 }
 
 Wire::Wire(Node* n1, Node* n2)
+  : Wire(n1->x(), n1->y(), n2->x(), n2->y())
 {
   connectPort1(n1);
   connectPort2(n2);
