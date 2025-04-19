@@ -125,9 +125,9 @@ QPoint GenericPort::center() const
         case PortType::Component:
             return m_comp->center() + QPoint{m_port->x, m_port->y};
         case PortType::WireOne:
-            return QPoint{m_wire->x1, m_wire->y1};
+            return m_wire->P1();
         case PortType::WireTwo:
-            return QPoint{m_wire->x2, m_wire->y2};
+            return m_wire->P2();
     }
     assert(false);
 }
@@ -312,8 +312,8 @@ bool isSpecialCase(const JointStateAssessor& jsa)
     Wire* single_wire = jsa.portLocations().lower_bound(*single_wire_port_loc)->second->host<Wire>();
     assert(single_wire != nullptr);
 
-    const QPoint p1{single_wire->x1, single_wire->y1};
-    const QPoint p2{single_wire->x2, single_wire->y2};
+    const QPoint p1 = single_wire->P1();
+    const QPoint p2 = single_wire->P2();
     return *other_loc == p1 || *other_loc == p2 || geom::is_between(*other_loc, p1, p2);
 }
 

@@ -440,6 +440,7 @@ private:
 
 public:
   Node* provideNode(int, int);
+  Node* provideNode(const QPoint& p) { return provideNode(p.x(), p.y()); }
   Node* selectedNode(int, int);
 
   qucs_s::wire::Planner a_wirePlanner;
