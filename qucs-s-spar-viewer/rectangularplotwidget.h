@@ -62,6 +62,8 @@ public:
   double getYmin();
   double getYdiv();
   void setYdiv(double);
+  void setYmax(double);
+  void setYmin(double);
 
   double getY2max();
   double getY2min();
@@ -75,6 +77,7 @@ public:
   int getFreqIndex();
 
   void updatePlot();
+  void set_y_autoscale(bool value);
 
   bool areAxisSettingsLocked() const; // Public function to check whether the axes are locked or not
 
@@ -145,6 +148,8 @@ private:
   QStringList frequencyUnits;
   double fMin;
   double fMax;
+
+  bool y_autoscale;
 
   QMap<QString, Trace> traces;
   QMap<QString, Marker> markers;

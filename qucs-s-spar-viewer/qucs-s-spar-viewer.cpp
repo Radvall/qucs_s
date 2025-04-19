@@ -312,28 +312,36 @@ void Qucs_S_SPAR_Viewer::setTraceManagementDock(){
   magnitudePhaseTab = new QWidget(traceTabs); // Parent is traceTabs
   smithTab = new QWidget(traceTabs); // Parent is traceTabs
   polarTab = new QWidget(traceTabs); // Parent is traceTabs
-  nuTab = new QWidget(traceTabs); // Parent is traceTabs
+  portImpedanceTab = new QWidget(traceTabs); // Parent is traceTabs
+  stabilityTab = new QWidget(traceTabs); // Parent is traceTabs
+  VSWRTab = new QWidget(traceTabs); // Parent is traceTabs
   GroupDelayTab = new QWidget(traceTabs); // Parent is traceTabs
 
          // Add tabs to the tab widget
   traceTabs->addTab(magnitudePhaseTab, "Magnitude/Phase");
-  traceTabs->addTab(smithTab, "Smith Chart");
-  traceTabs->addTab(polarTab, "Polar Chart");
-  traceTabs->addTab(nuTab, "Natural Units");
+  traceTabs->addTab(smithTab, "Smith");
+  traceTabs->addTab(polarTab, "Polar");
+  traceTabs->addTab(portImpedanceTab, "Port Impedance");
+  traceTabs->addTab(stabilityTab, "Stability");
+  traceTabs->addTab(VSWRTab, "VSWR");
   traceTabs->addTab(GroupDelayTab, "Group Delay");
 
          // Create layouts for each tab
   magnitudePhaseLayout = new QGridLayout(magnitudePhaseTab);
   smithLayout = new QGridLayout(smithTab);
   polarLayout = new QGridLayout(polarTab);
-  nuLayout = new QGridLayout(polarTab);
+  portImpedanceLayout = new QGridLayout(portImpedanceTab);
+  stabilityLayout = new QGridLayout(stabilityTab);
+  VSWRLayout = new QGridLayout(VSWRTab);
   GroupDelayLayout = new QGridLayout(GroupDelayTab);
 
          // Set the layouts on the tabs
   magnitudePhaseTab->setLayout(magnitudePhaseLayout);
   smithTab->setLayout(smithLayout);
   polarTab->setLayout(polarLayout);
-  nuTab->setLayout(nuLayout);
+  portImpedanceTab->setLayout(portImpedanceLayout);
+  stabilityTab->setLayout(stabilityLayout);
+  VSWRTab->setLayout(VSWRLayout);
   GroupDelayTab->setLayout(GroupDelayLayout);
 
   // Set Magnitude tab
@@ -375,18 +383,44 @@ void Qucs_S_SPAR_Viewer::setTraceManagementDock(){
   polarLayout->addWidget(Label_LineWidth_Polar, 0, 3, Qt::AlignCenter);
   polarLayout->addWidget(Label_Remove_Polar, 0, 4, Qt::AlignCenter);
 
-  // Set "Natural units" tab
+  // Set "Port Impedance" tab
   QLabel * Label_Name_nu = new QLabel("<b>Name</b>");
   QLabel * Label_Color_nu = new QLabel("<b>Color</b>");
   QLabel * Label_LineStyle_nu = new QLabel("<b>Line Style</b>");
   QLabel * Label_LineWidth_nu = new QLabel("<b>Width</b>");
   QLabel * Label_Remove_nu = new QLabel("<b>Remove</b>");
 
-  nuLayout->addWidget(Label_Name_nu, 0, 0, Qt::AlignCenter);
-  nuLayout->addWidget(Label_Color_nu, 0, 1, Qt::AlignCenter);
-  nuLayout->addWidget(Label_LineStyle_nu, 0, 2, Qt::AlignCenter);
-  nuLayout->addWidget(Label_LineWidth_nu, 0, 3, Qt::AlignCenter);
-  nuLayout->addWidget(Label_Remove_nu, 0, 4, Qt::AlignCenter);
+  portImpedanceLayout->addWidget(Label_Name_nu, 0, 0, Qt::AlignCenter);
+  portImpedanceLayout->addWidget(Label_Color_nu, 0, 1, Qt::AlignCenter);
+  portImpedanceLayout->addWidget(Label_LineStyle_nu, 0, 2, Qt::AlignCenter);
+  portImpedanceLayout->addWidget(Label_LineWidth_nu, 0, 3, Qt::AlignCenter);
+  portImpedanceLayout->addWidget(Label_Remove_nu, 0, 4, Qt::AlignCenter);
+
+  // Set "Stability" tab
+  QLabel * Label_Name_stab = new QLabel("<b>Name</b>");
+  QLabel * Label_Color_stab = new QLabel("<b>Color</b>");
+  QLabel * Label_LineStyle_stab = new QLabel("<b>Line Style</b>");
+  QLabel * Label_LineWidth_stab = new QLabel("<b>Width</b>");
+  QLabel * Label_Remove_stab = new QLabel("<b>Remove</b>");
+
+  stabilityLayout->addWidget(Label_Name_stab, 0, 0, Qt::AlignCenter);
+  stabilityLayout->addWidget(Label_Color_stab, 0, 1, Qt::AlignCenter);
+  stabilityLayout->addWidget(Label_LineStyle_stab, 0, 2, Qt::AlignCenter);
+  stabilityLayout->addWidget(Label_LineWidth_stab, 0, 3, Qt::AlignCenter);
+  stabilityLayout->addWidget(Label_Remove_stab, 0, 4, Qt::AlignCenter);
+
+  // Set VSWR tab
+  QLabel * Label_Name_VSWR = new QLabel("<b>Name</b>");
+  QLabel * Label_Color_VSWR = new QLabel("<b>Color</b>");
+  QLabel * Label_LineStyle_VSWR = new QLabel("<b>Line Style</b>");
+  QLabel * Label_LineWidth_VSWR = new QLabel("<b>Width</b>");
+  QLabel * Label_Remove_VSWR = new QLabel("<b>Remove</b>");
+
+  VSWRLayout->addWidget(Label_Name_VSWR, 0, 0, Qt::AlignCenter);
+  VSWRLayout->addWidget(Label_Color_VSWR, 0, 1, Qt::AlignCenter);
+  VSWRLayout->addWidget(Label_LineStyle_VSWR, 0, 2, Qt::AlignCenter);
+  VSWRLayout->addWidget(Label_LineWidth_VSWR, 0, 3, Qt::AlignCenter);
+  VSWRLayout->addWidget(Label_Remove_VSWR, 0, 4, Qt::AlignCenter);
 
   // Set "Group delay" tab
   QLabel * Label_Name_GD = new QLabel("<b>Name</b>");
@@ -494,14 +528,18 @@ void Qucs_S_SPAR_Viewer::setMarkerManagementDock() {
   tableMarkers_Magnitude_Phase = new QTableWidget(1, 1, this);
   tableMarkers_Smith = new QTableWidget(1, 1, this);
   tableMarkers_Polar = new QTableWidget(1, 1, this);
-  tableMarkers_nu = new QTableWidget(1, 1, this);
+  tableMarkers_PortImpedance = new QTableWidget(1, 1, this);
+  tableMarkers_Stability = new QTableWidget(1, 1, this);
+  tableMarkers_VSWR = new QTableWidget(1, 1, this);
   tableMarkers_GroupDelay = new QTableWidget(1, 1, this);
 
   // Add tables to tabs
   tabWidgetMarkers->addTab(tableMarkers_Magnitude_Phase, "Magnitude/Phase");
-  tabWidgetMarkers->addTab(tableMarkers_Smith, "Smith Chart");
+  tabWidgetMarkers->addTab(tableMarkers_Smith, "Smith");
   tabWidgetMarkers->addTab(tableMarkers_Polar, "Polar");
-  tabWidgetMarkers->addTab(tableMarkers_nu, "Natural Units");
+  tabWidgetMarkers->addTab(tableMarkers_PortImpedance, "Port Impedance");
+  tabWidgetMarkers->addTab(tableMarkers_Stability, "Stability");
+  tabWidgetMarkers->addTab(tableMarkers_VSWR, "VSWR");
   tabWidgetMarkers->addTab(tableMarkers_GroupDelay, "Group Delay");
 
   Markers_VBox->addWidget(MarkerSelection_Widget);
@@ -603,7 +641,7 @@ void Qucs_S_SPAR_Viewer::CreateDisplayWidgets(){
   // Smith Chart
   smithChart = new SmithChartWidget(this);
   smithChart->setMinimumSize(300, 300);
-  dockSmithChart = new QDockWidget("Smith Chart", this);
+  dockSmithChart = new QDockWidget("Smith", this);
   dockSmithChart->setWidget(smithChart);
   dockSmithChart->setAllowedAreas(Qt::AllDockWidgetAreas);
   addDockWidget(Qt::LeftDockWidgetArea, dockSmithChart);
@@ -611,21 +649,57 @@ void Qucs_S_SPAR_Viewer::CreateDisplayWidgets(){
   // Polar Chart
   polarChart = new PolarPlotWidget(this);
   polarChart->setMinimumSize(300, 300);
-  dockPolarChart = new QDockWidget("Polar Chart", this);
+  dockPolarChart = new QDockWidget("Polar", this);
   dockPolarChart->setWidget(polarChart);
   dockPolarChart->setAllowedAreas(Qt::AllDockWidgetAreas);
   addDockWidget(Qt::LeftDockWidgetArea, dockPolarChart);
 
-  // Natural units chart settings
-  nuChart = new RectangularPlotWidget(this);
-  docknuChart = new QDockWidget("Natural Units", this);
-  docknuChart->setWidget(nuChart);
-  docknuChart->setAllowedAreas(Qt::AllDockWidgetAreas);
-  addDockWidget(Qt::LeftDockWidgetArea, docknuChart);
-  nuChart->change_Y_axis_title(QString("")); // Remove default labels
-  nuChart->change_Y_axis_units(QString(""));
-  nuChart->change_Y2_axis_title(QString(""));
-  nuChart->change_Y2_axis_units(QString(""));
+  // Port impedance chart settings
+  impedanceChart = new RectangularPlotWidget(this);
+  dockImpedanceChart = new QDockWidget("Port Impedance", this);
+  dockImpedanceChart->setWidget(impedanceChart);
+  dockImpedanceChart->setAllowedAreas(Qt::AllDockWidgetAreas);
+  addDockWidget(Qt::LeftDockWidgetArea, dockImpedanceChart);
+  impedanceChart->change_Y_axis_title(QString("Resistance")); // Remove default labels
+  impedanceChart->change_Y_axis_units(QString("Ω"));
+  impedanceChart->change_Y2_axis_title(QString("Reactance"));
+  impedanceChart->change_Y2_axis_units(QString("Ω"));
+
+  // Stability plot
+  stabilityChart = new RectangularPlotWidget(this);
+  dockStabilityChart = new QDockWidget("Stability", this);
+  dockStabilityChart->setWidget(stabilityChart);
+  dockStabilityChart->setAllowedAreas(Qt::AllDockWidgetAreas);
+  addDockWidget(Qt::LeftDockWidgetArea, dockStabilityChart);
+  stabilityChart->set_y_autoscale(false);
+  stabilityChart->setRightYAxisEnabled(false); // Hide right y-axis
+  stabilityChart->change_Y_axis_title(QString("")); // Remove default labels
+  stabilityChart->change_Y_axis_title(QString(""));
+  stabilityChart->change_Y2_axis_title(QString(""));
+  stabilityChart->change_Y2_axis_title(QString(""));
+  stabilityChart->change_Y_axis_units(QString(""));
+  stabilityChart->setYmin(0);
+  stabilityChart->setYdiv(0.25);
+  stabilityChart->setYmax(3); // Typically the stability lies -1 and +infty
+
+
+  // VSWR plot
+  VSWRChart = new RectangularPlotWidget(this);
+  dockVSWRChart = new QDockWidget("VSWR", this);
+  dockVSWRChart->setWidget(VSWRChart);
+  dockVSWRChart->setAllowedAreas(Qt::AllDockWidgetAreas);
+  addDockWidget(Qt::LeftDockWidgetArea, dockVSWRChart);
+  VSWRChart->set_y_autoscale(false);
+  VSWRChart->setRightYAxisEnabled(false); // Hide right y-axis
+  VSWRChart->change_Y_axis_title(QString("VSWR")); // Remove default labels
+  VSWRChart->change_Y_axis_title(QString(""));
+  VSWRChart->change_Y2_axis_title(QString(""));
+  VSWRChart->change_Y2_axis_title(QString(""));
+  VSWRChart->change_Y_axis_units(QString(""));
+  VSWRChart->setYmin(1);
+  VSWRChart->setYdiv(0.5);
+  VSWRChart->setYmax(5); // Typically the VSWR lies 1 and +infty
+
 
   // Group delay chart settings
   GroupDelayChart = new RectangularPlotWidget(this);
@@ -635,21 +709,25 @@ void Qucs_S_SPAR_Viewer::CreateDisplayWidgets(){
   addDockWidget(Qt::LeftDockWidgetArea, dockGroupDelayChart);
   GroupDelayChart->change_Y_axis_title(QString("Time (ns)")); // Remove default labels
   GroupDelayChart->change_Y_axis_units(QString("ns"));
-  GroupDelayChart->setRightYAxisEnabled(false);
+  GroupDelayChart->setRightYAxisEnabled(false); // Hide right y-axis
   GroupDelayChart->setYdiv(50); // By default, 50 ns
 
   // Disable dock closing
   dockChart->setFeatures(dockChart->features() & ~QDockWidget::DockWidgetClosable);
   dockSmithChart->setFeatures(dockSmithChart->features() & ~QDockWidget::DockWidgetClosable);
   dockPolarChart->setFeatures(dockPolarChart->features() & ~QDockWidget::DockWidgetClosable);
-  docknuChart->setFeatures(docknuChart->features() & ~QDockWidget::DockWidgetClosable);
+  dockImpedanceChart->setFeatures(dockImpedanceChart->features() & ~QDockWidget::DockWidgetClosable);
+  dockStabilityChart->setFeatures(dockStabilityChart->features() & ~QDockWidget::DockWidgetClosable);
+  dockVSWRChart->setFeatures(dockVSWRChart->features() & ~QDockWidget::DockWidgetClosable);
   dockGroupDelayChart->setFeatures(dockGroupDelayChart->features() & ~QDockWidget::DockWidgetClosable);
 
   // Tabify the chart docks
   tabifyDockWidget(dockChart, dockSmithChart);
   tabifyDockWidget(dockSmithChart, dockPolarChart);
-  tabifyDockWidget(dockPolarChart, docknuChart);
-  tabifyDockWidget(docknuChart, dockGroupDelayChart);
+  tabifyDockWidget(dockPolarChart, dockImpedanceChart);
+  tabifyDockWidget(dockImpedanceChart, dockStabilityChart);
+  tabifyDockWidget(dockStabilityChart, dockVSWRChart);
+  tabifyDockWidget(dockVSWRChart, dockGroupDelayChart);
 }
 
 void Qucs_S_SPAR_Viewer::setupScrollAreaForLayout(QGridLayout* &layout, QWidget* parentTab, const QString &objectName)
@@ -719,7 +797,9 @@ void Qucs_S_SPAR_Viewer::setupScrollableLayout()
   setupScrollAreaForLayout(magnitudePhaseLayout, magnitudePhaseTab, "magnitudePhaseScrollArea");
   setupScrollAreaForLayout(smithLayout, smithTab, "smithScrollArea");
   setupScrollAreaForLayout(polarLayout, polarTab, "polarScrollArea");
-  setupScrollAreaForLayout(nuLayout, nuTab, "nuScrollArea");
+  setupScrollAreaForLayout(portImpedanceLayout, portImpedanceTab, "portImpedanceScrollArea");
+  setupScrollAreaForLayout(stabilityLayout, stabilityTab, "stabilityScrollArea");
+  setupScrollAreaForLayout(VSWRLayout, VSWRTab, "VSWRScrollArea");
   setupScrollAreaForLayout(GroupDelayLayout, GroupDelayTab, "GroupDelayScrollArea");
 }
 
@@ -764,15 +844,19 @@ void Qucs_S_SPAR_Viewer::slotQuit()
 
 void Qucs_S_SPAR_Viewer::addFile()
 {
-    QFileDialog dialog(this, QStringLiteral("Select S-parameter data files (.snp)"), QDir::homePath(),
-                       tr("S-Parameter Files (*.s1p *.s2p *.s3p *.s4p);;All Files (*.*)"));
-    dialog.setFileMode(QFileDialog::ExistingFiles);
+  QFileDialog dialog(this,
+                     QStringLiteral("Select S-parameter data files"),
+                     QDir::homePath(),
+                     tr("S-Parameter Files (*.s1p *.s2p *.s3p *.s4p);;"
+                        "Data Files (*.dat *.ngspice.dat);;"
+                        "All Files (*.*)"));
+  dialog.setFileMode(QFileDialog::ExistingFiles);
 
-    QStringList fileNames;
-    if (dialog.exec())
-        fileNames = dialog.selectedFiles();
+  QStringList fileNames;
+  if (dialog.exec())
+    fileNames = dialog.selectedFiles();
 
-    addFiles(fileNames);
+  addFiles(fileNames);
 }
 
 void Qucs_S_SPAR_Viewer::addFiles(QStringList fileNames)
@@ -1325,8 +1409,11 @@ void Qucs_S_SPAR_Viewer::applyDefaultVisualizations(const QStringList& fileNames
       TraceInfo s11_Polar = {filename, "S11", DisplayMode::Polar};
 
       // Create TraceInfo structs for impedance
-      TraceInfo reZin = {filename, "Re{Zin}", DisplayMode::NaturalUnits};
-      TraceInfo imZin = {filename, "Im{Zin}", DisplayMode::NaturalUnits};
+      TraceInfo reZin = {filename, "Re{Zin}", DisplayMode::PortImpedance};
+      TraceInfo imZin = {filename, "Im{Zin}", DisplayMode::PortImpedance};
+
+      // VSWR
+      TraceInfo VSWR = {filename, "VSWR{in}", DisplayMode::VSWR};
 
       // Add traces with appropriate colors
       this->addTrace(s11_dB, Qt::red, 1);
@@ -1335,6 +1422,8 @@ void Qucs_S_SPAR_Viewer::applyDefaultVisualizations(const QStringList& fileNames
 
       this->addTrace(reZin, Qt::darkBlue, 1);
       this->addTrace(imZin, Qt::red, 1);
+
+      this->addTrace(VSWR, Qt::red, 1);
     }
 
            // Default behavior: If there's no more data loaded and a single S2P file is selected
@@ -1353,11 +1442,20 @@ void Qucs_S_SPAR_Viewer::applyDefaultVisualizations(const QStringList& fileNames
       TraceInfo s22_Polar = {filename, "S22", DisplayMode::Polar};
 
       // Create TraceInfo structs for impedance
-      TraceInfo reZin = {filename, "Re{Zin}", DisplayMode::NaturalUnits};
-      TraceInfo imZin = {filename, "Im{Zin}", DisplayMode::NaturalUnits};
+      TraceInfo reZin = {filename, "Re{Zin}", DisplayMode::PortImpedance};
+      TraceInfo imZin = {filename, "Im{Zin}", DisplayMode::PortImpedance};
 
       // Create TraceInfo struct for group delay
       TraceInfo s21_GroupDelay = {filename, "S21", DisplayMode::GroupDelay};
+
+      // VSWR
+      TraceInfo VSWRin = {filename, "VSWR{in}", DisplayMode::VSWR};
+      TraceInfo VSWRout = {filename, "VSWR{out}", DisplayMode::VSWR};
+
+      // Stability
+      TraceInfo K = {filename, "K", DisplayMode::Stability};
+      TraceInfo mu_s = {filename, "μₛ", DisplayMode::Stability};
+      TraceInfo mu_p = {filename, "μₚ", DisplayMode::Stability};
 
       // Add all traces with appropriate colors
       this->addTrace(s21_dB, Qt::red, 1);
@@ -1370,6 +1468,11 @@ void Qucs_S_SPAR_Viewer::applyDefaultVisualizations(const QStringList& fileNames
       this->addTrace(reZin, Qt::darkBlue, 1);
       this->addTrace(imZin, Qt::red, 1);
       this->addTrace(s21_GroupDelay, Qt::darkBlue, 1);
+      this->addTrace(VSWRin, Qt::red, 1);
+      this->addTrace(VSWRout, Qt::blue, 1);
+      this->addTrace(K, Qt::red, 1);
+      this->addTrace(mu_s, Qt::blue, 1);
+      this->addTrace(mu_p, Qt::darkGreen, 1);
     }
   }
          // Default behaviour: When adding multiple S2P file, then show the S21 of all traces
@@ -1551,7 +1654,7 @@ void Qucs_S_SPAR_Viewer::removeFile(int index_to_delete)
           smithChart->removeTrace(trace_name);
           polarChart->removeTrace(trace_name);
           GroupDelayChart->removeTrace(trace_name);
-          nuChart->removeTrace(trace_name);
+          impedanceChart->removeTrace(trace_name);
         }
     }
 
@@ -1664,7 +1767,7 @@ void Qucs_S_SPAR_Viewer::removeTrace(const QString& trace_to_remove)
           targetLayout = polarLayout;
         } else {
           if (trace_to_remove.endsWith("n.u.")) {
-            targetLayout = nuLayout;
+            targetLayout = portImpedanceLayout;
           } else {
             if (trace_to_remove.endsWith("GD")) {
               targetLayout = GroupDelayLayout;
@@ -1707,7 +1810,7 @@ void Qucs_S_SPAR_Viewer::removeTrace(const QString& trace_to_remove)
       } else {
         if (trace_to_remove.endsWith("n.u.")){
           str.chop(5); // Remove the "_n.u." suffix
-          nuChart->removeTrace(str);
+          impedanceChart->removeTrace(str);
         } else {
           if (trace_to_remove.endsWith("GD")){
             str.chop(3); // Remove the "_GD" suffix
@@ -1806,7 +1909,11 @@ void Qucs_S_SPAR_Viewer::addTrace()
   } else if (displayModeText == "Polar") {
     traceInfo.displayMode = DisplayMode::Polar;
   } else if (displayModeText == "n.u.") {
-    traceInfo.displayMode = DisplayMode::NaturalUnits;
+    if (traceInfo.parameter.compare("VSWR")) {
+      traceInfo.displayMode = DisplayMode::VSWR;
+    } else {
+      traceInfo.displayMode = DisplayMode::Stability;
+    }
   } else if (displayModeText == "Group Delay") {
     traceInfo.displayMode = DisplayMode::GroupDelay;
   }
@@ -1870,9 +1977,17 @@ void Qucs_S_SPAR_Viewer::addTrace(const TraceInfo& traceInfo, QColor trace_color
     displayMode = QString("Polar");
     targetLayout = polarLayout;
     break;
-  case DisplayMode::NaturalUnits:
-    displayMode = QString("Natural Units");
-    targetLayout = nuLayout;
+  case DisplayMode::PortImpedance:
+    displayMode = QString("Port Impedance");
+    targetLayout = portImpedanceLayout;
+    break;
+  case DisplayMode::Stability:
+    displayMode = QString("Stability");
+    targetLayout = stabilityLayout;
+    break;
+  case DisplayMode::VSWR:
+    displayMode = QString("VSWR");
+    targetLayout = VSWRLayout;
     break;
   case DisplayMode::GroupDelay:
     displayMode = QString("Group Delay");
@@ -2081,7 +2196,7 @@ void Qucs_S_SPAR_Viewer::addTrace(const TraceInfo& traceInfo, QColor trace_color
     new_trace.pen = pen;
     new_trace.units = "ns";
     new_trace.y_axis = 1;
-    new_trace.y_axis_title = "Time (ns)";
+    new_trace.y_axis_title = fullParam;
 
     GroupDelayTraces.append(new_trace);
 
@@ -2090,8 +2205,60 @@ void Qucs_S_SPAR_Viewer::addTrace(const TraceInfo& traceInfo, QColor trace_color
     break;
   }
 
-  case DisplayMode::NaturalUnits: {
-    // Handle natural units display
+  case DisplayMode::Stability: {
+    // Group Delay trace name
+    QString fullParam = traceInfo.parameter;
+
+           // Calculate if needed
+    if (datasets[traceInfo.dataset][fullParam].isEmpty()) {
+      calculate_Sparameter_trace(traceInfo.dataset, fullParam);
+    }
+
+    QList<double> trace_data = datasets[traceInfo.dataset][fullParam];
+
+    RectangularPlotWidget::Trace new_trace;
+    new_trace.frequencies = frequencies;
+    new_trace.trace = trace_data;
+    new_trace.pen = pen;
+    new_trace.units = "";
+    new_trace.y_axis = 1;
+    new_trace.y_axis_title = "Time (ns)";
+
+    stabilityChartTraces.append(new_trace);
+
+    QString TraceName = traceInfo.dataset + "." + fullParam;
+    stabilityChart->addTrace(TraceName, new_trace);
+    break;
+  }
+
+  case DisplayMode::VSWR: {
+    // Group Delay trace name
+    QString fullParam = traceInfo.parameter;
+
+           // Calculate if needed
+    if (datasets[traceInfo.dataset][fullParam].isEmpty()) {
+      calculate_Sparameter_trace(traceInfo.dataset, fullParam);
+    }
+
+    QList<double> trace_data = datasets[traceInfo.dataset][fullParam];
+
+    RectangularPlotWidget::Trace new_trace;
+    new_trace.frequencies = frequencies;
+    new_trace.trace = trace_data;
+    new_trace.pen = pen;
+    new_trace.units = "";
+    new_trace.y_axis = 1;
+    new_trace.y_axis_title = "VSWR";
+
+    VSWRChartTraces.append(new_trace);
+
+    QString TraceName = traceInfo.dataset + "." + fullParam;
+    VSWRChart->addTrace(TraceName, new_trace);
+    break;
+  }
+
+  case DisplayMode::PortImpedance: {
+    // Port impedance units display
     if (traceInfo.parameter.startsWith("S")) {
       // S-parameter. Real part -> left-y. Imaginary part -> right-y
       QList<double> sij_re = datasets[traceInfo.dataset][traceInfo.parameter + "_re"];
@@ -2130,10 +2297,10 @@ void Qucs_S_SPAR_Viewer::addTrace(const TraceInfo& traceInfo, QColor trace_color
       new_trace.y_axis = yaxis;
       new_trace.y_axis_title = y_axis_title;
 
-      nuChartTraces.append(new_trace);
+      impedanceChartTraces.append(new_trace);
 
       QString TraceName = traceInfo.dataset + "." + traceInfo.parameter;
-      nuChart->addTrace(TraceName, new_trace);
+      impedanceChart->addTrace(TraceName, new_trace);
     }
     break;
   }
@@ -2201,8 +2368,6 @@ void Qucs_S_SPAR_Viewer::updateDisplayType(){
     if (trace_selected.at(1) != trace_selected.at(2)) {
       display_mode.append("Group Delay");
     }
-    display_mode.append("n.u.");
-
   } else {
     if ((!trace_selected.compare("MAG")) || (!trace_selected.compare("MSG"))) {
       display_mode.append("dB");
@@ -2275,13 +2440,13 @@ void Qucs_S_SPAR_Viewer::changeTraceColor()
                           // Extract the base trace name (remove the "_Smith" suffix)
                           QString traceName = trace_name.left(trace_name.length() - 5);
 
-                          QPen currentPen = nuChart->getTracePen(traceName);
+                          QPen currentPen = impedanceChart->getTracePen(traceName);
 
                           // Update the color while preserving color and style
                           currentPen.setColor(color);
 
                           // Set the modified pen back to the trace
-                          nuChart->setTracePen(traceName, currentPen);
+                          impedanceChart->setTracePen(traceName, currentPen);
 
                         } else {
                           if (trace_name.endsWith("_Group Delay")){
@@ -2370,16 +2535,16 @@ void Qucs_S_SPAR_Viewer::changeTraceLineStyle()
         if (trace_name.endsWith("_n.u.")){
           // Natural units chart
           QString traceName = trace_name.left(trace_name.length() - 5);
-          QPen currentPen = nuChart->getTracePen(traceName);
+          QPen currentPen = impedanceChart->getTracePen(traceName);
           currentPen.setStyle(PenStyle);
-          nuChart->setTracePen(traceName, currentPen);
+          impedanceChart->setTracePen(traceName, currentPen);
         } else {
           if (trace_name.endsWith("_n.u.")){
             // Natural units chart
             QString traceName = trace_name.left(trace_name.length() - 5);
-            QPen currentPen = nuChart->getTracePen(traceName);
+            QPen currentPen = impedanceChart->getTracePen(traceName);
             currentPen.setStyle(PenStyle);
-            nuChart->setTracePen(traceName, currentPen);
+            impedanceChart->setTracePen(traceName, currentPen);
           } else {
             if (trace_name.endsWith("_Group Delay")){
               // Group delay
@@ -2433,9 +2598,9 @@ void Qucs_S_SPAR_Viewer::changeTraceWidth() {
       if (trace_name.endsWith("_n.u.")){
         // Natural units chart
         QString traceName = trace_name.left(trace_name.length() - 5);
-        QPen currentPen = nuChart->getTracePen(traceName);
+        QPen currentPen = impedanceChart->getTracePen(traceName);
         currentPen.setWidth(TraceWidth);
-        nuChart->setTracePen(traceName, currentPen);
+        impedanceChart->setTracePen(traceName, currentPen);
       } else {
         if (trace_name.endsWith("_Group Delay")){
           // Group delay
@@ -2592,10 +2757,21 @@ void Qucs_S_SPAR_Viewer::addMarker(double freq, QString Freq_Marker_Scale){
     tableMarkers_Polar->setRowCount(n_markers);
     tableMarkers_Polar->setItem(n_markers-1, 0, newfreq);
 
-    n_markers = tableMarkers_nu->rowCount() + 1;
-    tableMarkers_nu->setRowCount(n_markers);
-    tableMarkers_nu->setRowCount(n_markers);
-    tableMarkers_nu->setItem(n_markers-1, 0, newfreq);
+    n_markers = tableMarkers_PortImpedance->rowCount() + 1;
+    tableMarkers_PortImpedance->setRowCount(n_markers);
+    tableMarkers_PortImpedance->setRowCount(n_markers);
+    tableMarkers_PortImpedance->setItem(n_markers-1, 0, newfreq);
+
+    n_markers = tableMarkers_Stability->rowCount() + 1;
+    tableMarkers_Stability->setRowCount(n_markers);
+    tableMarkers_Stability->setRowCount(n_markers);
+    tableMarkers_Stability->setItem(n_markers-1, 0, newfreq);
+
+    n_markers = tableMarkers_VSWR->rowCount() + 1;
+    tableMarkers_VSWR->setRowCount(n_markers);
+    tableMarkers_VSWR->setRowCount(n_markers);
+    tableMarkers_VSWR->setItem(n_markers-1, 0, newfreq);
+
 
     n_markers = tableMarkers_GroupDelay->rowCount() + 1;
     tableMarkers_GroupDelay->setRowCount(n_markers);
@@ -2624,7 +2800,9 @@ void Qucs_S_SPAR_Viewer::addMarker(double freq, QString Freq_Marker_Scale){
     bool isDockMagPhaseRaised = !dockChart->visibleRegion().isEmpty();
     bool isDockSmithRaised = !dockSmithChart->visibleRegion().isEmpty();
     bool isDockPolarRaised = !dockPolarChart->visibleRegion().isEmpty();
-    bool isDocknuRaised = !docknuChart->visibleRegion().isEmpty();
+    bool isDockPortImpedanceRaised = !dockImpedanceChart->visibleRegion().isEmpty();
+    bool isDockStabilityRaised = !dockStabilityChart->visibleRegion().isEmpty();
+    bool isDockVSWRRaised = !dockVSWRChart->visibleRegion().isEmpty();
 
     dockChart->raise();
     Magnitude_PhaseChart->addMarker(new_marker_name, f_marker, pen); // Magnitude & Phase
@@ -2634,8 +2812,8 @@ void Qucs_S_SPAR_Viewer::addMarker(double freq, QString Freq_Marker_Scale){
     dockPolarChart->raise();
     polarChart->addMarker(new_marker_name, f_marker); // Polar plot
 
-    docknuChart->raise();
-    nuChart->addMarker(new_marker_name, f_marker, pen); // Natural units plot
+    dockImpedanceChart->raise();
+    impedanceChart->addMarker(new_marker_name, f_marker, pen); // Natural units plot
 
     dockGroupDelayChart->raise();
     GroupDelayChart->addMarker(new_marker_name, f_marker, pen); // Group delay
@@ -2650,8 +2828,16 @@ void Qucs_S_SPAR_Viewer::addMarker(double freq, QString Freq_Marker_Scale){
         if (isDockPolarRaised) {
           dockPolarChart->raise();
         } else {
-          if (isDocknuRaised) {
-            docknuChart->raise();
+          if (isDockPortImpedanceRaised) {
+            dockImpedanceChart->raise();
+          } else {
+            if (isDockStabilityRaised) {
+              dockStabilityChart->raise();
+            } else {
+              if (isDockVSWRRaised) {
+                dockVSWRChart->raise();
+              }
+            }
           }
         }
       }
@@ -2676,9 +2862,17 @@ void Qucs_S_SPAR_Viewer::updateMarkerTable(){
         tableMarkers_Polar->setColumnCount(0);
         tableMarkers_Polar->setRowCount(0);
 
-        tableMarkers_nu->clear();
-        tableMarkers_nu->setColumnCount(0);
-        tableMarkers_nu->setRowCount(0);
+        tableMarkers_PortImpedance->clear();
+        tableMarkers_PortImpedance->setColumnCount(0);
+        tableMarkers_PortImpedance->setRowCount(0);
+
+        tableMarkers_Stability->clear();
+        tableMarkers_Stability->setColumnCount(0);
+        tableMarkers_Stability->setRowCount(0);
+
+        tableMarkers_VSWR->clear();
+        tableMarkers_VSWR->setColumnCount(0);
+        tableMarkers_VSWR->setRowCount(0);
 
         tableMarkers_GroupDelay->clear();
         tableMarkers_GroupDelay->setColumnCount(0);
@@ -2687,13 +2881,15 @@ void Qucs_S_SPAR_Viewer::updateMarkerTable(){
     }
 
     // Reset headers
-    QStringList header_Magnitude_Phase, header_Smith, header_Polar, header_nu, header_GroupDelay;
+    QStringList header_Magnitude_Phase, header_Smith, header_Polar, header_PortImpedance, header_Stability, header_VSWR, header_GroupDelay;
     header_Magnitude_Phase.clear();
     header_Magnitude_Phase.append("freq");
 
     header_Smith = header_Magnitude_Phase;
     header_Polar = header_Magnitude_Phase;
-    header_nu = header_Magnitude_Phase;
+    header_PortImpedance = header_Magnitude_Phase;
+    header_Stability = header_Magnitude_Phase;
+    header_VSWR = header_Magnitude_Phase;
     header_GroupDelay = header_Magnitude_Phase;
 
     // Build headers
@@ -2725,9 +2921,9 @@ void Qucs_S_SPAR_Viewer::updateMarkerTable(){
             if (suffix.endsWith("_Group Delay")) {
               header_GroupDelay.append(trace_name);
             } else {
-            // Natural units
+              // Port Impedance
               trace_name.chop(5); // Remove the "_n.u." suffix
-              header_nu.append(trace_name);
+              header_PortImpedance.append(trace_name);
             }
           }
         }
@@ -2739,7 +2935,9 @@ void Qucs_S_SPAR_Viewer::updateMarkerTable(){
     updateMarkerData(*tableMarkers_Magnitude_Phase, header_Magnitude_Phase); // Magnitude and phase table
     updateMarkerData(*tableMarkers_Smith, header_Smith); // Smith Chart table
     updateMarkerData(*tableMarkers_Polar, header_Polar); // Polar Chart table
-    updateMarkerData(*tableMarkers_nu, header_nu); // Polar Chart table
+    updateMarkerData(*tableMarkers_PortImpedance, header_PortImpedance); // Port impedance Chart table
+    updateMarkerData(*tableMarkers_Stability, header_Stability); // Port impedance Chart table
+    updateMarkerData(*tableMarkers_VSWR, header_VSWR); // Port impedance Chart table
     updateMarkerData(*tableMarkers_GroupDelay, header_GroupDelay); // Group Delay Chart table
 
 
@@ -2750,7 +2948,7 @@ void Qucs_S_SPAR_Viewer::updateMarkerTable(){
       smithChart->updateMarkerFrequency(str, marker_freq); // Update Smith Chart widget markers
       polarChart->updateMarkerFrequency(str, marker_freq); // Update Polar Chart widget markers
       Magnitude_PhaseChart->updateMarkerFrequency(str, marker_freq); // Update magnitude / phase widget markers
-      nuChart->updateMarkerFrequency(str, marker_freq); // Update natural units widget markers
+      impedanceChart->updateMarkerFrequency(str, marker_freq); // Update natural units widget markers
       GroupDelayChart->updateMarkerFrequency(str, marker_freq); // Update Group Delay Chart
     }
 }
@@ -2969,7 +3167,7 @@ void Qucs_S_SPAR_Viewer::removeMarker(const QString& markerName) {
     Magnitude_PhaseChart->removeMarker(markerName);
     smithChart->removeMarker(markerName);
     polarChart->removeMarker(markerName);
-    nuChart->removeMarker(markerName);
+    impedanceChart->removeMarker(markerName);
     GroupDelayChart->removeMarker(markerName);
 
     updateMarkerTable();
@@ -3740,7 +3938,7 @@ void Qucs_S_SPAR_Viewer::loadSession(QString session_file) {
               } else if (modeName == "Polar") {
                 displayMode = DisplayMode::Polar;
               } else if (modeName == "Natural Units") {
-                displayMode = DisplayMode::NaturalUnits;
+                displayMode = DisplayMode::PortImpedance;
               } else if (modeName == "Group Delay") {
                 displayMode = DisplayMode::GroupDelay;
               } else {
@@ -3750,7 +3948,7 @@ void Qucs_S_SPAR_Viewer::loadSession(QString session_file) {
             } else {
               // If no underscore, assume the whole name is the parameter and use Magnitude_dB as default
               parameter = traceName;
-              displayMode = DisplayMode::NaturalUnits; // Assuming this is appropriate for parameters like "Re{Zin}"
+              displayMode = DisplayMode::PortImpedance; // Assuming this is appropriate for parameters like "Re{Zin}"
             }
 
             // Create TraceInfo struct
@@ -4328,7 +4526,7 @@ void Qucs_S_SPAR_Viewer::updateAllPlots(const QString& datasetName)
   updateTracesInWidget(Magnitude_PhaseChart, datasetName);
   updateTracesInWidget(smithChart, datasetName);
   updateTracesInWidget(polarChart, datasetName);
-  updateTracesInWidget(nuChart, datasetName);
+  updateTracesInWidget(impedanceChart, datasetName);
   updateTracesInWidget(GroupDelayChart, datasetName);
 }
 
@@ -4546,11 +4744,21 @@ void Qucs_S_SPAR_Viewer::raiseWidgetsOnTabSelection(int index) {
       QCombobox_display_mode->setCurrentText("Polar");
       break;
     case 3:
-      // Natural Units Chart
-      docknuChart->raise();
+      // Port impedance Chart
+      dockImpedanceChart->raise();
       QCombobox_display_mode->setCurrentText("n.u.");
       break;
     case 4:
+      // Stability Chart
+      dockStabilityChart->raise();
+      QCombobox_display_mode->setCurrentText("n.u.");
+      break;
+    case 5:
+      // VSWR Chart
+      dockVSWRChart->raise();
+      QCombobox_display_mode->setCurrentText("n.u.");
+      break;
+    case 6:
       // Group Delay Chart
       dockGroupDelayChart->raise();
       QCombobox_display_mode->setCurrentText("Group Delay");

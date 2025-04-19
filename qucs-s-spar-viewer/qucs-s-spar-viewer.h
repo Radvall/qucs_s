@@ -51,7 +51,9 @@ enum class DisplayMode {
   Phase,
   Smith,
   Polar,
-  NaturalUnits,
+  PortImpedance,
+  Stability,
+  VSWR,
   GroupDelay
 };
 
@@ -100,7 +102,9 @@ struct TraceInfo {
     case DisplayMode::Phase: modeName = "Phase"; break;
     case DisplayMode::Smith: modeName = "Smith"; break;
     case DisplayMode::Polar: modeName = "Polar"; break;
-    case DisplayMode::NaturalUnits: modeName = "n.u."; break;
+    case DisplayMode::PortImpedance: modeName = "Impedance"; break;
+    case DisplayMode::Stability: modeName = "Stability"; break;
+    case DisplayMode::VSWR: modeName = "VSWR"; break;
     case DisplayMode::GroupDelay: modeName = "Group Delay"; break;
     }
     return QString("%1.%2_%3").arg(dataset).arg(parameter).arg(modeName);
@@ -216,8 +220,8 @@ class Qucs_S_SPAR_Viewer : public QMainWindow
   QMap<QString, TraceProperties> traceMap;
 
   QTabWidget *traceTabs;
-  QWidget *magnitudePhaseTab, *smithTab, *polarTab, *nuTab, *GroupDelayTab;
-  QGridLayout *magnitudePhaseLayout, *smithLayout, *polarLayout, *nuLayout, *GroupDelayLayout;
+  QWidget *magnitudePhaseTab, *smithTab, *polarTab, *portImpedanceTab, *stabilityTab, *VSWRTab, *GroupDelayTab;
+  QGridLayout *magnitudePhaseLayout, *smithLayout, *polarLayout, *portImpedanceLayout, *stabilityLayout, *VSWRLayout, *GroupDelayLayout;
 
   // Axis settings widgets
   QPushButton *Lock_axis_settings_Button;
@@ -267,10 +271,20 @@ class Qucs_S_SPAR_Viewer : public QMainWindow
   QDockWidget *dockPolarChart;
   QList<PolarPlotWidget::Trace> PolarChartTraces;
 
-  // Natural units plot (Rectangular plot)
-  RectangularPlotWidget *nuChart;
-  QDockWidget *docknuChart;
-  QList<RectangularPlotWidget::Trace> nuChartTraces;
+  // Port impedance plot (Rectangular plot)
+  RectangularPlotWidget *impedanceChart;
+  QDockWidget *dockImpedanceChart;
+  QList<RectangularPlotWidget::Trace> impedanceChartTraces;
+
+  // Stability plot (Rectangular plot)
+  RectangularPlotWidget *stabilityChart;
+  QDockWidget *dockStabilityChart;
+  QList<RectangularPlotWidget::Trace> stabilityChartTraces;
+
+  // VSWR plot (Rectangular plot)
+  RectangularPlotWidget *VSWRChart;
+  QDockWidget *dockVSWRChart;
+  QList<RectangularPlotWidget::Trace> VSWRChartTraces;
 
   // Group delay plot (Rectangular plot)
   RectangularPlotWidget *GroupDelayChart;
@@ -282,7 +296,7 @@ class Qucs_S_SPAR_Viewer : public QMainWindow
   QWidget *Marker_Widget;
   QGridLayout * MarkersGrid;
   QPushButton *Button_add_marker, *Button_Remove_All_Markers;
-  QTableWidget* tableMarkers_Magnitude_Phase,  *tableMarkers_Smith, *tableMarkers_Polar, *tableMarkers_nu, *tableMarkers_GroupDelay;
+  QTableWidget* tableMarkers_Magnitude_Phase,  *tableMarkers_Smith, *tableMarkers_Polar, *tableMarkers_PortImpedance, *tableMarkers_Stability, *tableMarkers_VSWR, *tableMarkers_GroupDelay;
   QMap<QString, MarkerProperties> markerMap; // All marker widgets are here. This way they can be accessed by the name of the marker
 
   double getMarkerFreq(QString);

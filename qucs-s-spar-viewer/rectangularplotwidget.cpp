@@ -24,6 +24,8 @@ RectangularPlotWidget::RectangularPlotWidget(QWidget *parent)
          // Set up the frequency units
   frequencyUnits << "Hz" << "kHz" << "MHz" << "GHz";
 
+  y_autoscale = true; // Allow autoscaling when a trace is added
+
          // Initialize our marker label lists
   markerLabels.clear();
   intersectionLabels.clear();
@@ -114,7 +116,7 @@ void RectangularPlotWidget::addTrace(const QString& name, const Trace& trace)
   }
 
   // Only adjust y-axis and y2-axis ranges if not locked and trace has data
-  if (!axisSettingsLocked && !traceCopy.trace.isEmpty()) {
+  if (!axisSettingsLocked && !traceCopy.trace.isEmpty() && y_autoscale) {
     // Find min and max values in the trace data
     double traceMin = std::numeric_limits<double>::max();
     double traceMax = std::numeric_limits<double>::lowest();
@@ -704,6 +706,14 @@ void RectangularPlotWidget::setYdiv(double val){
   yAxisDiv->setValue(val);
 }
 
+void RectangularPlotWidget::setYmin(double val){
+  yAxisMin->setValue(val);
+}
+
+void RectangularPlotWidget::setYmax(double val){
+  yAxisMax->setValue(val);
+}
+
 double RectangularPlotWidget::getY2min(){
   return y2AxisMin->value();
 }
@@ -993,4 +1003,9 @@ void RectangularPlotWidget::toggleLockAxisSettings(bool locked)
 bool RectangularPlotWidget::areAxisSettingsLocked() const
 {
   return axisSettingsLocked;
+}
+
+
+void RectangularPlotWidget::set_y_autoscale(bool value){
+  y_autoscale = value;
 }
