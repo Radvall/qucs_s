@@ -1817,7 +1817,7 @@ void Qucs_S_SPAR_Viewer::addTrace()
          // Color settings
   QColor trace_color;
   int num_traces = traceMap.size();
-  if (num_traces >= 3) {
+  if (num_traces >= default_colors.size()) {
     trace_color = QColor(QRandomGenerator::global()->bounded(256),
                          QRandomGenerator::global()->bounded(256),
                          QRandomGenerator::global()->bounded(256));
@@ -1970,8 +1970,23 @@ void Qucs_S_SPAR_Viewer::addTrace(const TraceInfo& traceInfo, QColor trace_color
   case DisplayMode::Magnitude_dB:
   case DisplayMode::Phase: {
     // Determine which data column to use
-    QString dataSuffix = (traceInfo.displayMode == DisplayMode::Magnitude_dB) ? "_dB" : "_ang";
-    QString fullParam = traceInfo.parameter + dataSuffix;
+
+    QString fullParam;
+
+    if (traceInfo.parameter.startsWith("S")) {
+      // If data is not MSG or MAG, then add the "_dB" or "_ang" suffix to indicate the data type
+      QString dataSuffix;
+      dataSuffix = (traceInfo.displayMode == DisplayMode::Magnitude_dB) ? "_dB" : "_ang";
+      fullParam = traceInfo.parameter + dataSuffix;
+    } else {
+      // MSG or MAG. No need to add the "_dB" suffix
+      fullParam = traceInfo.parameter;
+    }
+
+    // Calculate if needed
+    if (datasets[traceInfo.dataset][fullParam].isEmpty()) {
+      calculate_Sparameter_trace(traceInfo.dataset, fullParam);
+    }
 
     QList<double> trace_data = datasets[traceInfo.dataset][fullParam];
 

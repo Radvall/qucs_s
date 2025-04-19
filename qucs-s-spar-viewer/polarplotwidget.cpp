@@ -363,7 +363,7 @@ QGridLayout* PolarPlotWidget::setupAxisSettings()
   displayModeCombo = new QComboBox();
   displayModeCombo->addItem("Magnitude/Phase");
   displayModeCombo->addItem("Real/Imaginary");
-  connect(displayModeCombo, SIGNAL(currentIndexChanged(int)), this, SLOT(toggleDisplayMode(int)));
+  connect(displayModeCombo, SIGNAL(currentIndexChanged(int)), this, SLOT(toggleDisplayMode()));
   axisLayout->addWidget(displayModeCombo, 2, 1, 1, 2);
 
   return axisLayout;
