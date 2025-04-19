@@ -1422,6 +1422,7 @@ void Qucs_S_SPAR_Viewer::addOptionalTraces(QMap<QString, QList<double>>& file_da
   if (number_of_ports == 1) {
     optional_traces.append("Re{Zin}");
     optional_traces.append("Im{Zin}");
+    optional_traces.append("VSWR{in}");
   }
   else if (number_of_ports == 2) {
     optional_traces.append("delta");
@@ -1432,8 +1433,10 @@ void Qucs_S_SPAR_Viewer::addOptionalTraces(QMap<QString, QList<double>>& file_da
     optional_traces.append("MAG");
     optional_traces.append("Re{Zin}");
     optional_traces.append("Im{Zin}");
+    optional_traces.append("VSWR{in}");
     optional_traces.append("Re{Zout}");
     optional_traces.append("Im{Zout}");
+    optional_traces.append("VSWR{out}");
   }
 
   for (int i = 0; i < optional_traces.size(); i++) {
@@ -2162,6 +2165,7 @@ void Qucs_S_SPAR_Viewer::updateTracesCombo()
     // Additional traces
     otherParams.append("Re{Zin}");
     otherParams.append("Im{Zin}");
+    otherParams.append("VSWR{in}");
   }
 
   if (n_ports == 2) {
@@ -2174,8 +2178,10 @@ void Qucs_S_SPAR_Viewer::updateTracesCombo()
     otherParams.append("MSG");
     otherParams.append("Re{Zin}");
     otherParams.append("Im{Zin}");
+    otherParams.append("VSWR{in}");
     otherParams.append("Re{Zout}");
     otherParams.append("Im{Zout}");
+    otherParams.append("VSWR{out}");
   }
 
   QCombobox_traces->setParameters(sParams, otherParams);
@@ -4033,6 +4039,18 @@ void Qucs_S_SPAR_Viewer::calculate_Sparameter_trace(QString file, QString metric
                             if (!metric.compare("Im{Zout}")) {
                               std::complex<double> Zout = std::complex<double>(Z0) * (1.0 + s22) / (1.0 - s22);
                               datasets[file]["Im{Zout}"].append(Zout.imag());
+                            } else {
+                              if (!metric.compare("VSWR{in}")) {
+                                double s11_magnitude = abs(s11);
+                                double VSWR = (1 + s11_magnitude) / (1 - s11_magnitude);
+                                datasets[file]["VSWR{in}"].append(VSWR);
+                              } else {
+                                if (!metric.compare("VSWR{out}")){
+                                  double s22_magnitude = abs(s22);
+                                  double VSWR = (1 + s22_magnitude) / (1 - s22_magnitude);
+                                  datasets[file]["VSWR{out}"].append(VSWR);
+                                }
+                              }
                             }
                           }
                         }
