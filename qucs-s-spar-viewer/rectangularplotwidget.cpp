@@ -205,8 +205,14 @@ QPen RectangularPlotWidget::getTracePen(const QString& traceName) const
   if (traces.contains(traceName)) {
     return traces[traceName].pen;
   }
-  return QPen();
+
+  // Return a default-constructed pen with valid settings
+  QPen defaultPen;
+  defaultPen.setStyle(Qt::SolidLine);  // Explicit initialization
+  defaultPen.setColor(Qt::black);      // Explicit initialization
+  return defaultPen;
 }
+
 
 void RectangularPlotWidget::setTracePen(const QString& traceName, const QPen& pen)
 {

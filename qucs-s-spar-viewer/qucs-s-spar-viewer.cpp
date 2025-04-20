@@ -1603,105 +1603,13 @@ void Qucs_S_SPAR_Viewer::removeFile()
         }
     }
 
-    removeFile(index_to_delete);
+
 }
 
-
-void Qucs_S_SPAR_Viewer::removeFile(int index_to_delete)
-{
-    // Remove the file for the watchlist
-    if (index_to_delete >= 0 && index_to_delete < filePaths.size()) {
-      filePaths.removeAt(index_to_delete);
-    }
-
-    // Delete the label
-    QLabel* labelToRemove = List_FileNames.at(index_to_delete);
-    QString dataset_to_remove = labelToRemove->text();
-    FilesGrid->removeWidget(labelToRemove);
-    List_FileNames.removeAt(index_to_delete);
-    delete labelToRemove;
-
-    // Delete the button
-    QToolButton* ButtonToRemove = List_RemoveButton.at(index_to_delete);
-    FilesGrid->removeWidget(ButtonToRemove);
-    List_RemoveButton.removeAt(index_to_delete);
-    delete ButtonToRemove;
-
-    // Look for the widgets associated to the trace and remove them
-    QStringList List_TraceNames = traceMap.keys();
-    for (int i = 0; i < List_TraceNames.size(); i++){
-        QString trace_name = List_TraceNames.at(i);
-        QStringList parts = {
-            trace_name.section('.', 0, -2),
-            trace_name.section('.', -1)
-        };
-        QString dataset_trace = parts[0];
-        if (dataset_trace == dataset_to_remove ){
-          TraceProperties& props = traceMap[trace_name];
-
-          // Delete all widgets
-          delete props.nameLabel;
-          delete props.colorButton;
-          delete props.deleteButton;
-          delete props.LineStyleComboBox;
-          delete props.width;
-
-          // Remove from the map
-          traceMap.remove(trace_name);
-
-          // Remove this trace from the display widgets (if they contain such trace)
-          Magnitude_PhaseChart->removeTrace(trace_name);
-          smithChart->removeTrace(trace_name);
-          polarChart->removeTrace(trace_name);
-          GroupDelayChart->removeTrace(trace_name);
-          impedanceChart->removeTrace(trace_name);
-        }
-    }
-
-
-    // Delete the dataset map entry
-    datasets.remove(dataset_to_remove);
-
-    // Rebuild the dataset combobox based on the available datasets.
-    QStringList new_dataset_entries = datasets.keys();
-
-    disconnect(QCombobox_datasets, SIGNAL(currentIndexChanged(int)), this, SLOT(updateTracesCombo())); // Needed to avoid segfault
-    QCombobox_datasets->clear();
-    QCombobox_datasets->addItems(new_dataset_entries);
-    connect(QCombobox_datasets, SIGNAL(currentIndexChanged(int)), SLOT(updateTracesCombo())); // Connect the signal again
-
-    // Update the combobox for trace selection
-    updateTracesCombo();
-
-    // Now it is needed to readjust the widgets in the grid layout
-    // Move up all widgets below the removed row
-    for (int r = index_to_delete+1; r < FilesGrid->rowCount(); r++) {
-        for (int c = 0; c < FilesGrid->columnCount(); c++) {
-            QLayoutItem* item = FilesGrid->itemAtPosition(r, c);
-            if (item) {
-                int oldRow, oldCol, rowSpan, colSpan;
-                FilesGrid->getItemPosition(FilesGrid->indexOf(item), &oldRow, &oldCol, &rowSpan, &colSpan);
-                FilesGrid->removeItem(item);
-                FilesGrid->addItem(item, oldRow - 1, oldCol, rowSpan, colSpan);
-            }
-        }
-    }
-
-    // Check if there are more files. If not, remove markers and limits
-    if (datasets.size() == 0)
-    {
-        removeAllMarkers();
-        removeAllLimits();
-    }
-}
 
 void Qucs_S_SPAR_Viewer::removeAllFiles()
 {
   // Remove files
-  int n_files = List_RemoveButton.size();
-  for (int i = 0; i < n_files; i++) {
-    removeFile(n_files-i-1);
-  }
 
   // Remove all paths from the file watcher
   if (!fileWatcher->files().isEmpty()) {
@@ -1716,68 +1624,72 @@ void Qucs_S_SPAR_Viewer::removeAllFiles()
 // This function is called when the user wants to remove a trace from the plot
 void Qucs_S_SPAR_Viewer::removeTrace()
 {
-    QString ID = qobject_cast<QToolButton*>(sender())->objectName();
-    //qDebug() << "Clicked button:" << ID;
+    QToolButton* button = qobject_cast<QToolButton*>(sender());
+    QString ID = button->objectName();
 
-    //Find the index of the button to remove
-    int ntraces = getNumberOfTraces();
+    // 1) Find the display mode
 
-    TraceProperties trace_props;
-    QString trace_name;
-    for (int i = 0; i < ntraces; i++) {
-      getTraceByPosition(i, trace_name, trace_props);
+    QWidget* scroll = button->parentWidget()->parentWidget()->parentWidget();
+    QString scrollname = scroll->objectName();
 
-      if (trace_props.deleteButton->objectName() == ID) {
-          break;
-      }
+    DisplayMode mode;
+    if (!scrollname.compare(QString("magnitudePhaseScrollArea"))) {
+      mode = DisplayMode::Magnitude_dB;
+    } else if (!scrollname.compare(QString("smithScrollArea"))) {
+      mode = DisplayMode::Smith;
+    } else if (!scrollname.compare(QString("polarScrollArea"))) {
+      mode = DisplayMode::Polar;
+    } else if (!scrollname.compare(QString("portImpedanceScrollArea"))) {
+      mode = DisplayMode::PortImpedance;
+    } else if (!scrollname.compare(QString("stabilityScrollArea"))) {
+      mode = DisplayMode::Stability;
+    } else if (!scrollname.compare(QString("VSWRScrollArea"))) {
+      mode = DisplayMode::VSWR;
+    } else if (!scrollname.compare(QString("GroupDelayScrollArea"))) {
+      mode = DisplayMode::GroupDelay;
     }
 
-    removeTrace(trace_name); // Remove trace by name
-}
 
-// This function is called when the user wants to remove a trace from the plot
-void Qucs_S_SPAR_Viewer::removeTrace(QStringList trace_to_remove)
-{
-    if (trace_to_remove.isEmpty())
-        return;
+    // 2) Find the right layout
+    TraceProperties& props = traceMap[mode][ID];
 
-    for (int i = 0; i < trace_to_remove.size(); i++)
-        removeTrace(trace_to_remove.at(i));
-}
-
-void Qucs_S_SPAR_Viewer::removeTrace(const QString& trace_to_remove)
-{
-
-  if (traceMap.contains(trace_to_remove)) {
-    // Get the marker properties
-    TraceProperties& props = traceMap[trace_to_remove];
-
-
-    // Get the appropriate layout based on the trace type
     QGridLayout *targetLayout;
-    if (trace_to_remove.endsWith("Smith")) {
-      // Select the layout where Smith Chart traces are shown
+
+    // Remove trace from the layout and from the chart
+    switch (mode) {
+    case DisplayMode::Magnitude_dB:
+    case DisplayMode::Phase:
+      targetLayout = magnitudePhaseLayout;
+      Magnitude_PhaseChart->removeTrace(ID);
+      break;
+    case DisplayMode::Smith:
       targetLayout = smithLayout;
-    } else {
-      if (trace_to_remove.endsWith("dB") || trace_to_remove.endsWith("ang")) {
-        // Select the layout where Magnitude and Phase traces are shown
-        targetLayout = magnitudePhaseLayout;
-      } else {
-        if (trace_to_remove.endsWith("Polar")) {
-          targetLayout = polarLayout;
-        } else {
-          if (trace_to_remove.endsWith("n.u.")) {
-            targetLayout = portImpedanceLayout;
-          } else {
-            if (trace_to_remove.endsWith("GD")) {
-              targetLayout = GroupDelayLayout;
-            }
-          }
-        }
-      }
+      smithChart->removeTrace(ID);
+      break;
+    case DisplayMode::Polar:
+      targetLayout = polarLayout;
+      polarChart->removeTrace(ID);
+      break;
+    case DisplayMode::PortImpedance:
+      targetLayout = portImpedanceLayout;
+      impedanceChart->removeTrace(ID);
+      break;
+    case DisplayMode::Stability:
+      targetLayout = stabilityLayout;
+      stabilityChart->removeTrace(ID);
+      break;
+    case DisplayMode::VSWR:
+      targetLayout = VSWRLayout;
+      VSWRChart->removeTrace(ID);
+      break;
+    case DisplayMode::GroupDelay:
+      targetLayout = GroupDelayLayout;
+      GroupDelayChart->removeTrace(ID);
+      break;
     }
 
-    // Delete all widgets
+    // 3) Remove widgets
+
     targetLayout->removeWidget(props.nameLabel);
     delete props.nameLabel;
 
@@ -1793,41 +1705,11 @@ void Qucs_S_SPAR_Viewer::removeTrace(const QString& trace_to_remove)
     targetLayout->removeWidget(props.deleteButton);
     delete props.deleteButton;
 
-    // Remove from the map
-    traceMap.remove(trace_to_remove);
 
-    QString str = trace_to_remove;
-    // Update the corresponding chart widget
-    if (trace_to_remove.endsWith("Smith")){
-      // Remove from the Smith Chart widget
-      str.chop(6); // Remove the "_Smith" suffix
-      smithChart->removeTrace(str);
-      return;
-    } else {
-      if (trace_to_remove.endsWith("Polar")){
-        str.chop(6); // Remove the "_Smith" suffix
-        polarChart->removeTrace(str);
-      } else {
-        if (trace_to_remove.endsWith("n.u.")){
-          str.chop(5); // Remove the "_n.u." suffix
-          impedanceChart->removeTrace(str);
-        } else {
-          if (trace_to_remove.endsWith("GD")){
-            str.chop(3); // Remove the "_GD" suffix
-            GroupDelayChart->removeTrace(str);
-          } else {
-            // Magnitude and phase plot
-            Magnitude_PhaseChart->removeTrace(str);
-            // Update the chart limits.
-            this->f_max = -1;
-            this->f_min = 1e30;
-            updateGridLayout(TracesGrid);
-          }
-        }
-      }
-    }
-  }
+    traceMap[mode].remove(ID);
 }
+
+
 
 bool Qucs_S_SPAR_Viewer::removeSeriesByName(QChart* chart, const QString& name)
 {
@@ -1943,13 +1825,14 @@ void Qucs_S_SPAR_Viewer::addTrace()
 // Overloaded method that uses the TraceInfo structure
 void Qucs_S_SPAR_Viewer::addTrace(const TraceInfo& traceInfo, QColor trace_color, int trace_width, QString trace_style)
 {
-  int n_trace = this->traceMap.size() + 1; // Number of displayed traces
+  DisplayMode mode = traceInfo.displayMode;
+  int n_trace = this->traceMap[mode].size() + 1; // Number of displayed traces
 
          // Get display name for the trace
   QString trace_name = traceInfo.displayName();
 
   // Check if the trace is already shown
-  if (traceMap.contains(trace_name)) {
+  if (traceMap[mode].contains(trace_name)) {
     QMessageBox::information(
         this,
         tr("Warning"),
@@ -1960,7 +1843,7 @@ void Qucs_S_SPAR_Viewer::addTrace(const TraceInfo& traceInfo, QColor trace_color
          // Get the appropriate layout based on the display mode
   QGridLayout* targetLayout;
   QString displayMode;
-  switch (traceInfo.displayMode) {
+  switch (mode) {
   case DisplayMode::Smith:
     targetLayout = smithLayout;
     displayMode = QString("Smith");
@@ -1995,27 +1878,24 @@ void Qucs_S_SPAR_Viewer::addTrace(const TraceInfo& traceInfo, QColor trace_color
     break;
   }
 
-
-  traceMap[trace_name].display_mode = displayMode; // This is needed in case of saving session.
-
-         // Create UI widgets for the trace (mostly unchanged from original code)
-         // Label
+   // Create UI widgets for the trace (mostly unchanged from original code)
+   // Label
   QLabel *new_trace_label = new QLabel(trace_name);
   new_trace_label->setObjectName(QStringLiteral("Trace_Name_") + trace_name);
-  traceMap[trace_name].nameLabel = new_trace_label;
+  traceMap[mode][trace_name].nameLabel = new_trace_label;
   targetLayout->addWidget(new_trace_label, n_trace, 0);
 
-         // Color picker
+  // Color picker
   QPushButton *new_trace_color = new QPushButton();
   new_trace_color->setObjectName(QStringLiteral("Trace_Color_") + trace_name);
   connect(new_trace_color, SIGNAL(clicked()), SLOT(changeTraceColor()));
   QString styleSheet = QStringLiteral("QPushButton { background-color: %1; }").arg(trace_color.name());
   new_trace_color->setStyleSheet(styleSheet);
   new_trace_color->setAttribute(Qt::WA_TranslucentBackground);
-  traceMap[trace_name].colorButton = new_trace_color;
+  traceMap[mode][trace_name].colorButton = new_trace_color;
   targetLayout->addWidget(new_trace_color, n_trace, 1);
 
-         // Line Style
+  // LineStyle
   QComboBox *new_trace_linestyle = new QComboBox();
   new_trace_linestyle->setObjectName(QStringLiteral("Trace_LineStyle_") + trace_name);
   new_trace_linestyle->addItem("Solid");
@@ -2026,10 +1906,10 @@ void Qucs_S_SPAR_Viewer::addTrace(const TraceInfo& traceInfo, QColor trace_color
   int index = new_trace_linestyle->findText(trace_style);
   new_trace_linestyle->setCurrentIndex(index);
   connect(new_trace_linestyle, SIGNAL(currentIndexChanged(int)), SLOT(changeTraceLineStyle()));
-  traceMap[trace_name].LineStyleComboBox = new_trace_linestyle;
+  traceMap[mode][trace_name].LineStyleComboBox = new_trace_linestyle;
   targetLayout->addWidget(new_trace_linestyle, n_trace, 2);
 
-         // Determine pen style
+  // Determine pen style
   Qt::PenStyle pen_style;
   if (!trace_style.compare("Solid")) {
     pen_style = Qt::SolidLine;
@@ -2043,15 +1923,15 @@ void Qucs_S_SPAR_Viewer::addTrace(const TraceInfo& traceInfo, QColor trace_color
     pen_style = Qt::DashDotDotLine;
   }
 
-         // Line width
+  // Line width
   QSpinBox *new_trace_width = new QSpinBox();
   new_trace_width->setObjectName(QStringLiteral("Trace_Width_") + trace_name);
   new_trace_width->setValue(trace_width);
   connect(new_trace_width, SIGNAL(valueChanged(int)), SLOT(changeTraceWidth()));
-  traceMap[trace_name].width = new_trace_width;
+  traceMap[mode][trace_name].width = new_trace_width;
   targetLayout->addWidget(new_trace_width, n_trace, 3);
 
-         // Remove button
+  // Remove button
   QToolButton *new_trace_removebutton = new QToolButton();
   new_trace_removebutton->setObjectName(QStringLiteral("Trace_RemoveButton_") + trace_name);
   QIcon icon(":/bitmaps/trash.png");
@@ -2065,26 +1945,26 @@ void Qucs_S_SPAR_Viewer::addTrace(const TraceInfo& traceInfo, QColor trace_color
             }
         )");
   connect(new_trace_removebutton, SIGNAL(clicked()), SLOT(removeTrace()));
-  traceMap[trace_name].deleteButton = new_trace_removebutton;
+  traceMap[mode][trace_name].deleteButton = new_trace_removebutton;
   targetLayout->addWidget(new_trace_removebutton, n_trace, 4);
 
-         // Create the series for the trace
+  // Create the series for the trace
   QLineSeries* series = new QLineSeries();
   series->setName(trace_name);
 
-         // Color settings
+  // Color settings
   QPen pen;
   pen.setColor(trace_color);
   pen.setStyle(pen_style);
   pen.setWidth(trace_width);
   series->setPen(pen); // Apply the pen to the series
 
-         // Create and add the appropriate trace based on display mode
+  // Create and add the appropriate trace based on display mode
   QList<double> frequencies = datasets[traceInfo.dataset]["frequency"];
   double Z0 = datasets[traceInfo.dataset]["Z0"].first();
 
   // Process the trace based on display mode
-  switch (traceInfo.displayMode) {
+  switch (mode) {
   case DisplayMode::Magnitude_dB:
   case DisplayMode::Phase: {
     // Determine which data column to use
@@ -2387,82 +2267,81 @@ void Qucs_S_SPAR_Viewer::changeTraceColor()
                 // For example, set the background color of the button
                 QPushButton *button = qobject_cast<QPushButton*>(sender());
                 if (button) {
+
+                  // 1) Find the display mode
+
+                  QWidget* scroll = button->parentWidget()->parentWidget()->parentWidget();
+                  QString scrollname = scroll->objectName();
+
+                  DisplayMode mode;
+                  if (!scrollname.compare(QString("magnitudePhaseScrollArea"))) {
+                    mode = DisplayMode::Magnitude_dB;
+                  } else if (!scrollname.compare(QString("smithScrollArea"))) {
+                    mode = DisplayMode::Smith;
+                  } else if (!scrollname.compare(QString("polarScrollArea"))) {
+                    mode = DisplayMode::Polar;
+                  } else if (!scrollname.compare(QString("portImpedanceScrollArea"))) {
+                    mode = DisplayMode::PortImpedance;
+                  } else if (!scrollname.compare(QString("stabilityScrollArea"))) {
+                    mode = DisplayMode::Stability;
+                  } else if (!scrollname.compare(QString("VSWRScrollArea"))) {
+                    mode = DisplayMode::VSWR;
+                  } else if (!scrollname.compare(QString("GroupDelayScrollArea"))) {
+                    mode = DisplayMode::GroupDelay;
+                  }
+
+
+                  // 2) Modify stylesheet
                   QString styleSheet = QStringLiteral("QPushButton { background-color: %1; }").arg(color.name());
                   button->setStyleSheet(styleSheet);
 
-                    QString ID = button->objectName();
-
-                    int ntraces = getNumberOfTraces();
-
-                    QString trace_name;
-                    TraceProperties trace_props;
-                    for (int i = 0; i < ntraces; i++) {
-                      getTraceByPosition(i, trace_name, trace_props);
-
-                      if (trace_props.colorButton->objectName() == ID) {
-                          break;
-                      }
-                    }
-
-                    if (trace_name.endsWith("_Smith")) {
-                      // Smith Chart widget
-
-                      // Extract the base trace name (remove the "_Smith" suffix)
-                      QString traceName = trace_name.left(trace_name.length() - 6);
-
-                      QPen currentPen = smithChart->getTracePen(traceName);
-
-                      // Update the color while preserving color and style
-                      currentPen.setColor(color);
-
-                      // Set the modified pen back to the trace
-                      smithChart->setTracePen(traceName, currentPen);
+                  QString ID = button->objectName();
+                  ID.remove("Trace_Color_"); // Remove the preffix
 
 
-                    } else {
-                      if (trace_name.endsWith("_Polar")) {
-                        // Polar Chart widget
+                  // 3) Remove trace from the layout and from the chart
+                  QPen currentPen(Qt::black);  // Explicit constructor (to avoid warnings)
+                  currentPen.setStyle(Qt::SolidLine);
+                  currentPen.setWidth(1);
 
-                        // Extract the base trace name (remove the "_Smith" suffix)
-                        QString traceName = trace_name.left(trace_name.length() - 6);
-
-                        QPen currentPen = polarChart->getTracePen(traceName);
-
-                        // Update the color while preserving color and style
-                        currentPen.setColor(color);
-
-                        // Set the modified pen back to the trace
-                        polarChart->setTracePen(traceName, currentPen);
-
-                      } else {
-                        if (trace_name.endsWith("_n.u.")) {
-
-                          // Extract the base trace name (remove the "_Smith" suffix)
-                          QString traceName = trace_name.left(trace_name.length() - 5);
-
-                          QPen currentPen = impedanceChart->getTracePen(traceName);
-
-                          // Update the color while preserving color and style
-                          currentPen.setColor(color);
-
-                          // Set the modified pen back to the trace
-                          impedanceChart->setTracePen(traceName, currentPen);
-
-                        } else {
-                          if (trace_name.endsWith("_Group Delay")){
-                            // Group delay
-                            QPen currentPen = GroupDelayChart->getTracePen(trace_name);
-                            currentPen.setColor(color);
-                            GroupDelayChart->setTracePen(trace_name, currentPen);
-                          } else {
-                            // Magnitude / Phase chart
-                            QPen currentPen = Magnitude_PhaseChart->getTracePen(trace_name);
-                            currentPen.setColor(color);
-                            Magnitude_PhaseChart->setTracePen(trace_name, currentPen);
-                          }
-                        }
-                      }
-                    }
+                  switch (mode) {
+                  case DisplayMode::Magnitude_dB:
+                  case DisplayMode::Phase:
+                    currentPen = Magnitude_PhaseChart->getTracePen(ID);
+                    currentPen.setColor(color);
+                    Magnitude_PhaseChart->setTracePen(ID, currentPen);
+                    break;
+                  case DisplayMode::Smith:
+                    currentPen = smithChart->getTracePen(ID);
+                    currentPen.setColor(color);
+                    smithChart->setTracePen(ID, currentPen);
+                    break;
+                  case DisplayMode::Polar:
+                    currentPen = polarChart->getTracePen(ID);
+                    currentPen.setColor(color);
+                    polarChart->setTracePen(ID, currentPen);
+                    break;
+                  case DisplayMode::PortImpedance:
+                    currentPen = impedanceChart->getTracePen(ID);
+                    currentPen.setColor(color);
+                    impedanceChart->setTracePen(ID, currentPen);
+                    break;
+                  case DisplayMode::Stability:
+                    currentPen = stabilityChart->getTracePen(ID);
+                    currentPen.setColor(color);
+                    stabilityChart->setTracePen(ID, currentPen);
+                    break;
+                  case DisplayMode::VSWR:
+                    currentPen = VSWRChart->getTracePen(ID);
+                    currentPen.setColor(color);
+                    VSWRChart->setTracePen(ID, currentPen);
+                    break;
+                  case DisplayMode::GroupDelay:
+                    currentPen = GroupDelayChart->getTracePen(ID);
+                    currentPen.setColor(color);
+                    GroupDelayChart->setTracePen(ID, currentPen);
+                    break;
+                  }
                 }
             }
 }
@@ -2473,15 +2352,31 @@ void Qucs_S_SPAR_Viewer::changeTraceLineStyle()
     QComboBox *combo = qobject_cast<QComboBox*>(sender());
     QString ID = combo->objectName();
 
-    int ntraces = getNumberOfTraces();
-    QString trace_name;
-    TraceProperties trace_props;
-    for (int i = 0; i < ntraces; i++) {
-      getTraceByPosition(i, trace_name, trace_props);
-      if (trace_props.LineStyleComboBox->objectName() == ID) {
-          break;
-      }
+
+    // 1) Find the display mode
+
+    QWidget* scroll = combo->parentWidget()->parentWidget()->parentWidget();
+    QString scrollname = scroll->objectName();
+
+    DisplayMode mode;
+    if (!scrollname.compare(QString("magnitudePhaseScrollArea"))) {
+      mode = DisplayMode::Magnitude_dB;
+    } else if (!scrollname.compare(QString("smithScrollArea"))) {
+      mode = DisplayMode::Smith;
+    } else if (!scrollname.compare(QString("polarScrollArea"))) {
+      mode = DisplayMode::Polar;
+    } else if (!scrollname.compare(QString("portImpedanceScrollArea"))) {
+      mode = DisplayMode::PortImpedance;
+    } else if (!scrollname.compare(QString("stabilityScrollArea"))) {
+      mode = DisplayMode::Stability;
+    } else if (!scrollname.compare(QString("VSWRScrollArea"))) {
+      mode = DisplayMode::VSWR;
+    } else if (!scrollname.compare(QString("GroupDelayScrollArea"))) {
+      mode = DisplayMode::GroupDelay;
     }
+
+    // 2) Get the trace name
+    ID.remove("Trace_LineStyle_"); // Remove the preffix
 
     // New trace line style
     enum Qt::PenStyle PenStyle;
@@ -2504,62 +2399,48 @@ void Qucs_S_SPAR_Viewer::changeTraceLineStyle()
     }
 
 
-    // Get the QPen of the trace from the corresponding display widget and update the width
+    // 3) Remove trace from the layout and from the chart
+    QPen currentPen(Qt::black);  // Explicit constructor (to avoid warnings)
+    currentPen.setStyle(Qt::SolidLine);
+    currentPen.setWidth(1);
 
-    if (trace_name.endsWith("_Smith")) {
-      // Smith Chart
-
-      // Extract the base trace name (remove the "_Smith" suffix)
-      QString traceName = trace_name.left(trace_name.length() - 6);
-      QPen currentPen = smithChart->getTracePen(traceName);
-
-       // Update the color while preserving color and style
+    switch (mode) {
+    case DisplayMode::Magnitude_dB:
+    case DisplayMode::Phase:
+      currentPen = Magnitude_PhaseChart->getTracePen(ID);
       currentPen.setStyle(PenStyle);
-
-      // Set the modified pen back to the trace
-      smithChart->setTracePen(traceName, currentPen);
-
-    } else {
-      if (trace_name.endsWith("_Polar")){
-        // Polar plot
-        QString traceName = trace_name.left(trace_name.length() - 6);
-        QPen currentPen = polarChart->getTracePen(traceName);
-
-        // Update the color while preserving color and style
-        currentPen.setStyle(PenStyle);
-
-        // Set the modified pen back to the trace
-        polarChart->setTracePen(traceName, currentPen);
-
-      } else {
-        if (trace_name.endsWith("_n.u.")){
-          // Natural units chart
-          QString traceName = trace_name.left(trace_name.length() - 5);
-          QPen currentPen = impedanceChart->getTracePen(traceName);
-          currentPen.setStyle(PenStyle);
-          impedanceChart->setTracePen(traceName, currentPen);
-        } else {
-          if (trace_name.endsWith("_n.u.")){
-            // Natural units chart
-            QString traceName = trace_name.left(trace_name.length() - 5);
-            QPen currentPen = impedanceChart->getTracePen(traceName);
-            currentPen.setStyle(PenStyle);
-            impedanceChart->setTracePen(traceName, currentPen);
-          } else {
-            if (trace_name.endsWith("_Group Delay")){
-              // Group delay
-              QPen currentPen = GroupDelayChart->getTracePen(trace_name);
-              currentPen.setStyle(PenStyle);
-              GroupDelayChart->setTracePen(trace_name, currentPen);
-            } else {
-              // Magnitude / Phase chart
-              QPen currentPen = Magnitude_PhaseChart->getTracePen(trace_name);
-              currentPen.setStyle(PenStyle);
-              Magnitude_PhaseChart->setTracePen(trace_name, currentPen);
-            }
-          }
-        }
-      }
+      Magnitude_PhaseChart->setTracePen(ID, currentPen);
+      break;
+    case DisplayMode::Smith:
+      currentPen = smithChart->getTracePen(ID);
+      currentPen.setStyle(PenStyle);
+      smithChart->setTracePen(ID, currentPen);
+      break;
+    case DisplayMode::Polar:
+      currentPen = polarChart->getTracePen(ID);
+      currentPen.setStyle(PenStyle);
+      polarChart->setTracePen(ID, currentPen);
+      break;
+    case DisplayMode::PortImpedance:
+      currentPen = impedanceChart->getTracePen(ID);
+      currentPen.setStyle(PenStyle);
+      impedanceChart->setTracePen(ID, currentPen);
+      break;
+    case DisplayMode::Stability:
+      currentPen = stabilityChart->getTracePen(ID);
+      currentPen.setStyle(PenStyle);
+      stabilityChart->setTracePen(ID, currentPen);
+      break;
+    case DisplayMode::VSWR:
+      currentPen = VSWRChart->getTracePen(ID);
+      currentPen.setStyle(PenStyle);
+      VSWRChart->setTracePen(ID, currentPen);
+      break;
+    case DisplayMode::GroupDelay:
+       currentPen = GroupDelayChart->getTracePen(ID);
+      currentPen.setStyle(PenStyle);
+      GroupDelayChart->setTracePen(ID, currentPen);
+      break;
     }
 }
 
@@ -2568,53 +2449,76 @@ void Qucs_S_SPAR_Viewer::changeTraceWidth() {
   QSpinBox *spinbox = qobject_cast<QSpinBox*>(sender());
   QString ID = spinbox->objectName();
 
-  int ntraces = getNumberOfTraces();
-  QString trace_name;
-  TraceProperties trace_props;
-  for (int i = 0; i < ntraces; i++) {
-    getTraceByPosition(i, trace_name, trace_props);
-    if (trace_props.width->objectName() == ID) {
-      break;
-    }
+  // 1) Find the display mode
+
+  QWidget* scroll = spinbox->parentWidget()->parentWidget()->parentWidget();
+  QString scrollname = scroll->objectName();
+
+  DisplayMode mode;
+  if (!scrollname.compare(QString("magnitudePhaseScrollArea"))) {
+    mode = DisplayMode::Magnitude_dB;
+  } else if (!scrollname.compare(QString("smithScrollArea"))) {
+    mode = DisplayMode::Smith;
+  } else if (!scrollname.compare(QString("polarScrollArea"))) {
+    mode = DisplayMode::Polar;
+  } else if (!scrollname.compare(QString("portImpedanceScrollArea"))) {
+    mode = DisplayMode::PortImpedance;
+  } else if (!scrollname.compare(QString("stabilityScrollArea"))) {
+    mode = DisplayMode::Stability;
+  } else if (!scrollname.compare(QString("VSWRScrollArea"))) {
+    mode = DisplayMode::VSWR;
+  } else if (!scrollname.compare(QString("GroupDelayScrollArea"))) {
+    mode = DisplayMode::GroupDelay;
   }
 
+  // New trace width
   int TraceWidth = spinbox->value();
 
-  // Get the QPen of the trace from the corresponding display widget and update the width
-  if (trace_name.endsWith("_Smith")) {
-    // Smith Chart
-    QString traceName = trace_name.left(trace_name.length() - 6);
-    QPen currentPen = smithChart->getTracePen(traceName);
+  // 2) Get the trace name
+  ID.remove("Trace_Width_"); // Remove the preffix
+
+  // Remove trace from the layout and from the chart
+  QPen currentPen(Qt::black);  // Explicit constructor (to avoid warnings)
+  currentPen.setStyle(Qt::SolidLine);
+  currentPen.setWidth(1);
+
+  switch (mode) {
+  case DisplayMode::Magnitude_dB:
+  case DisplayMode::Phase:
+    currentPen = Magnitude_PhaseChart->getTracePen(ID);
     currentPen.setWidth(TraceWidth);
-    smithChart->setTracePen(traceName, currentPen);
-  } else {
-    if (trace_name.endsWith("_Polar")) {
-      // Polar Chart
-      QString traceName = trace_name.left(trace_name.length() - 6);
-      QPen currentPen = polarChart->getTracePen(traceName);
-      currentPen.setWidth(TraceWidth);
-      polarChart->setTracePen(traceName, currentPen);
-    } else {
-      if (trace_name.endsWith("_n.u.")){
-        // Natural units chart
-        QString traceName = trace_name.left(trace_name.length() - 5);
-        QPen currentPen = impedanceChart->getTracePen(traceName);
-        currentPen.setWidth(TraceWidth);
-        impedanceChart->setTracePen(traceName, currentPen);
-      } else {
-        if (trace_name.endsWith("_Group Delay")){
-          // Group delay
-          QPen currentPen = GroupDelayChart->getTracePen(trace_name);
-          currentPen.setWidth(TraceWidth);
-          GroupDelayChart->setTracePen(trace_name, currentPen);
-        } else {
-        // Magnitude / Phase chart
-        QPen currentPen = Magnitude_PhaseChart->getTracePen(trace_name);
-        currentPen.setWidth(TraceWidth);
-        Magnitude_PhaseChart->setTracePen(trace_name, currentPen);
-        }
-      }
-    }
+    Magnitude_PhaseChart->setTracePen(ID, currentPen);
+    break;
+  case DisplayMode::Smith:
+    currentPen = smithChart->getTracePen(ID);
+    currentPen.setWidth(TraceWidth);
+    smithChart->setTracePen(ID, currentPen);
+    break;
+  case DisplayMode::Polar:
+    currentPen = polarChart->getTracePen(ID);
+    currentPen.setWidth(TraceWidth);
+    polarChart->setTracePen(ID, currentPen);
+    break;
+  case DisplayMode::PortImpedance:
+    currentPen = impedanceChart->getTracePen(ID);
+    currentPen.setWidth(TraceWidth);
+    impedanceChart->setTracePen(ID, currentPen);
+    break;
+  case DisplayMode::Stability:
+    currentPen = stabilityChart->getTracePen(ID);
+    currentPen.setWidth(TraceWidth);
+    stabilityChart->setTracePen(ID, currentPen);
+    break;
+  case DisplayMode::VSWR:
+    currentPen = VSWRChart->getTracePen(ID);
+    currentPen.setWidth(TraceWidth);
+    VSWRChart->setTracePen(ID, currentPen);
+    break;
+  case DisplayMode::GroupDelay:
+    currentPen = GroupDelayChart->getTracePen(ID);
+    currentPen.setWidth(TraceWidth);
+    GroupDelayChart->setTracePen(ID, currentPen);
+    break;
   }
 }
 
@@ -2900,7 +2804,7 @@ void Qucs_S_SPAR_Viewer::updateMarkerTable(){
       // Then use that list to build the header of the table
       QString trace_name;
       TraceProperties trace_props;
-      getTraceByPosition(i, trace_name, trace_props);
+      //getTraceByPosition(i, trace_name, trace_props);
 
       // Header
       int lastUnderscorePos = trace_name.lastIndexOf('_');
@@ -3771,7 +3675,7 @@ bool Qucs_S_SPAR_Viewer::save() {
     }
     xml.writeEndElement(); // datasets
   }
-
+/*
          // Save traces
   if (!traceMap.isEmpty()) { //Check empty map
     xml.writeStartElement("traces");
@@ -3796,7 +3700,7 @@ bool Qucs_S_SPAR_Viewer::save() {
       xml.writeEndElement(); // trace
     }
     xml.writeEndElement(); // traces
-  }
+  }*/
 
          // Save markers
   if (!markerMap.isEmpty()) { //Check empty map
@@ -4343,7 +4247,7 @@ bool Qucs_S_SPAR_Viewer::getLimitByPosition(int position, QString& outLimitName,
   return true;
 }
 
-
+/*
 // Get the trace given the position of the entry
 bool Qucs_S_SPAR_Viewer::getTraceByPosition(int position, QString& outTraceName, TraceProperties& outProperties) {
   // Check if position is valid
@@ -4364,7 +4268,7 @@ bool Qucs_S_SPAR_Viewer::getTraceByPosition(int position, QString& outTraceName,
 
   return true;
 }
-
+*/
 
 // Returns the total number of markers
 int Qucs_S_SPAR_Viewer::getNumberOfMarkers(){

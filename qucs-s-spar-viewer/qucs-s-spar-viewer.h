@@ -91,21 +91,25 @@ struct TraceInfo {
 
   // Helper to generate a unique identifier for the trace
   QString uniqueId() const {
-    return QString("%1.%2_%3").arg(dataset).arg(parameter).arg(static_cast<int>(displayMode));
+    if ((displayMode == DisplayMode::Magnitude_dB) || (displayMode == DisplayMode::Phase)) {
+      return QString("%1.%2_%3").arg(dataset).arg(parameter).arg(static_cast<int>(displayMode));
+    } else {
+      return QString("%1.%2").arg(dataset).arg(parameter);
+    }
   }
 
   // Helper to get a human-readable name for the trace
   QString displayName() const {
-    QString modeName;
-    switch(displayMode) {
-    case DisplayMode::Magnitude_dB: modeName = "dB"; break;
-    case DisplayMode::Phase: modeName = "Phase"; break;
-    case DisplayMode::Smith: modeName = "Smith"; break;
-    case DisplayMode::Polar: modeName = "Polar"; break;
-    case DisplayMode::PortImpedance: modeName = "Impedance"; break;
-    case DisplayMode::Stability: modeName = "Stability"; break;
-    case DisplayMode::VSWR: modeName = "VSWR"; break;
-    case DisplayMode::GroupDelay: modeName = "Group Delay"; break;
+    QString modeName = QString("");
+
+    if (displayMode == DisplayMode::Magnitude_dB) {
+      modeName = "dB";
+    } else {
+      if (displayMode == DisplayMode::Phase) {
+        modeName = "Phase";
+      } else {
+        return QString("%1.%2").arg(dataset).arg(parameter);
+      }
     }
     return QString("%1.%2_%3").arg(dataset).arg(parameter).arg(modeName);
   }
@@ -139,7 +143,7 @@ class Qucs_S_SPAR_Viewer : public QMainWindow
   void applyDefaultVisualizations(const QStringList& fileNames);
   void addOptionalTraces(QMap<QString, QList<double>>& file_data);
   void removeFile();
-  void removeFile(int);
+  //void removeFile(int);
   void removeAllFiles();
   void CreateFileWidgets(QString filename, int position);
 
@@ -151,10 +155,10 @@ class Qucs_S_SPAR_Viewer : public QMainWindow
   void addTrace();
   void addTrace(const TraceInfo& traceInfo, QColor trace_color, int trace_width, QString trace_style = "Solid");
   void removeTrace();
-  void removeTrace(const QString& );
-  void removeTrace(QStringList);
+  //void removeTrace(const QString& );
+  //void removeTrace(QStringList);
   int getNumberOfTraces();
-  bool getTraceByPosition(int position, QString& outTraceName, TraceProperties& outProperties);
+  //bool getTraceByPosition(int position, QString& outTraceName, TraceProperties& outProperties);
 
   void updateTracesCombo();
   void updateDisplayType();
@@ -217,7 +221,7 @@ class Qucs_S_SPAR_Viewer : public QMainWindow
   QGridLayout * TracesGrid;
 
   // This structure groups the widgets related to the traces so that they can be accessed by name
-  QMap<QString, TraceProperties> traceMap;
+  QMap<DisplayMode, QMap<QString, TraceProperties>>  traceMap;
 
   QTabWidget *traceTabs;
   QWidget *magnitudePhaseTab, *smithTab, *polarTab, *portImpedanceTab, *stabilityTab, *VSWRTab, *GroupDelayTab;
