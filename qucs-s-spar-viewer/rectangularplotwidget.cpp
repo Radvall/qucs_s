@@ -86,35 +86,6 @@ void RectangularPlotWidget::addTrace(const QString& name, const Trace& trace)
     updateXAxis();
   }
 
-  // Check if the y-axis title displays the content of the trace title and update
-  QString TitleText; // Chart title
-  QString TraceTitle = trace.y_axis_title;
-  if (trace.y_axis == 1) {
-    // Left y-axis
-    TitleText = yAxis->titleText();
-    if (!TitleText.contains(TraceTitle)) {
-      // If the title does not contain the title the trace should have, then append it
-      if (!TitleText.isEmpty()) {
-        // If the title string has previous content, add a comma and append the new content
-        TitleText += QString(", ");
-      }
-      TitleText += TraceTitle;
-      change_Y_axis_title(TitleText);
-    }
-  } else {
-    // Right y-axis
-    TitleText = y2Axis->titleText();
-    if (!TitleText.contains(TraceTitle)) {
-      // If the title does not contain the title the trace should have, then append it
-      if (!TitleText.isEmpty()) {
-        // If the title string has previous content, add a comma and append the new content
-        TitleText += QString(", ");
-      }
-      TitleText += TraceTitle;
-      change_Y2_axis_title(TitleText);
-    }
-  }
-
   // Only adjust y-axis and y2-axis ranges if not locked and trace has data
   if (!axisSettingsLocked && !traceCopy.trace.isEmpty() && y_autoscale) {
     // Find min and max values in the trace data

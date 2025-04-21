@@ -157,6 +157,7 @@ class Qucs_S_SPAR_Viewer : public QMainWindow
   void removeTrace();
   //void removeTrace(const QString& );
   //void removeTrace(QStringList);
+  void removeAndCollapseRow(QGridLayout* targetLayout, int row_to_remove);
   int getNumberOfTraces();
   //bool getTraceByPosition(int position, QString& outTraceName, TraceProperties& outProperties);
 

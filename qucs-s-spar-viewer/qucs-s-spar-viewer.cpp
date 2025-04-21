@@ -660,9 +660,9 @@ void Qucs_S_SPAR_Viewer::CreateDisplayWidgets(){
   dockImpedanceChart->setWidget(impedanceChart);
   dockImpedanceChart->setAllowedAreas(Qt::AllDockWidgetAreas);
   addDockWidget(Qt::LeftDockWidgetArea, dockImpedanceChart);
-  impedanceChart->change_Y_axis_title(QString("Resistance")); // Remove default labels
+  impedanceChart->change_Y_axis_title(QString("Resistance (Ω)")); // Remove default labels
   impedanceChart->change_Y_axis_units(QString("Ω"));
-  impedanceChart->change_Y2_axis_title(QString("Reactance"));
+  impedanceChart->change_Y2_axis_title(QString("Reactance (Ω)"));
   impedanceChart->change_Y2_axis_units(QString("Ω"));
 
   // Stability plot
@@ -692,8 +692,6 @@ void Qucs_S_SPAR_Viewer::CreateDisplayWidgets(){
   VSWRChart->set_y_autoscale(false);
   VSWRChart->setRightYAxisEnabled(false); // Hide right y-axis
   VSWRChart->change_Y_axis_title(QString("VSWR")); // Remove default labels
-  VSWRChart->change_Y_axis_title(QString(""));
-  VSWRChart->change_Y2_axis_title(QString(""));
   VSWRChart->change_Y2_axis_title(QString(""));
   VSWRChart->change_Y_axis_units(QString(""));
   VSWRChart->setYmin(1);
@@ -1626,6 +1624,7 @@ void Qucs_S_SPAR_Viewer::removeTrace()
 {
     QToolButton* button = qobject_cast<QToolButton*>(sender());
     QString ID = button->objectName();
+    ID.remove("Trace_RemoveButton_");
 
     // 1) Find the display mode
 
@@ -1690,6 +1689,11 @@ void Qucs_S_SPAR_Viewer::removeTrace()
 
     // 3) Remove widgets
 
+    // First, get the row number of the widgets in the grid. This is needed for filling the gaps after removal
+    int index = targetLayout->indexOf(props.nameLabel);
+    int row_to_remove, col, rowSpan, colSpan; // Add span variables
+    targetLayout->getItemPosition(index, &row_to_remove, &col, &rowSpan, &colSpan);
+
     targetLayout->removeWidget(props.nameLabel);
     delete props.nameLabel;
 
@@ -1707,6 +1711,53 @@ void Qucs_S_SPAR_Viewer::removeTrace()
 
 
     traceMap[mode].remove(ID);
+
+    // 4) Once removed the widgets. It is needed to fill the gap in the layout that those widgets have left
+    removeAndCollapseRow(targetLayout, row_to_remove);
+
+
+}
+
+
+void Qucs_S_SPAR_Viewer::removeAndCollapseRow(QGridLayout* targetLayout, int row_to_remove) {
+  int rows = targetLayout->rowCount();
+  int columns = targetLayout->columnCount();
+
+  // 1. Remove all widgets in target row (if not already done)
+  for(int col = 0; col < columns; ++col) {
+    QLayoutItem* item = targetLayout->itemAtPosition(row_to_remove, col);
+    if(item && item->widget()) {
+      targetLayout->removeWidget(item->widget());
+      delete item->widget(); // Optional: Only if you want to destroy widgets
+    }
+  }
+
+  // 2. Shift all rows below upward
+  for(int r = row_to_remove + 1; r < rows; ++r) {
+    for(int c = 0; c < columns; ++c) {
+      QLayoutItem* item = targetLayout->itemAtPosition(r, c);
+      if(item && item->widget()) {
+        QWidget* widget = item->widget();
+        targetLayout->removeWidget(widget);
+        targetLayout->addWidget(widget, r-1, c); // Move up one row
+      }
+    }
+  }
+
+  // 3.emove empty last row (if needed)
+  if(row_to_remove == rows - 1) {
+    // QGridLayout doesn't have removeRow(), so we must force layout update
+    QWidget* container = targetLayout->parentWidget();
+    if(container) {
+      container->setUpdatesEnabled(false);
+      // Add temporary dummy widget to last row to force recalc
+      QWidget* temp = new QWidget();
+      targetLayout->addWidget(temp, row_to_remove, 0);
+      targetLayout->removeWidget(temp);
+      delete temp;
+      container->setUpdatesEnabled(true);
+    }
+  }
 }
 
 
@@ -1791,7 +1842,7 @@ void Qucs_S_SPAR_Viewer::addTrace()
   } else if (displayModeText == "Polar") {
     traceInfo.displayMode = DisplayMode::Polar;
   } else if (displayModeText == "n.u.") {
-    if (traceInfo.parameter.compare("VSWR")) {
+    if (!traceInfo.parameter.compare("VSWR")) {
       traceInfo.displayMode = DisplayMode::VSWR;
     } else {
       traceInfo.displayMode = DisplayMode::Stability;
@@ -2156,17 +2207,12 @@ void Qucs_S_SPAR_Viewer::addTrace(const TraceInfo& traceInfo, QColor trace_color
       QList<double> trace_data = datasets[traceInfo.dataset][traceInfo.parameter];
 
       // Determine display characteristics
-      QString units = "";
+      QString units = "Ω";
       int yaxis = 1;
       QString y_axis_title;
 
       if (traceInfo.parameter.contains("Im{")) {
         yaxis = 2;
-        units = "Ω";
-        y_axis_title = "Reactance (Ω)";
-      } else if (traceInfo.parameter.contains("Re{")) {
-        y_axis_title = "Resistance (Ω)";
-        units = "Ω";
       }
 
       RectangularPlotWidget::Trace new_trace;
@@ -4081,8 +4127,8 @@ void Qucs_S_SPAR_Viewer::calculate_Sparameter_trace(QString file, QString metric
 
     double delta = abs(s11*s22 - s12*s21); // Determinant of the S matrix
 
-      if (!metric.compare("delta")) {
-        datasets[file]["delta"].append(delta);
+      if (!metric.compare("|Δ|")) {
+        datasets[file]["|Δ|"].append(delta);
       } else {
         if (!metric.compare("K")) {
           double K = (1 - abs(s11)*abs(s11) - abs(s22)*abs(s22) + delta*delta) / (2*abs(s12*s21)); // Rollet factor.
