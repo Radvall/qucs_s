@@ -322,7 +322,7 @@ QGridLayout* PolarPlotWidget::setupAxisSettings()
   fUnitComboBox = new QComboBox;
   fUnitComboBox->addItems(frequencyUnits);
   fUnitComboBox->setCurrentIndex(2); // MHz
-  connect(fUnitComboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(onFUnitChanged(int)));
+  connect(fUnitComboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(onFUnitChanged()));
   axisLayout->addWidget(fUnitComboBox, 0, 3);
 
          // Radius axis settings

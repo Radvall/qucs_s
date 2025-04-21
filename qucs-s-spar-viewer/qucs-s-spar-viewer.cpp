@@ -2717,7 +2717,13 @@ void Qucs_S_SPAR_Viewer::addMarker(double freq, QString Freq_Marker_Scale){
     polarChart->addMarker(new_marker_name, f_marker); // Polar plot
 
     dockImpedanceChart->raise();
-    impedanceChart->addMarker(new_marker_name, f_marker, pen); // Natural units plot
+    impedanceChart->addMarker(new_marker_name, f_marker, pen); // Port impedance plot
+
+    dockStabilityChart->raise();
+    stabilityChart->addMarker(new_marker_name, f_marker, pen); // Stability plot
+
+    dockVSWRChart->raise();
+    VSWRChart->addMarker(new_marker_name, f_marker, pen); // VSWR plot
 
     dockGroupDelayChart->raise();
     GroupDelayChart->addMarker(new_marker_name, f_marker, pen); // Group delay
@@ -2797,52 +2803,36 @@ void Qucs_S_SPAR_Viewer::updateMarkerTable(){
     header_GroupDelay = header_Magnitude_Phase;
 
     // Build headers
-    int n_traces = getNumberOfTraces();
 
-    for (int i = 0; i < n_traces; i++) {
-      // Find the name of the traces from the traces map and add them to a list.
-      // Then use that list to build the header of the table
-      QString trace_name;
-      TraceProperties trace_props;
-      //getTraceByPosition(i, trace_name, trace_props);
+    QStringList traces = traceMap[DisplayMode::Magnitude_dB].keys(); // Traces displayed in the magnitude / phase plot
+    header_Magnitude_Phase.append(traces);
 
-      // Header
-      int lastUnderscorePos = trace_name.lastIndexOf('_');
-      QString suffix = trace_name.mid(lastUnderscorePos);
+    traces = traceMap[DisplayMode::Smith].keys(); // Traces displayed in the Smith Chart
+    header_Smith.append(traces);
 
-      if (suffix.endsWith("_dB") || suffix.endsWith("_ang")) {
-        // Magnitude / Phase
-        header_Magnitude_Phase.append(trace_name);
-      } else {
-        if (suffix.endsWith("_Smith")) {
-        // Smith
-        header_Smith.append(trace_name);
-        } else {
-          if (suffix.endsWith("_Polar")) {
-            // Polar
-            header_Polar.append(trace_name);
-          } else {
-            if (suffix.endsWith("_Group Delay")) {
-              header_GroupDelay.append(trace_name);
-            } else {
-              // Port Impedance
-              trace_name.chop(5); // Remove the "_n.u." suffix
-              header_PortImpedance.append(trace_name);
-            }
-          }
-        }
-      }
-    }
+    traces = traceMap[DisplayMode::Polar].keys(); // Traces displayed in the Polar Chart
+    header_Polar.append(traces);
 
+    traces = traceMap[DisplayMode::PortImpedance].keys(); // Traces displayed in the Port Impedance Chart
+    header_PortImpedance.append(traces);
+
+    traces = traceMap[DisplayMode::Stability].keys(); // Traces displayed in the Stability Chart
+    header_Stability.append(traces);
+
+    traces = traceMap[DisplayMode::VSWR].keys(); // Traces displayed in the VSWR Chart
+    header_VSWR.append(traces);
+
+    traces = traceMap[DisplayMode::GroupDelay].keys(); // Traces displayed in the Group Delay Chart
+    header_GroupDelay.append(traces);
 
     // Update marker data
-    updateMarkerData(*tableMarkers_Magnitude_Phase, header_Magnitude_Phase); // Magnitude and phase table
-    updateMarkerData(*tableMarkers_Smith, header_Smith); // Smith Chart table
-    updateMarkerData(*tableMarkers_Polar, header_Polar); // Polar Chart table
-    updateMarkerData(*tableMarkers_PortImpedance, header_PortImpedance); // Port impedance Chart table
-    updateMarkerData(*tableMarkers_Stability, header_Stability); // Port impedance Chart table
-    updateMarkerData(*tableMarkers_VSWR, header_VSWR); // Port impedance Chart table
-    updateMarkerData(*tableMarkers_GroupDelay, header_GroupDelay); // Group Delay Chart table
+    updateMarkerData(*tableMarkers_Magnitude_Phase, DisplayMode::Magnitude_dB, header_Magnitude_Phase); // Magnitude and phase table
+    updateMarkerData(*tableMarkers_Smith, DisplayMode::Smith, header_Smith); // Smith Chart table
+    updateMarkerData(*tableMarkers_Polar, DisplayMode::Polar, header_Polar); // Polar Chart table
+    updateMarkerData(*tableMarkers_PortImpedance, DisplayMode::PortImpedance, header_PortImpedance); // Port impedance Chart table
+    updateMarkerData(*tableMarkers_Stability, DisplayMode::Stability, header_Stability); // Port impedance Chart table
+    updateMarkerData(*tableMarkers_VSWR, DisplayMode::VSWR, header_VSWR); // Port impedance Chart table
+    updateMarkerData(*tableMarkers_GroupDelay, DisplayMode::GroupDelay, header_GroupDelay); // Group Delay Chart table
 
 
     // Update markers
@@ -2852,14 +2842,16 @@ void Qucs_S_SPAR_Viewer::updateMarkerTable(){
       smithChart->updateMarkerFrequency(str, marker_freq); // Update Smith Chart widget markers
       polarChart->updateMarkerFrequency(str, marker_freq); // Update Polar Chart widget markers
       Magnitude_PhaseChart->updateMarkerFrequency(str, marker_freq); // Update magnitude / phase widget markers
-      impedanceChart->updateMarkerFrequency(str, marker_freq); // Update natural units widget markers
+      impedanceChart->updateMarkerFrequency(str, marker_freq); // Update port impedance widget markers
+      stabilityChart->updateMarkerFrequency(str, marker_freq); // Update stability widget markers
+      VSWRChart->updateMarkerFrequency(str, marker_freq); // Update VSWR widget markers
       GroupDelayChart->updateMarkerFrequency(str, marker_freq); // Update Group Delay Chart
     }
 }
 
 
 // Fill the different marker tables
-void Qucs_S_SPAR_Viewer::updateMarkerData(QTableWidget& table, QStringList header){
+void Qucs_S_SPAR_Viewer::updateMarkerData(QTableWidget& table, DisplayMode mode, QStringList header){
 
   QPointF P;
   qreal targetX;
@@ -2901,7 +2893,7 @@ void Qucs_S_SPAR_Viewer::updateMarkerData(QTableWidget& table, QStringList heade
       QString trace = parts[1];
 
       // Find data on the dataset
-        if (trace.endsWith("Smith")){
+      if (mode == DisplayMode::Smith){
           // Get R + j X
           QString sxx_re = trace;
           QString sxx_im = trace;
@@ -2937,12 +2929,12 @@ void Qucs_S_SPAR_Viewer::updateMarkerData(QTableWidget& table, QStringList heade
             }
           }
         } else {
-          if (trace.endsWith("Polar")) {
+        if (mode == DisplayMode::Polar) {
             QString sxx_re = trace;
             QString sxx_im = trace;
 
-            sxx_re.replace("Polar", "re");
-            sxx_im.replace("Polar", "im");
+            sxx_re.append("_re");
+            sxx_im.append("_im");
 
             QPointF sij_real = findClosestPoint(datasets[file]["frequency"], datasets[file][sxx_re], targetX);
             QPointF sij_imag = findClosestPoint(datasets[file]["frequency"], datasets[file][sxx_im], targetX);
@@ -2962,7 +2954,7 @@ void Qucs_S_SPAR_Viewer::updateMarkerData(QTableWidget& table, QStringList heade
             P = findClosestPoint(datasets[file]["frequency"], datasets[file][trace], targetX);
             new_val = QStringLiteral("%1").arg(QString::number(P.y(), 'f', 2));
 
-            if (trace.endsWith("Group Delay")) {
+            if (mode == DisplayMode::GroupDelay) {
               // Add units
               new_val += QString(" ns");
             }

@@ -176,7 +176,7 @@ class Qucs_S_SPAR_Viewer : public QMainWindow
   int getNumberOfMarkers();
   void updateMarkerTable();
   void updateMarkerNames();
-  void updateMarkerData(QTableWidget &, QStringList);
+  void updateMarkerData(QTableWidget & layout, DisplayMode mode, QStringList header);
   bool getMarkerByPosition(int position, QString& outMarkerName, MarkerProperties& outProperties);
 
   void addLimit(double f_limit1=-1, QString f_limit1_unit = "", double f_limit2=-1, QString f_limit2_unit = "", double y_limit1=-1, double y_limit2=-1, bool coupled=true);
