@@ -187,6 +187,9 @@
 #include "circularloop.h"
 #include "spiralinductor.h"
 
+#include "magnetics/ja_core.h"
+#include "magnetics/winding.h"
+
 // external simulation components
 #include "etr_sim.h"
 #include "ecvs.h"

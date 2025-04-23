@@ -32,6 +32,7 @@
 #include "dialogs/tuner.h"
 #include "extsimkernels/customsimdialog.h"
 #include "extsimkernels/spicelibcompdialog.h"
+#include "magnetics/magcoredialog.h"
 #include "main.h"
 #include "module.h"
 #include "node.h"
@@ -1746,7 +1747,12 @@ void MouseActions::editElement(Schematic *Doc, QMouseEvent *Event)
         if (c->Model == "GND")
             return;
 
-        if (c->Model == "SpLib") {
+        if (c->Model == "CORE") {
+          MagCoreDialog *mcd = new MagCoreDialog(c, Doc);
+          if (mcd->exec() != -1) {
+            break;
+          }
+        } else if (c->Model == "SpLib") {
           SpiceLibCompDialog *sld = new SpiceLibCompDialog(c, Doc);
           if (sld->exec() != -1) {
             break;

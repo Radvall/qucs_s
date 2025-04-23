@@ -1,9 +1,13 @@
 /***************************************************************************
-                          symtrafo.h  -  description
-                             -------------------
-    begin                : Sat Aug 23 2003
-    copyright            : (C) 2003 by Michael Margraf
-    email                : michael.margraf@alumni.tu-berlin.de
+                         core.h  -  description
+                   --------------------------------------
+    begin                    : Fri Mar 9 2007
+    copyright              : (C) 2007 by Gunther Kraut
+    email                     : gn.kraut@t-online.de
+    spice4qucs code added  SUN. 22 Nov 2015
+    copyright              : (C) 2015 by Mike Brinson
+    email                    : mbrin72043@yahoo.co.uk
+
  ***************************************************************************/
 
 /***************************************************************************
@@ -14,22 +18,22 @@
  *   (at your option) any later version.                                   *
  *                                                                         *
  ***************************************************************************/
+#ifndef core_H
+#define core_H
 
-#ifndef SYMTRAFO_H
-#define SYMTRAFO_H
+#include "components/component.h"
 
-#include "component.h"
-
-
-class symTrafo : public Component  {
+class JA_core: public MultiViewComponent {
 public:
-  symTrafo();
-  ~symTrafo();
+  JA_core();
+  ~JA_core();
   Component* newOne();
   static Element* info(QString&, char* &, bool getNewOne=false);
   QString getSpiceLibrary();
 protected:
-  QString spice_netlist(spicecompat::SpiceDialect dialect);
+  void createSymbol();
+  QString netlist();
+  QString spice_netlist(spicecompat::SpiceDialect dialect = spicecompat::SPICEDefault);
 };
 
-#endif
+#endif // core_H
