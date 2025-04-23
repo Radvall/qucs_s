@@ -16,6 +16,7 @@ Digital_HC.lib
 Digital_LV.lib
 Digital_XSPICE.lib
 DualGateMOSFET.lib
+FerritesEpcos.lib
 GeDiodes.lib
 Ideal.lib
 JFETs.lib
