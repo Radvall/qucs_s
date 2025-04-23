@@ -143,8 +143,10 @@ class Qucs_S_SPAR_Viewer : public QMainWindow
   void applyDefaultVisualizations(const QStringList& fileNames);
   void addOptionalTraces(QMap<QString, QList<double>>& file_data);
   void removeFile();
-  //void removeFile(int);
+  void removeFile(QString ID);
   void removeAllFiles();
+  void removeTracesByDataset(const QString& dataset_to_remove);
+  void removeTraceByProps(DisplayMode mode, const QString& traceID, TraceProperties& props);
   void CreateFileWidgets(QString filename, int position);
 
   // File watching functions

@@ -933,7 +933,7 @@ void Qucs_S_SPAR_Viewer::addFiles(QStringList fileNames)
     files_filtered.append(filename);
 
     // Create widgets at this point. It's necessary to ensure that the files to be loaded contain S-parameter data
-    CreateFileWidgets(filename, widget_counter+1);
+    CreateFileWidgets(filename, widget_counter);
     widget_counter++;
 
            // Add data to the dataset
@@ -1586,28 +1586,92 @@ void Qucs_S_SPAR_Viewer::CreateFileWidgets(QString filename, int position = 0) {
 
 
 
+
+void Qucs_S_SPAR_Viewer::removeFile(QString ID)
+{
+  // Find the row number of the button to remove
+  int row_to_remove = -1;
+  QString dataset;
+
+  for (int i = 0; i < List_RemoveButton.size(); i++) {
+    if (List_RemoveButton.at(i)->objectName() == ID) {
+      row_to_remove = i;
+      dataset = List_FileNames.at(i)->text();
+      delete List_RemoveButton.takeAt(i);  // Use takeAt() instead of at()
+      delete List_FileNames.takeAt(i);     // Removes AND returns the pointer
+      break;
+    }
+  }
+
+  // Once removed the widgets, fill the gap in the layout
+  if (row_to_remove >= 0) {
+    removeAndCollapseRow(FilesGrid, row_to_remove);
+
+    // Find all traces belonging to this dataset and remove them
+    removeTracesByDataset(dataset);
+  }
+}
+
+
 // This function is called whenever a s-par file is intended to be removed from the map of datasets
 void Qucs_S_SPAR_Viewer::removeFile()
 {
-    QString ID = qobject_cast<QToolButton*>(sender())->objectName();
-    //qDebug() << "Clicked button:" << ID;
+  QToolButton* button = qobject_cast<QToolButton*>(sender());
+  QString ID = button->objectName();
+  removeFile(ID);
+}
 
-    //Find the index of the button to remove
-    int index_to_delete = -1;
-    for (int i = 0; i < List_RemoveButton.size(); i++) {
-        if (List_RemoveButton.at(i)->objectName() == ID) {
-            index_to_delete = i;
-            break;
-        }
+void Qucs_S_SPAR_Viewer::removeTracesByDataset(const QString& dataset_to_remove) {
+  // Iterate through the outer QMap (display modes)
+  for (auto mode_it = traceMap.begin(); mode_it != traceMap.end(); ) {
+    QMap<QString, TraceProperties>& traces = mode_it.value();
+    DisplayMode mode = mode_it.key();
+
+    // Iterate through the inner QMap (traces in the current mode)
+    for (auto trace_it = traces.begin(); trace_it != traces.end(); ) {
+      const QString& trace_name = trace_it.key();
+
+      // Check if the trace belongs to the dataset to remove
+      if (trace_name.startsWith(dataset_to_remove + ".")) {
+        TraceProperties& props = trace_it.value();
+
+        // Use the common function to remove the trace
+        // We need to make a copy of the trace name because it will be invalidated
+        // when the trace is removed from the map
+        QString traceName = trace_name;
+
+        // Move to next trace before removing current one
+        ++trace_it;
+
+        // Remove the trace using the common function
+        removeTraceByProps(mode, traceName, props);
+      } else {
+        ++trace_it; // Increment iterator if not removed
+      }
     }
 
-
+    // Check if the mode is now empty after processing all traces
+    if (traces.isEmpty()) {
+      mode_it = traceMap.erase(mode_it);
+    } else {
+      ++mode_it;
+    }
+  }
 }
 
 
 void Qucs_S_SPAR_Viewer::removeAllFiles()
 {
   // Remove files
+  QStringList fileIDs;
+  for (int i = 0; i < List_RemoveButton.size(); i++) {
+    fileIDs.append(List_RemoveButton.at(i)->objectName());
+  }
+
+  // Remove each file by ID
+  for (const QString& ID : fileIDs) {
+    removeFile(ID);
+  }
 
   // Remove all paths from the file watcher
   if (!fileWatcher->files().isEmpty()) {
@@ -1619,104 +1683,108 @@ void Qucs_S_SPAR_Viewer::removeAllFiles()
 }
 
 
-// This function is called when the user wants to remove a trace from the plot
-void Qucs_S_SPAR_Viewer::removeTrace()
-{
-    QToolButton* button = qobject_cast<QToolButton*>(sender());
-    QString ID = button->objectName();
-    ID.remove("Trace_RemoveButton_");
+void Qucs_S_SPAR_Viewer::removeTrace() {
+  QToolButton* button = qobject_cast<QToolButton*>(sender());
+  QString ID = button->objectName();
+  ID.remove("Trace_RemoveButton_");
 
-    // 1) Find the display mode
+         // Find the display mode from the parent widget
+  QWidget* scroll = button->parentWidget()->parentWidget()->parentWidget();
+  QString scrollname = scroll->objectName();
 
-    QWidget* scroll = button->parentWidget()->parentWidget()->parentWidget();
-    QString scrollname = scroll->objectName();
+  DisplayMode mode;
+  if (!scrollname.compare(QString("magnitudePhaseScrollArea"))) {
+    mode = DisplayMode::Magnitude_dB;
+  } else if (!scrollname.compare(QString("smithScrollArea"))) {
+    mode = DisplayMode::Smith;
+  } else if (!scrollname.compare(QString("polarScrollArea"))) {
+    mode = DisplayMode::Polar;
+  } else if (!scrollname.compare(QString("portImpedanceScrollArea"))) {
+    mode = DisplayMode::PortImpedance;
+  } else if (!scrollname.compare(QString("stabilityScrollArea"))) {
+    mode = DisplayMode::Stability;
+  } else if (!scrollname.compare(QString("VSWRScrollArea"))) {
+    mode = DisplayMode::VSWR;
+  } else if (!scrollname.compare(QString("GroupDelayScrollArea"))) {
+    mode = DisplayMode::GroupDelay;
+  }
 
-    DisplayMode mode;
-    if (!scrollname.compare(QString("magnitudePhaseScrollArea"))) {
-      mode = DisplayMode::Magnitude_dB;
-    } else if (!scrollname.compare(QString("smithScrollArea"))) {
-      mode = DisplayMode::Smith;
-    } else if (!scrollname.compare(QString("polarScrollArea"))) {
-      mode = DisplayMode::Polar;
-    } else if (!scrollname.compare(QString("portImpedanceScrollArea"))) {
-      mode = DisplayMode::PortImpedance;
-    } else if (!scrollname.compare(QString("stabilityScrollArea"))) {
-      mode = DisplayMode::Stability;
-    } else if (!scrollname.compare(QString("VSWRScrollArea"))) {
-      mode = DisplayMode::VSWR;
-    } else if (!scrollname.compare(QString("GroupDelayScrollArea"))) {
-      mode = DisplayMode::GroupDelay;
-    }
-
-
-    // 2) Find the right layout
-    TraceProperties& props = traceMap[mode][ID];
-
-    QGridLayout *targetLayout;
-
-    // Remove trace from the layout and from the chart
-    switch (mode) {
-    case DisplayMode::Magnitude_dB:
-    case DisplayMode::Phase:
-      targetLayout = magnitudePhaseLayout;
-      Magnitude_PhaseChart->removeTrace(ID);
-      break;
-    case DisplayMode::Smith:
-      targetLayout = smithLayout;
-      smithChart->removeTrace(ID);
-      break;
-    case DisplayMode::Polar:
-      targetLayout = polarLayout;
-      polarChart->removeTrace(ID);
-      break;
-    case DisplayMode::PortImpedance:
-      targetLayout = portImpedanceLayout;
-      impedanceChart->removeTrace(ID);
-      break;
-    case DisplayMode::Stability:
-      targetLayout = stabilityLayout;
-      stabilityChart->removeTrace(ID);
-      break;
-    case DisplayMode::VSWR:
-      targetLayout = VSWRLayout;
-      VSWRChart->removeTrace(ID);
-      break;
-    case DisplayMode::GroupDelay:
-      targetLayout = GroupDelayLayout;
-      GroupDelayChart->removeTrace(ID);
-      break;
-    }
-
-    // 3) Remove widgets
-
-    // First, get the row number of the widgets in the grid. This is needed for filling the gaps after removal
-    int index = targetLayout->indexOf(props.nameLabel);
-    int row_to_remove, col, rowSpan, colSpan; // Add span variables
-    targetLayout->getItemPosition(index, &row_to_remove, &col, &rowSpan, &colSpan);
-
-    targetLayout->removeWidget(props.nameLabel);
-    delete props.nameLabel;
-
-    targetLayout->removeWidget(props.colorButton);
-    delete props.colorButton;
-
-    targetLayout->removeWidget(props.LineStyleComboBox);
-    delete props.LineStyleComboBox;
-
-    targetLayout->removeWidget(props.width);
-    delete props.width;
-
-    targetLayout->removeWidget(props.deleteButton);
-    delete props.deleteButton;
-
-
-    traceMap[mode].remove(ID);
-
-    // 4) Once removed the widgets. It is needed to fill the gap in the layout that those widgets have left
-    removeAndCollapseRow(targetLayout, row_to_remove);
-
-
+         // Get trace properties and call the common removal function
+  TraceProperties& props = traceMap[mode][ID];
+  removeTraceByProps(mode, ID, props);
 }
+
+
+void Qucs_S_SPAR_Viewer::removeTraceByProps(DisplayMode mode, const QString& traceID, TraceProperties& props) {
+  // 1) Find the right layout
+  QGridLayout *targetLayout;
+
+         // Remove trace from the layout and from the chart
+  switch (mode) {
+  case DisplayMode::Magnitude_dB:
+  case DisplayMode::Phase:
+    targetLayout = magnitudePhaseLayout;
+    Magnitude_PhaseChart->removeTrace(traceID);
+    break;
+  case DisplayMode::Smith:
+    targetLayout = smithLayout;
+    smithChart->removeTrace(traceID);
+    break;
+  case DisplayMode::Polar:
+    targetLayout = polarLayout;
+    polarChart->removeTrace(traceID);
+    break;
+  case DisplayMode::PortImpedance:
+    targetLayout = portImpedanceLayout;
+    impedanceChart->removeTrace(traceID);
+    break;
+  case DisplayMode::Stability:
+    targetLayout = stabilityLayout;
+    stabilityChart->removeTrace(traceID);
+    break;
+  case DisplayMode::VSWR:
+    targetLayout = VSWRLayout;
+    VSWRChart->removeTrace(traceID);
+    break;
+  case DisplayMode::GroupDelay:
+    targetLayout = GroupDelayLayout;
+    GroupDelayChart->removeTrace(traceID);
+    break;
+  }
+
+         // 2) Get the row number of the widgets in the grid for filling gaps after removal
+  int index = targetLayout->indexOf(props.nameLabel);
+  int row_to_remove, col, rowSpan, colSpan;
+  targetLayout->getItemPosition(index, &row_to_remove, &col, &rowSpan, &colSpan);
+
+         // 3) Remove widgets
+  targetLayout->removeWidget(props.nameLabel);
+  delete props.nameLabel;
+  props.nameLabel = nullptr;
+
+  targetLayout->removeWidget(props.colorButton);
+  delete props.colorButton;
+  props.colorButton = nullptr;
+
+  targetLayout->removeWidget(props.LineStyleComboBox);
+  delete props.LineStyleComboBox;
+  props.LineStyleComboBox = nullptr;
+
+  targetLayout->removeWidget(props.width);
+  delete props.width;
+  props.width = nullptr;
+
+  targetLayout->removeWidget(props.deleteButton);
+  delete props.deleteButton;
+  props.deleteButton = nullptr;
+
+         // 4) Remove trace from the map
+  traceMap[mode].remove(traceID);
+
+         // 5) Fill the gap in the layout
+  removeAndCollapseRow(targetLayout, row_to_remove);
+}
+
 
 
 void Qucs_S_SPAR_Viewer::removeAndCollapseRow(QGridLayout* targetLayout, int row_to_remove) {
@@ -1728,7 +1796,7 @@ void Qucs_S_SPAR_Viewer::removeAndCollapseRow(QGridLayout* targetLayout, int row
     QLayoutItem* item = targetLayout->itemAtPosition(row_to_remove, col);
     if(item && item->widget()) {
       targetLayout->removeWidget(item->widget());
-      delete item->widget(); // Optional: Only if you want to destroy widgets
+      delete item->widget();
     }
   }
 
