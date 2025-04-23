@@ -133,7 +133,7 @@ QString Winding::spice_netlist(spicecompat::SpiceDialect dialect /* = spicecompa
 
 QString Winding::getSpiceLibrary()
 {
-  QString f = QucsSettings.SpiceLibDir + QDir::toNativeSeparators("/winding.cir");
+  QString f = spicecompat::getSpiceLibPath("winding.cir");
   QString s = QString (".INCLUDE \"%1\"\n").arg(f);
   return s;
 }

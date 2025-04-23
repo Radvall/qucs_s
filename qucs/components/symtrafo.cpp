@@ -143,7 +143,7 @@ QString symTrafo::spice_netlist(spicecompat::SpiceDialect dialect)
 
 QString symTrafo::getSpiceLibrary()
 {
-  QString f = QucsSettings.SpiceLibDir + QDir::toNativeSeparators("/xfmr.cir");
+  QString f = spicecompat::getSpiceLibPath("xfmr.cir");
   QString s = QString (".INCLUDE \"%1\"\n").arg(f);
   return s;
 }
