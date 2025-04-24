@@ -3444,6 +3444,14 @@ void QucsApp::updateRecentFilesList(QString s)
   slotUpdateRecentFiles();
 }
 
+void QucsApp::updateRecentProjectsList()
+{
+  QSettings* settings = new QSettings("qucs","qucs_s");
+  settings->setValue("RecentProjects",QucsSettings.RecentProjects.join("*"));
+  delete settings;
+  slotUpdateRecentProjects();
+}
+
 void QucsApp::updateRecentProjectsList(QString pathToProj)
 {
   QSettings* settings = new QSettings("qucs","qucs_s");
