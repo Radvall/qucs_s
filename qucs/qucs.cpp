@@ -3440,6 +3440,18 @@ void QucsApp::updateRecentFilesList(QString s)
   slotUpdateRecentFiles();
 }
 
+void QucsApp::updateRecentProjectsList(QString pathToProj)
+{
+  QSettings* settings = new QSettings("qucs","qucs_s");
+  QucsSettings.RecentProjects.removeAll(pathToProj);
+  QucsSettings.RecentProjects.prepend(pathToProj);
+  if (QucsSettings.RecentProjects.size() > MaxRecentFiles) {
+    QucsSettings.RecentProjects.removeLast();
+  }
+  settings->setValue("RecentProjects",QucsSettings.RecentProjects.join("*"));
+  delete settings;
+}
+
 void QucsApp::slotSaveDiagramToGraphicsFile()
 {
   slotSaveSchematicToGraphicsFile(true);

@@ -277,6 +277,7 @@ private:
   void closeFile(int);
 
   void updateRecentFilesList(QString s);
+  void updateRecentProjectsList(QString pathToProj);
   void successExportMessages(bool ok);
   void fillLibrariesTreeView (void);
   bool populateLibTreeFromDir(const QString &LibDirPath, QList<QTreeWidgetItem *> &topitems, bool relpath = false);
