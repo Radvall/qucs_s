@@ -439,6 +439,7 @@ private slots:
   void slotUpdateRecentFiles();
   void slotClearRecentFiles();
   void slotUpdateRecentProjects();
+  void slotClearRecentProjects();
   void slotLoadModule();
   void slotBuildModule();
 

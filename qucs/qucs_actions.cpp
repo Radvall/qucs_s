@@ -1526,6 +1526,12 @@ void QucsApp::slotUpdateRecentProjects()
   }
 }
 
+void QucsApp::slotClearRecentProjects()
+{
+  QucsSettings.RecentProjects.clear();
+  updateRecentProjectsList();
+}
+
 /*!
  * \brief QucsApp::slotLoadModule launches the dialog to select dynamic modueles
  */

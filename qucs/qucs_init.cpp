@@ -318,6 +318,7 @@ void QucsApp::initActions()
   }
 
   projClearRecent = new QAction(tr("Clear recent"), this);
+  connect(projClearRecent, SIGNAL(triggered()), SLOT(slotClearRecentProjects()));
 
   projDel = new QAction(tr("&Delete Project..."), this);
   projDel->setShortcut(tr("Ctrl+Shift+D"));
