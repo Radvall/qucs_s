@@ -320,11 +320,13 @@ private:
           *viewBrowseDock, *viewOctaveDock;
 
   // menus contain the items of their menubar
-  enum { MaxRecentFiles = 8 };
+  enum { MaxRecentFiles = 8, MaxRecentProjects = 8 };
   QMenu *fileMenu, *editMenu, *insMenu, *projMenu, *recentProjMenu, *simMenu, *viewMenu,
              *helpMenu, *alignMenu, *toolMenu, *recentFilesMenu, *cmMenu;
   QAction *fileRecentAction[MaxRecentFiles];
   QAction *fileClearRecent;
+
+  QAction *projRecentActions[MaxRecentProjects];
 
   // submenus for the PDF documents
   QMenu *helpTechnical, *helpReport, *helpTutorial;
