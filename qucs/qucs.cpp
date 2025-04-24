@@ -1434,6 +1434,9 @@ void QucsApp::slotButtonProjNew()
 // Opens an existing project.
 void QucsApp::openProject(const QString& Path)
 {
+  // this will also remove the path from recent projects if the directory doesn't exist.
+  updateRecentProjectsList(Path);
+
   slotHideEdit(); // disable text edit of component property
 
   QDir ProjDir(QDir::cleanPath(Path)); // the full path
@@ -3451,6 +3454,7 @@ void QucsApp::updateRecentProjectsList(QString pathToProj)
   }
   settings->setValue("RecentProjects",QucsSettings.RecentProjects.join("*"));
   delete settings;
+  slotUpdateRecentProjects();
 }
 
 void QucsApp::slotSaveDiagramToGraphicsFile()
