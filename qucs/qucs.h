@@ -421,6 +421,7 @@ public slots:
   void slotAddToProject();
   void slotApplyCompText();
   void slotOpenRecentFile();
+  void slotOpenRecentProject();
   void slotSaveDiagramToGraphicsFile();
   void slotSaveSchematicToGraphicsFile(bool diagram = false);
 

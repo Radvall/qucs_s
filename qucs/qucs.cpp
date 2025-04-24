@@ -140,6 +140,7 @@ QucsApp::QucsApp(bool netlist2Console) :
   viewBrowseDock->setChecked(true);
   slotViewOctaveDock(false);
   slotUpdateRecentFiles();
+  slotUpdateRecentProjects();
   initCursorMenu();
   //Module::registerModules ();
 

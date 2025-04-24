@@ -314,7 +314,7 @@ void QucsApp::initActions()
   for (auto &action : projRecentActions) {
     action = new QAction(this);
     action->setVisible(false);
-    //connect(i, SIGNAL(triggered()), SLOT(slotOpenRecentProject()));
+    connect(action, SIGNAL(triggered()), SLOT(slotOpenRecentProject()));
   }
 
   projDel = new QAction(tr("&Delete Project..."), this);

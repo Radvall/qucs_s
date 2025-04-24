@@ -1496,6 +1496,15 @@ void QucsApp::slotClearRecentFiles()
   slotUpdateRecentFiles();
 }
 
+void QucsApp::slotOpenRecentProject()
+{
+  QAction *recentProjAction = qobject_cast<QAction *>(sender());
+  if (recentProjAction) {
+    openProject(recentProjAction->data().toString());
+    updateRecentProjectsList(recentProjAction->data().toString());
+  }
+}
+
 void QucsApp::slotUpdateRecentProjects()
 {
   QMutableStringListIterator it(QucsSettings.RecentProjects);
