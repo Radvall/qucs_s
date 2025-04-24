@@ -1496,6 +1496,28 @@ void QucsApp::slotClearRecentFiles()
   slotUpdateRecentFiles();
 }
 
+void QucsApp::slotUpdateRecentProjects()
+{
+  QMutableStringListIterator it(QucsSettings.RecentProjects);
+  QDir projDir;
+  while(it.hasNext()) {
+    // QDir::cd returns false if directory doesn't exist.
+    if (!projDir.cd(it.next())) {
+        it.remove();
+    }
+  }
+
+  for (int i = 0; i < MaxRecentProjects; ++i) {
+    if (i < QucsSettings.RecentProjects.size()) {
+      projRecentActions[i]->setText(QucsSettings.RecentProjects[i]);
+      projRecentActions[i]->setData(QucsSettings.RecentProjects[i]);
+      projRecentActions[i]->setVisible(true);
+    } else {
+      projRecentActions[i]->setVisible(false);
+    }
+  }
+}
+
 /*!
  * \brief QucsApp::slotLoadModule launches the dialog to select dynamic modueles
  */

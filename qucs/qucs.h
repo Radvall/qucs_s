@@ -435,6 +435,7 @@ private slots:
   void slotExportGraphAsCsv();
   void slotUpdateRecentFiles();
   void slotClearRecentFiles();
+  void slotUpdateRecentProjects();
   void slotLoadModule();
   void slotBuildModule();
 
