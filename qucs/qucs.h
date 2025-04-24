@@ -328,6 +328,7 @@ private:
   QAction *fileClearRecent;
 
   QAction *projRecentActions[MaxRecentProjects];
+  QAction *projClearRecent;
 
   // submenus for the PDF documents
   QMenu *helpTechnical, *helpReport, *helpTutorial;

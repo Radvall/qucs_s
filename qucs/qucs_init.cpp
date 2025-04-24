@@ -317,6 +317,8 @@ void QucsApp::initActions()
     connect(action, SIGNAL(triggered()), SLOT(slotOpenRecentProject()));
   }
 
+  projClearRecent = new QAction(tr("Clear recent"), this);
+
   projDel = new QAction(tr("&Delete Project..."), this);
   projDel->setShortcut(tr("Ctrl+Shift+D"));
   projDel->setStatusTip(tr("Deletes an existing project"));
@@ -772,6 +774,8 @@ void QucsApp::initMenuBar()
   for (auto &action : projRecentActions) {
     recentProjMenu->addAction(action);
   }
+  recentProjMenu->addSeparator();
+  recentProjMenu->addAction(projClearRecent);
 
   projMenu->addAction(addToProj);
   projMenu->addAction(projClose);
