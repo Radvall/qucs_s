@@ -757,6 +757,10 @@ void QucsApp::initMenuBar()
   projMenu = new QMenu(tr("&Project"));  // menuBar entry projMenu
   projMenu->addAction(projNew);
   projMenu->addAction(projOpen);
+
+  recentProjMenu = new QMenu(tr("Open Recent"), projMenu);
+  projMenu->addMenu(recentProjMenu);
+
   projMenu->addAction(addToProj);
   projMenu->addAction(projClose);
   projMenu->addAction(projDel);

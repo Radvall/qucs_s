@@ -321,7 +321,7 @@ private:
 
   // menus contain the items of their menubar
   enum { MaxRecentFiles = 8 };
-  QMenu *fileMenu, *editMenu, *insMenu, *projMenu, *simMenu, *viewMenu,
+  QMenu *fileMenu, *editMenu, *insMenu, *projMenu, *recentProjMenu, *simMenu, *viewMenu,
              *helpMenu, *alignMenu, *toolMenu, *recentFilesMenu, *cmMenu;
   QAction *fileRecentAction[MaxRecentFiles];
   QAction *fileClearRecent;
