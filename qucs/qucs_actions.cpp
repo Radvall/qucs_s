@@ -1461,7 +1461,7 @@ void QucsApp::slotExportGraphAsCsv()
 }
 
 
-void QucsApp::slotOpenRecent()
+void QucsApp::slotOpenRecentFile()
 {
   QAction *action = qobject_cast<QAction *>(sender());
   if (action) {

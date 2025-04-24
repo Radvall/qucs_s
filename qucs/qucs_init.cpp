@@ -98,7 +98,7 @@ void QucsApp::initActions()
   for (auto & i : fileRecentAction) {
     i = new QAction(this);
     i->setVisible(false);
-    connect(i, SIGNAL(triggered()), SLOT(slotOpenRecent()));
+    connect(i, SIGNAL(triggered()), SLOT(slotOpenRecentFile()));
   }
 
   fileClearRecent = new QAction(tr("Clear Recent"), this);
