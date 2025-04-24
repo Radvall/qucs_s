@@ -62,6 +62,7 @@ taperedline.cpp
 circularloop.cpp
 spiralinductor.cpp
 simulation.cpp
+vdmos.cpp
 )
 
 SET(COMPONENTS_HDRS
@@ -233,6 +234,7 @@ vpulse.h
 vrect.h
 circularloop.h
 spiralinductor.h
+vdmos.h
 )
 
 

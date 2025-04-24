@@ -415,6 +415,7 @@ void Module::registerModules (void) {
       REGISTER_NONLINEAR_2 (JFET, info, info_p);
       REGISTER_NONLINEAR_3 (MOSFET, info, info_p, info_depl);
       REGISTER_NONLINEAR_3 (MOSFET_sub, info, info_p, info_depl);
+      REGISTER_NONLINEAR_2 (VDMOS, info, info_p);
   //} else {
       REGISTER_NONLINEAR_1 (MESFET_SPICE);
       REGISTER_NONLINEAR_1 (PMF_MESFET_SPICE);
