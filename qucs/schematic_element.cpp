@@ -22,6 +22,7 @@
 #include "healer.h"
 #include "portsymbol.h"
 #include "schematic.h"
+#include "settings.h"
 
 #include <ranges>
 #include <set>
@@ -33,12 +34,19 @@ struct Schematic::HealingParams
     qucs_s::wire::Planner::PlanType m_wire_plan = qucs_s::wire::Planner::PlanType::Straight;
 };
 
-constexpr Schematic::HealingParams mousyMutationParams{
-    .m_healer_params = {.allowWireReshaping = false, .allowWireRelaying = false, .wireRelayingDepth = 3}
+const Schematic::HealingParams mousyMutationParams{
+    .m_healer_params = {
+        .allowWireReshaping = _settings::Get().item<bool>("AllowFlexibleWires"),
+        .allowWireRelaying = _settings::Get().item<bool>("AllowLayingWiresAnew"),
+        .wireRelayingDepth = 2
+    }
 };
 
-constexpr Schematic::HealingParams keyboardMutationParams{
-    .m_healer_params = {.allowWireReshaping = false, .allowWireRelaying = false}
+const Schematic::HealingParams keyboardMutationParams{
+    .m_healer_params = {
+        .allowWireReshaping = _settings::Get().item<bool>("AllowFlexibleWires"),
+        .allowWireRelaying = false
+    }
 };
 
 constexpr Schematic::HealingParams noninteractiveMutationParams{
