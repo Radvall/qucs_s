@@ -1910,24 +1910,25 @@ void Qucs_S_SPAR_Viewer::addTrace()
   } else if (displayModeText == "Polar") {
     traceInfo.displayMode = DisplayMode::Polar;
   } else if (displayModeText == "n.u.") {
-    if (!traceInfo.parameter.compare("VSWR")) {
+    if (traceInfo.parameter.contains("VSWR")) {
       traceInfo.displayMode = DisplayMode::VSWR;
     } else {
+      if (traceInfo.parameter.contains("{Z")) {
+        traceInfo.displayMode = DisplayMode::PortImpedance;
+      } else {
       traceInfo.displayMode = DisplayMode::Stability;
+      }
     }
   } else if (displayModeText == "Group Delay") {
     traceInfo.displayMode = DisplayMode::GroupDelay;
   }
 
-         // Set line width based on display mode
+  // Set line width
   int linewidth = 1;
-  if (traceInfo.displayMode == DisplayMode::Smith) {
-    linewidth = 3;
-  }
 
          // Color settings
   QColor trace_color;
-  int num_traces = traceMap.size();
+  int num_traces = traceMap[traceInfo.displayMode].size(); // Number of traces in the display widget
   if (num_traces >= default_colors.size()) {
     trace_color = QColor(QRandomGenerator::global()->bounded(256),
                          QRandomGenerator::global()->bounded(256),
@@ -4742,21 +4743,25 @@ void Qucs_S_SPAR_Viewer::raiseWidgetsOnTabSelection(int index) {
       // Magnitude / phase tab
       dockChart->raise();
       QCombobox_display_mode->setCurrentText("dB");
+      QCombobox_traces->setCurrentText("S11");
       break;
     case 1:
       // Smith Chart
       dockSmithChart->raise();
       QCombobox_display_mode->setCurrentText("Smith");
+      QCombobox_traces->setCurrentText("S11");
       break;
     case 2:
       // Polar Chart
       dockPolarChart->raise();
       QCombobox_display_mode->setCurrentText("Polar");
+      QCombobox_traces->setCurrentText("S11");
       break;
     case 3:
       // Port impedance Chart
       dockImpedanceChart->raise();
       QCombobox_display_mode->setCurrentText("n.u.");
+      QCombobox_traces->setCurrentText("Re{Zin}");
       break;
     case 4:
       // Stability Chart
@@ -4766,6 +4771,7 @@ void Qucs_S_SPAR_Viewer::raiseWidgetsOnTabSelection(int index) {
     case 5:
       // VSWR Chart
       dockVSWRChart->raise();
+      QCombobox_traces->setCurrentText("VSWR{in}");
       QCombobox_display_mode->setCurrentText("n.u.");
       break;
     case 6:
