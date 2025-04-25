@@ -149,6 +149,7 @@
 #include "log_amp.h"
 #include "potentiometer.h"
 #include "MESFET.h"
+#include "vdmos.h"
 
 #include "photodiode.h"
 #include "phototransistor.h"

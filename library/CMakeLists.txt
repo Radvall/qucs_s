@@ -55,6 +55,7 @@ PIN_Diodes.lib
 VoltageComparators.lib
 VoltageReferences.lib
 VoltageRegulators.lib
+VDMOS.lib
 )
 
 SET(BLACKLIST
