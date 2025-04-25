@@ -2489,6 +2489,11 @@ public:
         sch->showEphemeralWire(a, b);
     }
 
+    void movePort(qucs_s::GenericPort* port, const QPoint& p) override {
+        Wire* host = port->hostWire();
+        Node* other = host->Port1 == port->node() ? host->Port2 : host->Port1;
+        sch->PostPaintEvent(_Line, p.x(), p.y(), other->x(), other->y());
+    }
 };
 
 
