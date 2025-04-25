@@ -95,30 +95,6 @@ public:
 // GenericPort
 // --------------------------------------------------------------------------------------
 
-template<>
-Wire* GenericPort::host() const
-{
-    return (isOfWire() ? m_wire : nullptr);
-}
-
-
-template<>
-Component* GenericPort::host() const
-{
-    return (isOfComponent() ? m_comp : nullptr);
-}
-
-
-template<>
-Element* GenericPort::host() const
-{
-    if (isOfComponent()) {
-        return m_comp;
-    }
-    return m_wire;
-}
-
-
 QPoint GenericPort::center() const
 {
     switch (m_portType) {
@@ -186,7 +162,7 @@ Node* GenericPort::replaceNodeWith(Node* new_node)
 void GenericPort::moveCenterTo(const QPoint& coords)
 {
     assert(isOfWire());
-    auto* wire = host<Wire>();
+    auto* wire = hostWire();
 
     switch (m_portType) {
     case (PortType::WireOne):
@@ -309,7 +285,7 @@ bool isSpecialCase(const JointStateAssessor& jsa)
 
     if (jsa.onlyWirePortsAt(*other_loc)) return false;
 
-    Wire* single_wire = jsa.portLocations().lower_bound(*single_wire_port_loc)->second->host<Wire>();
+    Wire* single_wire = jsa.portLocations().lower_bound(*single_wire_port_loc)->second->hostWire();
     assert(single_wire != nullptr);
 
     const QPoint p1 = single_wire->P1();
@@ -458,7 +434,7 @@ vector<Healer::HealingAction> Healer::HealerImpl::processRelayingCase(Node* node
 
         assert(port->isOfWire());
 
-        auto [stable_node, obsolete_wires] = findStableNode(node, port->host<Wire>());
+        auto [stable_node, obsolete_wires] = findStableNode(node, port->hostWire());
 
         std::vector<WireLabel*> labels;
         for (auto* wire : obsolete_wires) {
