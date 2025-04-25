@@ -1461,7 +1461,7 @@ void QucsApp::slotExportGraphAsCsv()
 }
 
 
-void QucsApp::slotOpenRecent()
+void QucsApp::slotOpenRecentFile()
 {
   QAction *action = qobject_cast<QAction *>(sender());
   if (action) {
@@ -1494,6 +1494,42 @@ void QucsApp::slotClearRecentFiles()
 {
   QucsSettings.RecentDocs.clear();
   slotUpdateRecentFiles();
+}
+
+void QucsApp::slotOpenRecentProject()
+{
+  QAction *recentProjAction = qobject_cast<QAction *>(sender());
+  if (recentProjAction) {
+    openProject(recentProjAction->data().toString());
+  }
+}
+
+void QucsApp::slotUpdateRecentProjects()
+{
+  QMutableStringListIterator it(QucsSettings.RecentProjects);
+  QDir projDir;
+  while(it.hasNext()) {
+    // QDir::cd returns false if directory doesn't exist.
+    if (!projDir.cd(it.next())) {
+        it.remove();
+    }
+  }
+
+  for (int i = 0; i < MaxRecentProjects; ++i) {
+    if (i < QucsSettings.RecentProjects.size()) {
+      projRecentActions[i]->setText(QucsSettings.RecentProjects[i]);
+      projRecentActions[i]->setData(QucsSettings.RecentProjects[i]);
+      projRecentActions[i]->setVisible(true);
+    } else {
+      projRecentActions[i]->setVisible(false);
+    }
+  }
+}
+
+void QucsApp::slotClearRecentProjects()
+{
+  QucsSettings.RecentProjects.clear();
+  updateRecentProjectsList();
 }
 
 /*!

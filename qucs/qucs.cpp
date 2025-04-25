@@ -140,6 +140,7 @@ QucsApp::QucsApp(bool netlist2Console) :
   viewBrowseDock->setChecked(true);
   slotViewOctaveDock(false);
   slotUpdateRecentFiles();
+  slotUpdateRecentProjects();
   initCursorMenu();
   //Module::registerModules ();
 
@@ -1433,6 +1434,9 @@ void QucsApp::slotButtonProjNew()
 // Opens an existing project.
 void QucsApp::openProject(const QString& Path)
 {
+  // this will also remove the path from recent projects if the directory doesn't exist.
+  updateRecentProjectsList(Path);
+
   slotHideEdit(); // disable text edit of component property
 
   QDir ProjDir(QDir::cleanPath(Path)); // the full path
@@ -3438,6 +3442,27 @@ void QucsApp::updateRecentFilesList(QString s)
   settings->setValue("RecentDocs",QucsSettings.RecentDocs.join("*"));
   delete settings;
   slotUpdateRecentFiles();
+}
+
+void QucsApp::updateRecentProjectsList()
+{
+  QSettings* settings = new QSettings("qucs","qucs_s");
+  settings->setValue("RecentProjects",QucsSettings.RecentProjects.join("*"));
+  delete settings;
+  slotUpdateRecentProjects();
+}
+
+void QucsApp::updateRecentProjectsList(QString pathToProj)
+{
+  QSettings* settings = new QSettings("qucs","qucs_s");
+  QucsSettings.RecentProjects.removeAll(pathToProj);
+  QucsSettings.RecentProjects.prepend(pathToProj);
+  if (QucsSettings.RecentProjects.size() > MaxRecentFiles) {
+    QucsSettings.RecentProjects.removeLast();
+  }
+  settings->setValue("RecentProjects",QucsSettings.RecentProjects.join("*"));
+  delete settings;
+  slotUpdateRecentProjects();
 }
 
 void QucsApp::slotSaveDiagramToGraphicsFile()

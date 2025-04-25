@@ -98,6 +98,8 @@ struct tQucsSettings {
   unsigned int numRecentDocs;
   QStringList RecentDocs;
 
+  QStringList RecentProjects;
+
   bool IgnoreFutureVersion;
   bool GraphAntiAliasing;
   bool TextAntiAliasing;
