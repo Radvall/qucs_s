@@ -179,6 +179,19 @@ void GenericPort::moveCenterTo(const QPoint& coords)
 }
 
 
+Node* GenericPort::node() const
+{
+    switch (m_portType) {
+    case PortType::WireOne:
+      return m_wire->Port1;
+    case PortType::WireTwo:
+      return m_wire->Port2;
+    case PortType::Component:
+      return m_port->Connection;
+    }
+}
+
+
 // Utils
 // --------------------------------------------------------------------------------------
 
