@@ -52,6 +52,7 @@
 #include "main.h"
 #include "mouseactions.h"
 #include "node.h"
+#include "wire.h"
 #include "paintings/paintings.h"
 #include "schematic.h"
 #include "settings.h"

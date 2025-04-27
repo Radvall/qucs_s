@@ -73,8 +73,6 @@
 #include "dialogs/simmessage.h"
 #include "dialogs/exportdialog.h"
 #include "dialogs/displaydialog.h"
-//#include "dialogs/vtabwidget.h"
-//#include "dialogs/vtabbeddockwidget.h"
 #include "extsimkernels/externsimdialog.h"
 #include "dialogs/tuner.h"
 #include "octave_window.h"
@@ -85,8 +83,8 @@
 #include "extsimkernels/verilogawriter.h"
 #include "extsimkernels/CdlNetlistWriter.h"
 #include "extsimkernels/simsettingsdialog.h"
-//#include "extsimkernels/codemodelgen.h"
 #include "symbolwidget.h"
+#include "diagram.h"
 
 QucsApp::QucsApp(bool netlist2Console) :
   a_netlist2Console(netlist2Console)
