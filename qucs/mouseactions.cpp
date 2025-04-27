@@ -36,6 +36,8 @@
 #include "main.h"
 #include "module.h"
 #include "node.h"
+#include "painting.h"
+#include "wire.h"
 #include "qucs.h"
 #include "schematic.h"
 #include "spicecomponents/sp_customsim.h"

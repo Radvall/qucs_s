@@ -23,6 +23,10 @@
 #include "portsymbol.h"
 #include "schematic.h"
 #include "settings.h"
+#include "component.h"
+#include "diagram.h"
+#include "node.h"
+#include "wire.h"
 
 #include <ranges>
 #include <set>

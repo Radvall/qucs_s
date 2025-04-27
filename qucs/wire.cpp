@@ -18,6 +18,7 @@
 #include "multi_point.h"
 #include "one_point.h"
 #include "schematic.h"
+#include "node.h"
 
 #include <QPainter>
 

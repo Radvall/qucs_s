@@ -59,6 +59,10 @@
 #include "dialogs/importdialog.h"
 #include "dialogs/aboutdialog.h"
 #include "module.h"
+#include "diagram.h"
+#include "node.h"
+#include "wirelabel.h"
+#include "wire.h"
 
 #include "extsimkernels/xyce.h"
 

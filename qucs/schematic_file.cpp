@@ -31,6 +31,7 @@
 
 #include "main.h"
 #include "node.h"
+#include "wire.h"
 #include "schematic.h"
 #include "diagrams/diagrams.h"
 #include "paintings/paintings.h"
