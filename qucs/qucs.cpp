@@ -87,7 +87,8 @@
 #include "diagram.h"
 
 QucsApp::QucsApp(bool netlist2Console) :
-  a_netlist2Console(netlist2Console)
+  a_netlist2Console(netlist2Console),
+  a_resolveSpicePrefix(false)
 {
   windowTitle = misc::getWindowTitle();
   setWindowTitle(windowTitle);
@@ -3589,6 +3590,11 @@ void QucsApp::slotSaveNetlist()
     }
 }
 
+void QucsApp::slotResolveSpicePrefixToggled(bool checked)
+{
+    a_resolveSpicePrefix = checked;
+}
+
 void QucsApp::slotSaveCdlNetlist()
 {
     if (!isTextDocument(DocumentTab->currentWidget()))
@@ -3601,7 +3607,7 @@ void QucsApp::slotSaveCdlNetlist()
             QString netlistString;
             {
                 QTextStream netlistStream(&netlistString);
-                CdlNetlistWriter cdlWriter(netlistStream, schematic);
+                CdlNetlistWriter cdlWriter(netlistStream, schematic, a_resolveSpicePrefix);
                 if (!cdlWriter.write())
                 {
                     QMessageBox::critical(
@@ -3632,7 +3638,7 @@ void QucsApp::slotSaveCdlNetlist()
             if (netlistFile.open(QIODevice::WriteOnly))
             {
                 QTextStream netlistStream(&netlistFile);
-                CdlNetlistWriter cdlWriter(netlistStream, schematic);
+                CdlNetlistWriter cdlWriter(netlistStream, schematic, a_resolveSpicePrefix);
                 if (!cdlWriter.write())
                 {
                     QMessageBox::critical(
