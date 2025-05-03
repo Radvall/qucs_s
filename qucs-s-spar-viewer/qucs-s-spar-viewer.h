@@ -321,6 +321,17 @@ class Qucs_S_SPAR_Viewer : public QMainWindow
   bool save();
   void loadSession(QString);
 
+  // Save rectangular plot settings
+  void saveRectangularPlotSettings(QXmlStreamWriter &xml, RectangularPlotWidget *widget, const QString &elementName);
+  void loadRectangularPlotSettings(QXmlStreamReader &xml, RectangularPlotWidget *widget, const QString &elementName);
+
+  void saveSmithPlotSettings(QXmlStreamWriter &xml, SmithChartWidget *widget, const QString &elementName);
+  void loadSmithPlotSettings(QXmlStreamReader &xml, SmithChartWidget *widget, const QString &elementName);
+
+  void savePolarPlotSettings(QXmlStreamWriter &xml, PolarPlotWidget *widget, const QString &elementName);
+  void loadPolarPlotSettings(QXmlStreamReader &xml, PolarPlotWidget *widget, const QString &elementName);
+
+
   // Notes
   QDockWidget *dockNotes;
   CodeEditor *Notes_Widget;
