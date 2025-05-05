@@ -2809,7 +2809,7 @@ void QucsApp::slotOpenContent(const QModelIndex &idx)
 
   if (extName == "sch" || extName == "dpl" || extName == "vhdl" ||
       extName == "vhd" || extName == "v" || extName == "va" ||
-      extName == "m" || extName == "oct") {
+      extName == "m" || extName == "oct" || extName == "net") {
     gotoPage(Info.absoluteFilePath());
     updateRecentFilesList(Info.absoluteFilePath());
     slotUpdateRecentFiles();
