@@ -88,6 +88,7 @@ struct tQucsSettings {
   QString OctaveExecutable; // OctaveExecutable location
   QString QucsOctave; // OUCS_OCTAVE variable
   QString RFLayoutExecutable;
+  bool ResolveSpicePrefix;
 
   // registered filename extensions with program to open the file
   QStringList FileTypes;

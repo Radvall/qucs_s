@@ -85,6 +85,7 @@
 #include "extsimkernels/simsettingsdialog.h"
 #include "symbolwidget.h"
 #include "diagram.h"
+#include "extsimkernels/CdlSettingsDialog.h"
 
 QucsApp::QucsApp(bool netlist2Console) :
   a_netlist2Console(netlist2Console)
@@ -3589,6 +3590,12 @@ void QucsApp::slotSaveNetlist()
     }
 }
 
+void QucsApp::slotCdlSettings()
+{
+    std::unique_ptr<CdlSettingsDialog> dlg(new CdlSettingsDialog(this));
+    dlg->exec();
+}
+
 void QucsApp::slotSaveCdlNetlist()
 {
     if (!isTextDocument(DocumentTab->currentWidget()))
@@ -3601,7 +3608,7 @@ void QucsApp::slotSaveCdlNetlist()
             QString netlistString;
             {
                 QTextStream netlistStream(&netlistString);
-                CdlNetlistWriter cdlWriter(netlistStream, schematic);
+                CdlNetlistWriter cdlWriter(netlistStream, schematic, QucsSettings.ResolveSpicePrefix);
                 if (!cdlWriter.write())
                 {
                     QMessageBox::critical(
@@ -3632,7 +3639,7 @@ void QucsApp::slotSaveCdlNetlist()
             if (netlistFile.open(QIODevice::WriteOnly))
             {
                 QTextStream netlistStream(&netlistFile);
-                CdlNetlistWriter cdlWriter(netlistStream, schematic);
+                CdlNetlistWriter cdlWriter(netlistStream, schematic, QucsSettings.ResolveSpicePrefix);
                 if (!cdlWriter.write())
                 {
                     QMessageBox::critical(
